@@ -271,19 +271,6 @@ Note: Metal GPU acceleration is not available in Docker containers.
 
 ## Troubleshooting
 
-### PLaMo image fails to build
-
-**Error**: `AttributeError: 'SentencePieceProcessor' object has no attribute 'Init'` during `docker compose -f compose.studio.yaml up -d`
-
-**Solution**: `plamo-server/requirements.txt` is unpinned, and the model's code doesn't work with the latest packages. Pin these two lines, then build again:
-
-```text
-transformers<5
-sentencepiece==0.2.0
-```
-
-Pinning `sentencepiece` alone gets the build through, but `/api/embed` then returns 500 on `transformers` 5.
-
 ### Cannot connect to Ollama
 
 **Error**: Connection refused to `studio:11434`

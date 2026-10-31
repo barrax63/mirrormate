@@ -79,10 +79,10 @@ Things that are easy to miss:
 
 - User-facing and prompt text must exist in both `en` and `ja`: the locale YAML, the `messages` files, and inline `getLocale() === "ja"` branches in server code.
 - The committed `config/providers.yaml` points at `http://studio:*`, a hostname that only compose's `extra_hosts` defines. Under `bun run dev`, make `studio` resolve or use another config through `PROVIDERS_CONFIG`.
-- `compose.yaml` passes an explicit env list that omits `LOCALE` and the `*_PROVIDER` variables, so setting them in `.env` has no effect there. It also needs a valid `STUDIO_IP`: blank or the `.env.example` placeholder makes `docker compose up` fail. `host-gateway` works when everything runs on one machine.
+- `compose.yaml` passes an explicit env list that omits `LOCALE` and the `*_PROVIDER` variables, so setting them in `.env` has no effect there. It also needs a valid `STUDIO_IP`, or `docker compose up` fails. `.env.example` defaults to `host-gateway`, which means this machine.
 - `next build` prerenders pages, so UI strings and `<html lang>` use the locale at build time. Changing `LOCALE` or `app.yaml` afterwards only switches the server side (wake word, prompts, database, presets). `next dev` renders per request, which hides this.
 - Web Speech always starts in `en-US`: `src/app/page.tsx` passes no `lang` to `useSpeechRecognition`, and `stt.web` in the committed `providers.yaml` parses to null, so the preset never reaches it. The Whisper providers do follow the preset.
-- `plamo-server/requirements.txt` is unpinned. The PLaMo image currently only builds and serves with `sentencepiece==0.2.0` and `transformers<5`, so `compose.studio.yaml` fails on a fresh machine without them.
+- `plamo-server` pins `sentencepiece`, `transformers` and the model revision (`PLAMO_REVISION` in its Dockerfile), because the model's remote code breaks on newer packages. When changing any of them, test `/api/embed` as well as the build: `transformers` 5 builds fine and only fails there.
 
 ### Database
 

@@ -2,9 +2,9 @@
 # Runs UI only, connects to Mac Studio via Tailscale for heavy services
 # Usage: docker compose up -d
 #
-# Set STUDIO_IP in .env to your Mac Studio's Tailscale IP:
-#   STUDIO_IP=100.x.x.x
-# Get it with: tailscale ip -4
+# Set STUDIO_IP in .env to the machine running them:
+#   STUDIO_IP=host-gateway   this machine
+#   STUDIO_IP=100.x.x.x      another machine, such as its Tailscale IP (tailscale ip -4)
 
 services:
   mirrormate:
