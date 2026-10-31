@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { Page } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 import { test, expect, AvatarPage, JPEG_DATA_URL } from "./fixtures";
 
 test.describe("Avatar page", () => {
@@ -23,6 +23,12 @@ test.describe("Voice flow", () => {
     // A request would have started by now, since capturing a camera frame is quick
     await avatar.page.waitForTimeout(1000);
     expect(avatar.postsTo("/api/chat")).toEqual([]);
+  });
+
+  test("wakes on a transcript with punctuation, as Whisper writes it", async ({ avatar }) => {
+    await avatar.hear("Hey, Mira!");
+
+    await expect(avatar.page.getByText("In Conversation")).toBeVisible();
   });
 
   test("sends what it hears after the wake word and speaks the reply", async ({ avatar }) => {
@@ -88,6 +94,40 @@ test.describe("Voice flow", () => {
       links: window.__audioLinks,
     }));
     expect(audio).toEqual({ contexts: ["running"], links: 0 });
+  });
+});
+
+test.describe("Speech provider", () => {
+  async function openWithConfig(page: Page, answer: (route: Route) => Promise<void>) {
+    await page.route("**/api/stt/config", answer);
+    const avatar = new AvatarPage(page);
+    await avatar.open();
+    return avatar;
+  }
+
+  // In Chrome, Web Speech sends the mic to Google, which a local Whisper setup is chosen to avoid
+  test("never starts Web Speech when a Whisper provider is configured", async ({ page }) => {
+    const avatar = await openWithConfig(page, (route) =>
+      route.fulfill({ json: { enabled: true, provider: "local", silenceDetection: {}, language: "en" } })
+    );
+
+    await avatar.waitForLog("[AudioRecorder] Started recording");
+    await page.waitForTimeout(1000);
+
+    expect(avatar.recognitionStarts()).toBe(0);
+    expect(await page.evaluate(() => window.__recognitions.length)).toBe(0);
+  });
+
+  test("uses Web Speech when the config request fails", async ({ page }) => {
+    const avatar = await openWithConfig(page, (route) => route.abort());
+
+    await expect.poll(() => avatar.isListening()).toBe(true);
+  });
+
+  test("uses Web Speech when the config request returns an error", async ({ page }) => {
+    const avatar = await openWithConfig(page, (route) => route.fulfill({ status: 500 }));
+
+    await expect.poll(() => avatar.isListening()).toBe(true);
   });
 });
 
