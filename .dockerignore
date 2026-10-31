@@ -45,6 +45,10 @@ coverage
 *.spec.ts
 __tests__
 vitest.config.ts
+e2e
+playwright.config.ts
+test-results
+playwright-report
 
 # Misc
 *.md

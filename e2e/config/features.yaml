@@ -1,0 +1,4 @@
+# Only features that need no network, so runs don't depend on outside services
+features:
+  time:
+    enabled: true

@@ -23,6 +23,10 @@ bun run test src/lib/memory/extractor.test.ts   # one file
 bun run test -t "test name"                     # by test name
 bun run test:watch
 
+bunx playwright install chromium                # once, before the first e2e run
+bun run test:e2e                                # builds with LOCALE=en, then runs Playwright
+bunx playwright test e2e/control.spec.ts        # one file, against the existing build
+
 bun audit --prod --audit-level=high             # the dependency check CI runs
 
 bun run docs:dev                                # VitePress site in docs/
@@ -33,7 +37,11 @@ docker compose -f compose.studio.yaml up -d     # VOICEVOX, faster-whisper, PLaM
 
 Use `bun run test`, not `bun test`: the latter starts Bun's own runner instead of Vitest.
 
-Vitest only collects `src/**/*.test.ts`, runs in the `node` environment, and has no path aliases. Modules under test need relative imports, so the `@/` imports in `tools/see-camera.ts`, `features/calendar/index.ts` and `features/time/index.ts` won't resolve in tests unless an alias is added.
+Vitest only collects `src/**/*.test.ts` and runs in the `node` environment.
+
+Playwright runs `e2e/*.spec.ts` against the production build. `playwright.config.ts` starts `e2e/mock-backends.mjs` (fake Ollama and VOICEVOX) and `next start` twice: `en` on port 3100 and `ja` on port 3101, built in English so the `ja` server shows what `LOCALE` changes at runtime. Both use `e2e/config/*.yaml` and throwaway databases in `e2e/.tmp/`. Chromium gets a fake camera and `e2e/speech-recognition-stub.js`, so tests "speak" through `window.__say()`. Real speech recognition and microphones aren't covered.
+
+Known bugs are covered by expected failures: `it.fails` in Vitest, and `test.fail()` in tests named `known bug: ...` in Playwright. `test.fail()` is called right before the failing assertion, so broken setup still fails the test. A fix makes its test fail with "Expected to fail, but passed", so remove the marker in the same change. Playwright's list output prints ✘ for expected failures, but counts them as passed.
 
 Use `bun audit fix` to patch dependencies, and don't delete entries from `bun.lock` by hand: a frozen install still passes, but packages silently resolve to versions outside their ranges. `package.json` overrides `postcss` because `next` pins a vulnerable exact version; remove the override once `next` no longer does.
 
@@ -51,7 +59,7 @@ Use `bun audit fix` to patch dependencies, and don't delete entries from `bun.lo
 
 1. Match the last user message against keyword rules (case-insensitive substring match). A match runs that rule's modules, which can call features and tools.
 2. Build the system prompt from the character prompt, RAG memories, and either the rule context or all feature contexts.
-3. Run the LLM tool loop, up to 3 iterations. **Tools are disabled and feature contexts are skipped when a rule matched.**
+3. Run the LLM tool loop, up to 3 iterations. **Tools are disabled when a rule matched, and feature contexts are skipped.** The exception: if the rule's modules return nothing, its response hint is dropped and feature contexts are used, still without tools.
 4. Start memory extraction without awaiting it, so failures only appear in logs.
 
 Tool effects (confetti and similar) return through module-level pending state in `src/lib/tools/effects.ts`, not through the tool result.
@@ -110,5 +118,5 @@ The Dockerfile's runner stage contains only the standalone output and explicitly
 ## Workflow
 
 - PRs target `develop`. Commits follow Conventional Commits, and the prefixes drive PR labels.
-- CI runs lint, test, build and a production dependency audit on PRs into `develop` and pushes to it, but only when `src/**`, `config/**`, `plugins/**`, `messages/**`, `package.json`, `bun.lock`, `tsconfig.json`, `next.config.ts`, `vitest.config.ts`, `Dockerfile` or the CI workflow change. Changes confined to `docs/` don't trigger it.
+- CI runs lint, test, build, e2e and a production dependency audit on PRs into `develop` and pushes to it, but only when `src/**`, `config/**`, `plugins/**`, `messages/**`, `package.json`, `bun.lock`, `tsconfig.json`, `next.config.ts`, `vitest.config.ts`, `e2e/**`, `playwright.config.ts`, `Dockerfile` or the CI workflow change. Changes confined to `docs/` don't trigger it.
 - Pushes to `develop` deploy `docs/**` changes to GitHub Pages. `vX.Y.Z` tags publish multi-arch images to GHCR.
