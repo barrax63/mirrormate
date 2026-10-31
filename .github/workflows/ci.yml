@@ -54,3 +54,18 @@ jobs:
 
       - name: Run build
         run: bun run build
+
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Audit production dependencies
+        run: bun audit --prod --audit-level=high
