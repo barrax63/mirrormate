@@ -116,15 +116,14 @@ cd mirrormate
 docker compose -f compose.studio.yaml up -d
 
 # 3. Point MirrorMate at those services
-cp .env.example .env    # set STUDIO_IP to the IP of the machine running them,
-                        # or host-gateway if that is this machine
+cp .env.example .env    # STUDIO_IP=host-gateway means this machine
                         # and set tts.provider to voicevox in config/providers.yaml
 
 # 4. Start MirrorMate
 docker compose up -d
 ```
 
-Ollama must listen on an address the container can reach (`OLLAMA_HOST=0.0.0.0`). It has no authentication, so only do this on a trusted network. If the PLaMo image fails to build, see [Docker Setup](docs/guide/docker.md#plamo-image-fails-to-build).
+Ollama must listen on an address the container can reach (`OLLAMA_HOST=0.0.0.0`). It has no authentication, so only do this on a trusted network.
 
 **Wake word**: Say "Hey Mira" to activate.
 

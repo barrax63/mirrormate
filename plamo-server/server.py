@@ -4,6 +4,8 @@ PLaMo-Embedding-1B Server
 Ollama-compatible API wrapper for PLaMo-Embedding-1B
 """
 
+import os
+
 import torch
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -13,10 +15,14 @@ app = FastAPI(title="PLaMo Embedding Server")
 
 # Load model on startup
 print("Loading PLaMo-Embedding-1B model...")
+# Set in the Dockerfile, which downloads this revision at build time
+revision = os.environ["PLAMO_REVISION"]
 tokenizer = AutoTokenizer.from_pretrained(
-    "pfnet/plamo-embedding-1b", trust_remote_code=True
+    "pfnet/plamo-embedding-1b", revision=revision, trust_remote_code=True
 )
-model = AutoModel.from_pretrained("pfnet/plamo-embedding-1b", trust_remote_code=True)
+model = AutoModel.from_pretrained(
+    "pfnet/plamo-embedding-1b", revision=revision, trust_remote_code=True
+)
 
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 model = model.to(device)

@@ -2,6 +2,8 @@
 # Run heavy services: VOICEVOX, PLaMo Embedding, Whisper (Ollama runs natively)
 # Usage: docker compose -f compose.studio.yaml up -d
 
+name: mirrormate-studio
+
 services:
   # faster-whisper-server (OpenAI API compatible)
   # CPU version for Apple Silicon (M1/M2 Ultra is fast enough)
