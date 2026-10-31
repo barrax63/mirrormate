@@ -23,12 +23,12 @@
     "@types/three": "^0.182.0",
     "better-sqlite3": "^12.5.0",
     "canvas-confetti": "^1.9.4",
-    "drizzle-orm": "^0.45.1",
+    "drizzle-orm": "^0.45.4",
     "googleapis": "^169.0.0",
-    "js-yaml": "^4.1.1",
+    "js-yaml": "^4.3.2",
     "mirrormate-clock-plugin": "github:orangekame3/mirrormate-clock-plugin",
-    "next": "^15.1.0",
-    "next-intl": "^4.7.0",
+    "next": "^15.5.28",
+    "next-intl": "^4.14.9",
     "openai": "^4.73.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -46,13 +46,16 @@
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9.17.0",
-    "eslint-config-next": "^15.1.0",
+    "eslint-config-next": "^15.5.28",
     "mermaid": "^11.12.2",
-    "postcss": "^8.4.49",
+    "postcss": "^8.5.23",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.7.2",
     "vitepress": "^1.6.4",
     "vitepress-plugin-mermaid": "^2.0.17",
-    "vitest": "^4.0.16"
+    "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "postcss": "^8.5.23"
   }
 }
