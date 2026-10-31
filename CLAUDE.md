@@ -105,5 +105,5 @@ The Dockerfile's runner stage contains only the standalone output and explicitly
 ## Workflow
 
 - PRs target `develop`. Commits follow Conventional Commits, and the prefixes drive PR labels.
-- CI runs lint, test and build, but only when `src/**`, `package.json`, `bun.lock`, `tsconfig.json`, `next.config.ts`, `vitest.config.ts`, `Dockerfile` or the CI workflow change. Changes confined to `config/`, `plugins/` or `docs/` don't trigger it.
-- Pushes to `develop` open a release PR into `main` (git-pr-release) and deploy `docs/**` changes to GitHub Pages. `vX.Y.Z` tags publish multi-arch images to GHCR.
+- CI runs lint, test and build on PRs into `develop` and pushes to it, but only when `src/**`, `config/**`, `plugins/**`, `messages/**`, `package.json`, `bun.lock`, `tsconfig.json`, `next.config.ts`, `vitest.config.ts`, `Dockerfile` or the CI workflow change. Changes confined to `docs/` don't trigger it.
+- Pushes to `develop` deploy `docs/**` changes to GitHub Pages. `vX.Y.Z` tags publish multi-arch images to GHCR.

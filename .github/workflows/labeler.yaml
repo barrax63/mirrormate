@@ -3,7 +3,7 @@ name: PR Labeler
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [main, develop]
+    branches: [develop]
 
 jobs:
   labeler:
@@ -20,9 +20,11 @@ jobs:
 
       - name: Get commits and determine labels
         id: get-labels
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           # Get commit messages from PR
-          COMMITS=$(git log --format=%B origin/main..HEAD 2>/dev/null || echo "")
+          COMMITS=$(git log --format=%B "origin/$BASE_REF..HEAD" 2>/dev/null || echo "")
 
           # Initialize labels array
           LABELS=""

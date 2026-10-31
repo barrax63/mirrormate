@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [develop]
     paths:
       - "src/**"
+      - "config/**"
+      - "plugins/**"
+      - "messages/**"
       - "package.json"
       - "bun.lock"
       - "tsconfig.json"
@@ -13,9 +16,12 @@ on:
       - "Dockerfile"
       - ".github/workflows/ci.yml"
   pull_request:
-    branches: [main, develop]
+    branches: [develop]
     paths:
       - "src/**"
+      - "config/**"
+      - "plugins/**"
+      - "messages/**"
       - "package.json"
       - "bun.lock"
       - "tsconfig.json"
