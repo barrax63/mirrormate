@@ -12,7 +12,8 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      # The app has no authentication, so this machine only unless BIND_ADDRESS is set
+      - "${BIND_ADDRESS:-127.0.0.1}:3000:3000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GOOGLE_SERVICE_ACCOUNT_EMAIL=${GOOGLE_SERVICE_ACCOUNT_EMAIL}

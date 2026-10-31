@@ -15,7 +15,7 @@ Mirror Mate is a self-hosted AI companion designed for smart mirror displays. Th
 Run with a single Docker command:
 
 ```bash
-docker run -p 3000:3000 \
+docker run -p 127.0.0.1:3000:3000 \
   -e OPENAI_API_KEY=sk-your-key \
   -e LLM_PROVIDER=openai \
   -e TTS_PROVIDER=openai \

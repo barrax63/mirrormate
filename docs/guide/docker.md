@@ -124,7 +124,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "${BIND_ADDRESS:-127.0.0.1}:3000:3000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GOOGLE_SERVICE_ACCOUNT_EMAIL=${GOOGLE_SERVICE_ACCOUNT_EMAIL}
@@ -173,6 +173,24 @@ services:
       - "8000:8000"
     restart: unless-stopped
 ```
+
+## Network Access
+
+::: warning
+The app has no authentication. Anything that can reach port 3000 can read and delete your memories and use your LLM and other services.
+:::
+
+`compose.yaml` therefore publishes port 3000 on localhost only. To open it to other devices, set `BIND_ADDRESS` in `.env` to an address on a private network, then run `docker compose up -d`:
+
+```bash
+BIND_ADDRESS=100.x.x.x  # for example, this machine's Tailscale IP (tailscale ip -4)
+```
+
+- Docker can only bind an address that exists when the container starts, so Tailscale must be up first.
+- Browsers only allow the mic and camera on localhost or HTTPS, so the avatar page needs one of those for voice and vision.
+- `/control` must run in the same browser as the avatar page, so another device can only use it for pages that don't need the avatar, such as `/control/memory`.
+
+`compose.studio.yaml` publishes VOICEVOX, faster-whisper and PLaMo on all interfaces, also without authentication, because an app on another machine has to reach them. Ollama with `OLLAMA_HOST=0.0.0.0` is the same. Keep that machine on a trusted network, such as Tailscale, or restrict those ports with a firewall.
 
 ## Data Persistence
 

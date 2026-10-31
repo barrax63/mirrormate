@@ -95,7 +95,7 @@ Just talk to the mirror.
 **With OpenAI API (easiest):**
 
 ```bash
-docker run -p 3000:3000 \
+docker run -p 127.0.0.1:3000:3000 \
   -e OPENAI_API_KEY=sk-xxx \
   -e LLM_PROVIDER=openai \
   -e TTS_PROVIDER=openai \
