@@ -217,7 +217,9 @@ cd /home/pi/mirrormate && docker compose up -d
 
 ### Access
 
-Open http://localhost:3000 on the RPi's browser, or http://rpi:3000 from another device.
+Open http://localhost:3000 on the RPi's browser.
+
+Port 3000 is only published on localhost, because the app has no authentication. To open it from another device, set `BIND_ADDRESS` in `.env` to the RPi's Tailscale IP (`tailscale ip -4`), then run `docker compose up -d`. See [Network Access](docker.md#network-access).
 
 ## Step 6: Development (MacBook)
 
