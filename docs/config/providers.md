@@ -222,6 +222,8 @@ providers:
 **Pros**: Zero cost, instant setup, real-time interim results
 **Cons**: Browser-dependent quality, requires Chrome/Edge
 
+> **Note**: Brave has the API, but every session fails with a `network` error, so voice input stays on "Paused". Use a Whisper provider in Brave.
+
 ### OpenAI Whisper
 
 High-accuracy speech recognition using OpenAI's Whisper API.

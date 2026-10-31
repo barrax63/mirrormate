@@ -49,6 +49,14 @@ test.describe("Japanese server", () => {
     expect(phrase).toMatch(JAPANESE);
   });
 
+  test("wakes on a transcript with Japanese punctuation", async ({ request, avatar }) => {
+    const { phrase } = await (await request.get("/api/wakeword")).json();
+
+    await avatar.hear(`${phrase.replace(" ", "、")}。`);
+
+    await expect(avatar.page.getByText("In Conversation")).toBeVisible();
+  });
+
   test("gives the LLM a Japanese system prompt and rules", async ({ request, mock }) => {
     const message = "ただいま";
     const response = await request.post("/api/chat", {

@@ -4,7 +4,7 @@ Mirror Mate is a self-hosted AI companion designed for smart mirror displays. Th
 
 ## Prerequisites
 
-- **Google Chrome** - Required for Web Speech API (voice recognition)
+- **Google Chrome** - Required for Web Speech API (voice recognition). Brave doesn't work with it, so use a [Whisper provider](../config/providers.md) there
 - **Docker** - Recommended for easy deployment
 - **Bun** - For local development (optional)
 

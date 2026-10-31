@@ -66,8 +66,8 @@ interface UseSpeechRecognitionReturn {
   isSupported: boolean;
   /** Whether Whisper is currently transcribing audio */
   isTranscribing: boolean;
-  /** Current active provider */
-  activeProvider: SpeechRecognitionProvider;
+  /** Current active provider, null until the config has loaded */
+  activeProvider: SpeechRecognitionProvider | null;
   /** Current volume level (0-1, Whisper mode only) */
   currentVolume: number;
   /** Start listening */
@@ -101,8 +101,9 @@ export function useSpeechRecognition({
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  // Null until the config arrives, so Web Speech never starts in a Whisper setup
   const [activeProvider, setActiveProvider] =
-    useState<SpeechRecognitionProvider>("web");
+    useState<SpeechRecognitionProvider | null>(null);
   const [sttConfig, setSTTConfig] = useState<STTClientConfig | null>(null);
   const [currentVolume, setCurrentVolume] = useState(0);
 
@@ -132,19 +133,20 @@ export function useSpeechRecognition({
     async function fetchSTTConfig() {
       try {
         const res = await fetch("/api/stt/config");
-        if (res.ok) {
-          const config: STTClientConfig = await res.json();
-          setSTTConfig(config);
+        if (!res.ok) {
+          throw new Error(`STT config request failed: ${res.status}`);
+        }
+        const config: STTClientConfig = await res.json();
+        setSTTConfig(config);
 
-          // Determine provider from config unless overridden
-          if (!providerOverride) {
-            const configProvider =
-              config.provider === "openai" || config.provider === "local"
-                ? "whisper"
-                : "web";
-            setActiveProvider(configProvider);
-            console.log(`[SpeechRecognition] Using provider: ${configProvider}`);
-          }
+        // Determine provider from config unless overridden
+        if (!providerOverride) {
+          const configProvider =
+            config.provider === "openai" || config.provider === "local"
+              ? "whisper"
+              : "web";
+          setActiveProvider(configProvider);
+          console.log(`[SpeechRecognition] Using provider: ${configProvider}`);
         }
       } catch (error) {
         console.warn(

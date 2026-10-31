@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-MirrorMate is a voice-first AI avatar shown behind a half mirror. It is one Next.js 15 App Router app (`output: "standalone"`), typically on a Raspberry Pi, with heavy services (Ollama, VOICEVOX, faster-whisper, PLaMo embedding) optionally on another host. It is effectively single-user: requests fall back to `default-user`, and locale is server-wide. Chrome is required for the Web Speech API.
+MirrorMate is a voice-first AI avatar shown behind a half mirror. It is one Next.js 15 App Router app (`output: "standalone"`), typically on a Raspberry Pi, with heavy services (Ollama, VOICEVOX, faster-whisper, PLaMo embedding) optionally on another host. It is effectively single-user: requests fall back to `default-user`, and locale is server-wide. Chrome is required for the Web Speech API: Brave has the API, but every session fails with `network`, so use a Whisper provider there.
 
 ## Commands
 
