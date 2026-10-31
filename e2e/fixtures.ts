@@ -15,6 +15,8 @@ declare global {
   interface Window {
     __recognitions: { lang: string; running: boolean }[];
     __say: (text: string) => boolean;
+    __recognitionFailure?: string | null;
+    __endRecognition: () => void;
     __audioContexts: AudioContext[];
     __audioLinks: number;
   }
@@ -82,6 +84,18 @@ export class AvatarPage extends RecordedPage {
 
   isListening() {
     return this.page.evaluate(() => window.__recognitions.some((r) => r.running));
+  }
+
+  /** Delays of the recognition restarts so far, oldest first */
+  restartDelays() {
+    return this.logs.flatMap((log) => {
+      const delay = log.match(/Restarting in (\d+)ms/)?.[1];
+      return delay ? [Number(delay)] : [];
+    });
+  }
+
+  recognitionStarts() {
+    return this.logs.filter((log) => log.includes("Web Speech started")).length;
   }
 
   liveVideoTracks() {
