@@ -1,6 +1,6 @@
 # Tools (Function Calling)
 
-Tools are functions that the LLM can call during conversation using function calling. Unlike plugins (which provide context before the LLM call), tools are invoked by the LLM when needed.
+Tools are functions that the LLM can call during conversation using function calling. Unlike features (which provide context before the LLM call), tools are invoked by the LLM when needed.
 
 ## Available Tools
 
@@ -9,7 +9,7 @@ Tools are functions that the LLM can call during conversation using function cal
 | `see_camera` | Look at what the user's camera is showing (requires VLM) |
 | `web_search` | Search the internet using Ollama Web Search API |
 | `show_effect` | Display visual effects (confetti, hearts, sparkles) |
-| `discord_share` | Share information to Discord via webhook |
+| `share_to_discord` | Share information to Discord via webhook |
 
 ## See Camera (Vision)
 
@@ -141,11 +141,12 @@ No configuration required. The tool is always available.
     properties: {
       effect: {
         type: "string",
+        description: "表示するエフェクトの種類",
         enum: ["confetti", "hearts", "sparkles"]
       },
       reason: {
         type: "string",
-        description: "エフェクトを表示する理由（ログ用）"
+        description: "エフェクトを表示する理由（内部ログ用）"
       }
     },
     required: ["effect"]
@@ -179,7 +180,7 @@ No configuration required. The tool is always available.
 
 ### Tool Calling Loop
 
-The system allows up to 3 tool calls per request:
+The system allows up to 3 LLM iterations per request, and each iteration can make several tool calls. If the LLM is still calling tools after the last iteration, the reply is empty.
 
 ```typescript
 const MAX_TOOL_ITERATIONS = 3;
@@ -190,14 +191,14 @@ while (iterations < MAX_TOOL_ITERATIONS) {
     tools: tools,
   });
 
-  if (result.finishReason === "stop") {
+  if (result.finishReason === "stop" || !result.toolCalls?.length) {
     break; // No more tool calls
   }
 
   // Execute tool and add result to messages
   for (const toolCall of result.toolCalls) {
-    const toolResult = await executeTool(toolCall);
-    chatMessages.push({ role: "tool", content: toolResult });
+    const toolResult = await executeTool(toolCall, toolContext);
+    chatMessages.push({ role: "tool", content: toolResult.result });
   }
 }
 ```
@@ -244,8 +245,10 @@ Add to `src/lib/tools/index.ts`:
 import { myTool } from "./my-tool";
 
 const tools: Tool[] = [
+  seeCameraTool,
   webSearchTool,
   effectTool,
+  discordShareTool,
   myTool,  // Add your tool
 ];
 ```
@@ -255,7 +258,7 @@ const tools: Tool[] = [
 ```typescript
 interface Tool {
   definition: ToolDefinition;
-  execute(args: Record<string, unknown>): Promise<string>;
+  execute(args: Record<string, unknown>, context?: ToolContext): Promise<string | ToolExecuteResult>;
 }
 
 interface ToolDefinition {
@@ -263,16 +266,25 @@ interface ToolDefinition {
   description: string;
   parameters: {
     type: "object";
-    properties: Record<string, unknown>;
-    required?: string[];
+    properties: Record<string, ToolParameter>;
+    required: string[];
   };
+}
+
+interface ToolExecuteResult {
+  result: string;
+  infoCard?: ToolInfoCard;  // Info card shown on the mirror
+}
+
+interface ToolContext {
+  image?: string;  // Base64 encoded image from camera
 }
 ```
 
-## Tools vs Plugins vs Rules
+## Tools vs Features vs Rules
 
-| Feature | Plugins | Tools | Rules |
-|---------|---------|-------|-------|
+| Aspect | Features | Tools | Rules |
+|--------|----------|-------|-------|
 | When executed | Before LLM call | During LLM call | Before LLM call |
 | Who decides | Always runs | LLM decides | Trigger match |
 | Use case | Context injection | Dynamic actions | Automated workflows |

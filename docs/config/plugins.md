@@ -1,6 +1,6 @@
 # Plugins
 
-Mirror Mate supports visual widget plugins that display information on the mirror screen. Unlike [Features](features.md) which provide context to the AI, Plugins render UI components in the four corners of the screen.
+Mirror Mate supports visual widget plugins that display information on the mirror screen. Unlike [Features](features.md) which provide context to the AI, Plugins render UI components in the four corners of the screen, or run hidden with no visible UI.
 
 ## Features vs Plugins
 
@@ -38,7 +38,7 @@ The `source` field specifies where to get the plugin:
 
 ### Position Options
 
-Plugins can be placed in any of the four corners:
+Plugins can be placed in any of the four corners, or hidden:
 
 | Position | Location |
 |----------|----------|
@@ -46,6 +46,7 @@ Plugins can be placed in any of the four corners:
 | `top-right` | Upper right corner |
 | `bottom-left` | Lower left corner |
 | `bottom-right` | Lower right corner |
+| `hidden` | Not placed on screen, for plugins with no visible UI |
 
 ---
 
@@ -79,6 +80,12 @@ const pluginComponents: Record<string, React.ComponentType<{ config?: Record<str
 };
 ```
 
+4. For Docker, copy the plugin's `package.json` into the runner stage of the `Dockerfile`, because the manifest is read from it at runtime:
+
+```dockerfile
+COPY --from=builder /app/node_modules/mirrormate-clock-plugin/package.json ./node_modules/mirrormate-clock-plugin/package.json
+```
+
 ### From npm/bun registry
 
 ```bash
@@ -95,7 +102,8 @@ Then configure the same way with `source: npm:mirrormate-clock-plugin`.
 plugins/
   my-plugin/
     manifest.yaml
-    index.tsx
+    src/
+      index.tsx
 ```
 
 2. Add `manifest.yaml`:
@@ -111,6 +119,16 @@ defaultConfig:
 ```
 
 3. Configure with `source: local:my-plugin`.
+
+4. Register the component in `src/components/PluginRenderer.tsx`, keyed by the manifest `name`:
+
+```typescript
+import { MyPlugin } from "@plugins/my-plugin/src";
+
+const pluginComponents: Record<string, React.ComponentType<{ config?: Record<string, unknown> }>> = {
+  "my-plugin": MyPlugin,
+};
+```
 
 ---
 
@@ -155,6 +173,32 @@ plugins:
 | `dateFormat` | string | `long` | Date format (`short`, `long`, `full`) |
 | `showWeekday` | boolean | `true` | Display weekday |
 | `locale` | string | `ja-JP` | Locale for formatting |
+
+### Vision Companion Plugin
+
+Keeps the camera running and answers camera capture requests, so the `see_camera` tool can look at the user.
+
+**Source:** `local:vision-companion`
+
+**Configuration:**
+
+```yaml
+plugins:
+  vision-companion:
+    source: local:vision-companion
+    enabled: true
+    position: hidden
+    config:
+      showDebug: false
+```
+
+**Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `cameraWidth` | number | `640` | Requested camera width |
+| `cameraHeight` | number | `360` | Requested camera height |
+| `showDebug` | boolean | `false` | Show the camera preview and status |
 
 ---
 
@@ -270,7 +314,7 @@ bun add github:your-username/mirrormate-my-plugin
 
 ## Plugin Naming Convention
 
-For automatic discovery, use one of these naming patterns:
+Plugins are not discovered automatically: each one needs an entry in `config/plugins.yaml` and a registration in `PluginRenderer.tsx`. For consistency, use one of these naming patterns:
 
 - `mirrormate-*-plugin` (e.g., `mirrormate-clock-plugin`)
 - `mirrormate-plugin-*` (e.g., `mirrormate-plugin-clock`)

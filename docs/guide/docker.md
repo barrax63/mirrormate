@@ -69,7 +69,7 @@ curl http://localhost:8000/health       # PLaMo
 
 ```bash
 cp .env.example .env
-# Edit .env with your API keys
+# Set STUDIO_IP to the Mac Studio's Tailscale IP (tailscale ip -4) and add your API keys
 ```
 
 2. **Configure providers.yaml**
@@ -101,6 +101,8 @@ providers:
       baseUrl: "http://studio:8000"  # PLaMo server
 ```
 
+Inside the container, `studio` resolves to `STUDIO_IP` through `extra_hosts` in `compose.yaml`.
+
 3. **Start UI**
 
 ```bash
@@ -130,6 +132,8 @@ services:
       - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID}
       - OLLAMA_API_KEY=${OLLAMA_API_KEY}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+    extra_hosts:
+      - "studio:${STUDIO_IP}"
     volumes:
       - ./config:/app/config:ro
       - mirrormate-data:/app/data
@@ -172,19 +176,25 @@ services:
 
 ## Data Persistence
 
-The SQLite database (memories, users, sessions) is stored in the `mirrormate-data` Docker volume:
+The SQLite database (memories, users, sessions) is stored in the `mirrormate-data` Docker volume. Compose prefixes the volume with the project name, which defaults to the directory name, so it is usually `mirrormate_mirrormate-data`. Each locale has its own database file, `mirrormate.[lang].db`.
+
+These commands use the English database. SQLite runs in WAL mode, so stop the app first and copy the `-wal` and `-shm` files along with the database:
 
 ```bash
 # View volume location
-docker volume inspect mirrormate-data
+docker volume inspect mirrormate_mirrormate-data
 
 # Backup the database
-docker run --rm -v mirrormate-data:/data -v $(pwd):/backup alpine \
-  cp /data/mirrormate.db /backup/mirrormate-backup.db
+docker compose stop mirrormate
+docker run --rm -v mirrormate_mirrormate-data:/data -v "$(pwd)":/backup alpine \
+  sh -c 'cp /data/mirrormate.en.db* /backup/'
+docker compose start mirrormate
 
-# Restore from backup
-docker run --rm -v mirrormate-data:/data -v $(pwd):/backup alpine \
-  cp /backup/mirrormate-backup.db /data/mirrormate.db
+# Restore from backup (the app runs as UID 1001)
+docker compose stop mirrormate
+docker run --rm -v mirrormate_mirrormate-data:/data -v "$(pwd)":/backup alpine \
+  sh -c 'rm -f /data/mirrormate.en.db*; cp /backup/mirrormate.en.db* /data/ && chown 1001 /data/mirrormate.en.db*'
+docker compose start mirrormate
 ```
 
 ## Environment Variables
@@ -192,6 +202,10 @@ docker run --rm -v mirrormate-data:/data -v $(pwd):/backup alpine \
 Create a `.env` file:
 
 ```bash
+# Required by compose.yaml: Tailscale IP of the machine running the heavy services,
+# or host-gateway if they run on this machine
+STUDIO_IP=100.x.x.x
+
 # Required for OpenAI LLM/TTS (if not using Ollama/VOICEVOX)
 OPENAI_API_KEY=sk-...
 
@@ -257,6 +271,19 @@ Note: Metal GPU acceleration is not available in Docker containers.
 
 ## Troubleshooting
 
+### PLaMo image fails to build
+
+**Error**: `AttributeError: 'SentencePieceProcessor' object has no attribute 'Init'` during `docker compose -f compose.studio.yaml up -d`
+
+**Solution**: `plamo-server/requirements.txt` is unpinned, and the model's code doesn't work with the latest packages. Pin these two lines, then build again:
+
+```text
+transformers<5
+sentencepiece==0.2.0
+```
+
+Pinning `sentencepiece` alone gets the build through, but `/api/embed` then returns 500 on `transformers` 5.
+
 ### Cannot connect to Ollama
 
 **Error**: Connection refused to `studio:11434`
@@ -265,6 +292,7 @@ Note: Metal GPU acceleration is not available in Docker containers.
 1. Ensure Ollama is running on Mac Studio: `ollama serve` or `brew services start ollama`
 2. Verify Tailscale connection: `ping studio`
 3. Check Ollama is listening: `curl http://studio:11434/api/tags`
+4. Check `STUDIO_IP` in `.env`, and that Ollama listens on more than localhost (`OLLAMA_HOST=0.0.0.0`)
 
 ### VOICEVOX not responding
 
@@ -277,7 +305,7 @@ Note: Metal GPU acceleration is not available in Docker containers.
 
 ### Config changes not applied
 
-**Solution**: Config is mounted as read-only. Changes apply immediately but may require page refresh.
+**Solution**: Config is mounted as read-only and cached when first loaded, so restart the container after editing it: `docker compose restart mirrormate`. No rebuild is needed.
 
 ### Whisper not transcribing
 
@@ -295,7 +323,7 @@ Note: Metal GPU acceleration is not available in Docker containers.
 ### Mac Studio
 
 ```bash
-# Start VOICEVOX
+# Start VOICEVOX, Whisper and PLaMo Embedding
 docker compose -f compose.studio.yaml up -d
 
 # View logs

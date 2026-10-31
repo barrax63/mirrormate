@@ -37,5 +37,5 @@ features:
     details: Share search results and information directly to your phone via Discord.
   - icon: 🧩
     title: Plugin System
-    details: Extensible widget system for clock, weather, and custom displays.
+    details: Extensible widget system for clock, camera, and custom displays.
 ---

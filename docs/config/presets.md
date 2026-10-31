@@ -136,6 +136,8 @@ Preset values serve as defaults that can be overridden in individual config file
 2. **plugins.yaml** - If you explicitly set clock settings, they take precedence
 3. **providers.yaml** - If you explicitly set STT language, it takes precedence
 
+> **Note**: `webLanguage` currently has no effect. The Web Speech API always starts in `en-US`, whatever the preset or `stt.web.language`. The Whisper providers do use `language`.
+
 ### Example: Override Weather Location
 
 ```yaml
@@ -187,13 +189,18 @@ stt:
   webLanguage: "de-DE"
 ```
 
-2. Add the locale to `src/lib/app/index.ts`:
+2. Add the locale to `src/lib/app/index.ts`, in the type and in the `LOCALE` check in `getLocale()`:
 
 ```typescript
 export type Locale = "ja" | "en" | "de";
 ```
 
-3. Create locale-specific character and message files in `config/locales/de/` and `messages/de.json`
+3. Add a `de` entry to the tables keyed by locale. `bun run build` fails until all three have one:
+   - `defaultPresets` in `src/lib/presets/index.ts`
+   - `contextLabels` in `src/lib/rules/engine.ts`
+   - `wikipediaSettings` in `src/lib/rules/modules.ts`
+
+4. Create locale-specific character and message files in `config/locales/de/` and `messages/de.json`
 
 ## Related Configuration
 

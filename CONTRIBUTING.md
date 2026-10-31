@@ -105,7 +105,7 @@ bun run test:watch
 6. Run build (`bun run build`)
 7. Commit your changes
 8. Push to your fork
-9. Open a Pull Request
+9. Open a Pull Request against `develop`
 
 ## Project Structure
 
@@ -114,25 +114,37 @@ mirrormate/
 ├── config/           # YAML configuration files
 ├── docs/             # Documentation
 ├── messages/         # i18n translation files
+├── plamo-server/     # PLaMo embedding server
 ├── plugins/          # Local plugins
-├── public/           # Static assets
 └── src/
     ├── app/          # Next.js pages and API routes
     ├── components/   # React components
     ├── hooks/        # Custom React hooks
     ├── i18n/         # Internationalization setup
     └── lib/          # Core libraries
-        ├── app/      # App configuration
-        ├── character/# Character/AI personality
-        ├── features/ # Backend features (weather, calendar)
-        ├── plugins/  # Plugin system
-        ├── providers/# LLM and TTS providers
-        └── rules/    # Rule engine
+        ├── animation/    # Avatar state machine
+        ├── app/          # App configuration and locale
+        ├── character/    # Character/AI personality
+        ├── db/           # SQLite client and schema
+        ├── discord/      # Discord webhook client
+        ├── embedding/    # Embedding providers
+        ├── features/     # Backend features (weather, calendar, time)
+        ├── llm/          # LLM providers
+        ├── memory/       # Memory extraction and RAG
+        ├── plugins/      # Plugin system
+        ├── presets/      # Locale presets
+        ├── providers/    # Provider configuration
+        ├── repositories/ # Data access
+        ├── rules/        # Rule engine
+        ├── search/       # Web search client
+        ├── stt/          # Speech-to-text providers
+        ├── tools/        # LLM tools
+        └── vlm/          # Vision model providers
 ```
 
 ## Creating Plugins
 
-See [Plugin Documentation](docs/plugins.md) for details on creating custom plugins.
+See [Plugin Documentation](docs/config/plugins.md) for details on creating custom plugins.
 
 ## License
 

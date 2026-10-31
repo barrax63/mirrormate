@@ -25,7 +25,7 @@ docker run -p 3000:3000 \
 
 Open http://localhost:3000 in Chrome.
 
-> Set `LOCALE=en` for English or `LOCALE=ja` for Japanese (default).
+> Set `LOCALE=en` for English (default) or `LOCALE=ja` for Japanese. `LOCALE` switches the wake word, prompts and database, but UI text stays in the language the image was built with.
 
 Say **"Hey Mira"** (English) or **"OK ミラ"** (Japanese) to start talking!
 
@@ -38,13 +38,25 @@ For a fully local setup:
 ollama serve
 ollama pull gpt-oss:20b
 
-# 2. Clone and start Mirror Mate
+# 2. Clone Mirror Mate and start VOICEVOX, Whisper and PLaMo Embedding
 git clone https://github.com/orangekame3/mirrormate.git
 cd mirrormate
+docker compose -f compose.studio.yaml up -d
+
+# 3. Point Mirror Mate at those services
+cp .env.example .env    # set STUDIO_IP to the IP of the machine running them,
+                        # or host-gateway if that is this machine
+                        # and set tts.provider to voicevox in config/providers.yaml
+
+# 4. Start Mirror Mate
 docker compose up -d
 ```
 
-Open http://localhost:3000 in Chrome. Say **"OK ミラ"** to start talking!
+Ollama must listen on an address the container can reach (`OLLAMA_HOST=0.0.0.0`). It has no authentication, so only do this on a trusted network.
+
+Run from one directory, the two Compose files share a project, so Compose warns about orphan containers. That warning is harmless. If the PLaMo image fails to build, see [Docker Setup](/guide/docker#plamo-image-fails-to-build).
+
+Open http://localhost:3000 in Chrome. Say **"Hey Mira"** (English) or **"OK ミラ"** (Japanese) to start talking!
 
 ## Pages
 
@@ -53,6 +65,7 @@ Open http://localhost:3000 in Chrome. Say **"OK ミラ"** to start talking!
 | `/` | Avatar display (for mirror projection) |
 | `/control` | Control panel (text input & settings) |
 | `/control/memory` | Memory management UI |
+| `/control/vision` | Vision test page |
 | `/demo` | Animation demo with keyboard controls |
 
 ## Configuration
@@ -63,8 +76,8 @@ All configuration is done via YAML files in the `config/` directory:
 |------|-------------|
 | `app.yaml` | Application settings (language/locale) |
 | `presets/[lang].yaml` | Locale-specific defaults (timezone, weather, STT) |
-| `providers.yaml` | LLM and TTS provider settings |
-| `features.yaml` | Weather, calendar, time, reminder settings |
+| `providers.yaml` | LLM, TTS, STT, embedding, memory and VLM provider settings |
+| `features.yaml` | Weather, calendar, time, reminder and Discord settings |
 | `plugins.yaml` | Visual widget plugins (clock, etc.) |
 | `locales/[lang]/` | Language-specific configs (character, memory, rules, modules) |
 
@@ -89,6 +102,11 @@ This single setting automatically configures:
 |--------|----------|---------|-----|-------|
 | `ja` | Asia/Tokyo | Tokyo, Osaka | Japanese | 24h |
 | `en` | America/Los_Angeles | San Francisco, New York | English | 12h |
+
+::: warning Language limits
+- **UI text** uses the locale at build time, because pages are prerendered. After changing the locale on a built app, rebuild to change UI text (`docker compose up -d --build`). `bun run dev` only needs a restart.
+- **Web Speech API** always starts in `en-US`, whatever the locale or `stt.web.language`. For Japanese, use the `local` or `openai` STT provider, which follow the preset.
+:::
 
 You can customize these defaults by editing `config/presets/[lang].yaml`. See [Locale Presets](/config/presets) for details.
 

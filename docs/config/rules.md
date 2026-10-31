@@ -254,7 +254,7 @@ modules:
 | `time` | feature | Current date and time |
 | `weather` | feature | Current weather |
 | `calendar` | feature | Today's events |
-| `web_search` | tool | Web search via Tavily |
+| `web_search` | tool | Web search via Ollama Web Search |
 | `today_info` | api | "What day is today" info (locale-aware) |
 
 ## How Rules Override Normal Behavior

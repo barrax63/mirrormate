@@ -89,7 +89,7 @@ Episode memories capture recent interactions:
 - Events and activities
 - Time-sensitive information
 
-Episodes have a recency factor that prioritizes recent memories.
+Episodes are labeled as recent in the context. They are ranked by similarity, like other memories.
 
 ### Knowledge Memories
 
@@ -153,7 +153,7 @@ The system automatically extracts memories from conversations using the LLM.
 
 ### Prompt Configuration
 
-Extraction prompts are configured in `config/memory.yaml`:
+Extraction prompts are configured in `config/locales/[lang]/memory.yaml`:
 
 ```yaml
 memory:
@@ -201,6 +201,7 @@ Mirror Mate uses SQLite with Drizzle ORM for persistence.
 | `messages` | Chat messages |
 | `memories` | Stored memories |
 | `memory_embeddings` | Vector embeddings for semantic search |
+| `user_settings` | Selected speaker and character per user |
 
 ### Memory Fields
 
@@ -279,19 +280,9 @@ ollama serve
 ollama pull bge-m3
 ```
 
-### 2. Initialize Database
+### 2. Configure Providers
 
-```bash
-# Create data directory
-mkdir -p data
-
-# Run database migration
-bun run db:push
-```
-
-### 3. Configure Providers
-
-Edit `config/providers.yaml`:
+The database and its tables are created automatically on first use. Edit `config/providers.yaml`:
 
 ```yaml
 providers:
@@ -312,7 +303,7 @@ providers:
       minConfidence: 0.5
 ```
 
-### 4. Verify Setup
+### 3. Verify Setup
 
 ```bash
 # Start the development server
@@ -376,8 +367,8 @@ See [Docker Documentation](docker.md) and [Recommended Setup](recommended-setup.
 **Error**: `SQLITE_CANTOPEN`
 
 **Solution**:
-1. Create data directory: `mkdir -p data`
-2. Run migration: `bun run db:push`
+1. The app creates `data/` and its tables on first use, so check that the directory is writable
+2. If you set `DATABASE_PATH`, make sure its parent directory exists
 
 ### Memory Not Being Extracted
 

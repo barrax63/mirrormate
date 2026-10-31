@@ -53,8 +53,10 @@ features:
 
 ### Output Example
 
+The text is in Japanese regardless of locale:
+
 ```
-Current weather in Tokyo: Sunny, 15°C, wind 10km/h
+現在のSan Franciscoの天気: 曇り、気温11°C、風速9km/h
 ```
 
 ---
@@ -152,8 +154,8 @@ features:
 ### Output Example
 
 ```
-Today's schedule: 10:00 Team Meeting, 14:00 1-on-1
-Next event: 10:00 Team Meeting (in 30 minutes)
+Today's schedule: 10:00 AM Team Meeting, 02:00 PM 1-on-1
+Next event: 10:00 AM Team Meeting (in 30 min)
 ```
 
 ### Troubleshooting
@@ -279,7 +281,7 @@ features:
 ### Output Example
 
 ```
-Current time: Monday, December 30, 2024 14:30
+Current time: Sat, October 31, 2026 05:49 AM
 ```
 
 ### Supported Timezones

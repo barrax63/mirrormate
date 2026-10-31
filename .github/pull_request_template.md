@@ -26,7 +26,7 @@
 
 <!-- How did you test these changes? -->
 
-- [ ] Tested locally with `npm run dev`
+- [ ] Tested locally with `bun run dev`
 - [ ] Tested with Docker
 - [ ] Added/updated tests
 
@@ -34,8 +34,8 @@
 
 - [ ] Code follows the project's coding style
 - [ ] Self-reviewed the code
-- [ ] Ran `npm run lint` with no errors
-- [ ] Ran `npm run build` successfully
+- [ ] Ran `bun run lint` with no errors
+- [ ] Ran `bun run build` successfully
 - [ ] Updated documentation if needed
 
 ## Screenshots

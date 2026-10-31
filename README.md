@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-  <a href="https://www.orangekame3.net/mirrormate/">Docs</a> •
-  <a href="https://www.orangekame3.net/mirrormate/guide/getting-started">Getting Started</a> •
+  <a href="https://orangekame3.dev/mirrormate/">Docs</a> •
+  <a href="https://orangekame3.dev/mirrormate/guide/getting-started">Getting Started</a> •
   <a href="https://github.com/orangekame3/mirrormate/releases">Releases</a>
 </p>
 
@@ -108,13 +108,23 @@ Open http://localhost:3000 in Chrome.
 
 ```bash
 # 1. Pull a model with Ollama
-ollama pull qwen2.5:14b
+ollama pull gpt-oss:20b
 
-# 2. Start MirrorMate
+# 2. Start VOICEVOX, Whisper and PLaMo Embedding
 git clone https://github.com/orangekame3/mirrormate.git
 cd mirrormate
+docker compose -f compose.studio.yaml up -d
+
+# 3. Point MirrorMate at those services
+cp .env.example .env    # set STUDIO_IP to the IP of the machine running them,
+                        # or host-gateway if that is this machine
+                        # and set tts.provider to voicevox in config/providers.yaml
+
+# 4. Start MirrorMate
 docker compose up -d
 ```
+
+Ollama must listen on an address the container can reach (`OLLAMA_HOST=0.0.0.0`). It has no authentication, so only do this on a trusted network. If the PLaMo image fails to build, see [Docker Setup](docs/guide/docker.md#plamo-image-fails-to-build).
 
 **Wake word**: Say "Hey Mira" to activate.
 
@@ -142,12 +152,12 @@ Lip-synced avatar speaks responses. Eight animation states (Idle, Listening, Thi
 ### Built-in Integrations
 - Weather (Open-Meteo)
 - Calendar (Google Calendar)
-- Web search (Tavily)
+- Web search (Ollama Web Search)
 - Reminders
 - Discord sharing
 
 ### Plugin System
-Add your own widgets or sensor integrations. The Vision Companion plugin detects eye contact and greets you automatically.
+Add your own widgets or sensor integrations. The Vision Companion plugin gives the AI access to your camera, so it can see what you're wearing or holding.
 
 ---
 
@@ -167,7 +177,7 @@ bun install
 bun run dev
 ```
 
-See [Documentation](https://www.orangekame3.net/mirrormate/) for details.
+See [Documentation](https://orangekame3.dev/mirrormate/) for details.
 
 ---
 

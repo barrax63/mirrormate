@@ -59,11 +59,13 @@ services:
 
 ### Automatic Sharing
 
-When Discord is configured, the following information is automatically shared:
+Automatic sharing is off by default and is opt-in through `autoShare`:
 
-| Feature | Trigger | What's Shared |
-|---------|---------|---------------|
-| Web Search | Any search query | Search results with links |
+| Option | Trigger | What's Shared |
+|--------|---------|---------------|
+| `autoShare.searchResults` | Any search query | Search results with links |
+
+`autoShare.weather` and `autoShare.calendar` are accepted in the config, but nothing reads them yet.
 
 ### Manual Sharing via LLM
 

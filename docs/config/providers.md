@@ -132,6 +132,8 @@ providers:
 | `temperature` | number | Creativity (0.0-1.0) | 0.7 |
 | `baseUrl` | string | API endpoint (Ollama only) | `http://localhost:11434` |
 
+> **Note**: With `gpt-oss:20b`, reasoning counts against `maxTokens`. At 300, longer prompts such as the `good night` rule use up the limit before any reply is written, so the response is empty. Raising `maxTokens` helps, though gpt-oss can still occasionally return an empty reply.
+
 ---
 
 ## TTS Providers
@@ -198,7 +200,7 @@ providers:
 
 STT providers enable speech recognition for voice input. Mirror Mate supports multiple providers with automatic silence detection.
 
-> **Note**: STT language settings can be automatically configured based on your app locale using [Locale Presets](presets.md). When you change your locale (e.g., `ja` to `en`), the STT language is automatically updated.
+> **Note**: The Whisper providers (`openai`, `local`) take their language from [Locale Presets](presets.md) unless you set one. The Web Speech API always starts in `en-US`, whatever the locale or `web.language`.
 
 | Provider | Description | API Key Required | Accuracy |
 |----------|-------------|------------------|----------|
@@ -215,8 +217,6 @@ providers:
   stt:
     enabled: true
     provider: web
-    web:
-      language: ja-JP  # BCP 47 language tag
 ```
 
 **Pros**: Zero cost, instant setup, real-time interim results
@@ -278,7 +278,7 @@ See [Docker Documentation](/guide/docker) for details.
 
 ### Silence Detection
 
-All STT providers support automatic silence detection to determine when the user has finished speaking.
+The Whisper providers (`openai`, `local`) use automatic silence detection to determine when the user has finished speaking. The Web Speech API handles this in the browser and ignores these settings.
 
 ```yaml
 providers:
@@ -430,7 +430,7 @@ providers:
 
 | Option | Type | Description | Default |
 |--------|------|-------------|---------|
-| `enabled` | boolean | Enable memory system | `true` |
+| `enabled` | boolean | Enable memory system | `false` |
 | `rag.topK` | number | Max memories to retrieve per query | `8` |
 | `rag.threshold` | number | Similarity threshold (0.0-1.0) | `0.3` |
 | `extraction.autoExtract` | boolean | Auto-extract memories from conversations | `true` |

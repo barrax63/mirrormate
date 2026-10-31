@@ -99,7 +99,7 @@ brew services start ollama
 ollama pull gpt-oss:20b
 ```
 
-### Start Docker Services (VOICEVOX + PLaMo)
+### Start Docker Services (VOICEVOX, Whisper + PLaMo)
 
 First, install Docker via [OrbStack](https://orbstack.dev/) (recommended for Apple Silicon):
 
@@ -117,6 +117,7 @@ docker compose -f compose.studio.yaml up -d
 
 This starts:
 - **VOICEVOX** (:50021) - Text-to-speech
+- **faster-whisper** (:8080) - Speech-to-text, used when `stt.provider` is `local`
 - **PLaMo-Embedding-1B** (:8000) - Japanese-optimized text embedding
 
 ### Verify Services
@@ -171,6 +172,8 @@ providers:
       minConfidence: 0.5
 ```
 
+Under `bun run dev`, `studio` resolves through Tailscale. Inside the container, it resolves to `STUDIO_IP` through `extra_hosts` in `compose.yaml`.
+
 ## Step 4: Web Search Setup (Optional)
 
 To enable web search functionality:
@@ -195,7 +198,8 @@ cd mirrormate
 
 ```bash
 cp .env.example .env
-# Edit .env with your API keys (optional services)
+# Set STUDIO_IP to the Mac Studio's Tailscale IP (tailscale ip -4)
+# and add API keys for optional services
 ```
 
 ### Start Application
@@ -275,7 +279,7 @@ graph LR
 ### Mac Studio
 
 ```bash
-# Start services (VOICEVOX + PLaMo)
+# Start services (VOICEVOX, Whisper + PLaMo)
 docker compose -f compose.studio.yaml up -d
 
 # Stop services
@@ -354,11 +358,11 @@ bun run test
 
 ### Memory not shared between devices
 
-This is expected. Each device has its own SQLite database. To copy memories:
+This is expected. Each device has its own SQLite database, with one file per locale. On the RPi it lives in a Docker volume, so copy the file over and then restore it as described in [Data Persistence](docker.md#data-persistence):
 
 ```bash
 # From MacBook to RPi
-scp data/mirrormate.ja.db pi@rpi:~/mirrormate/data/
+scp data/mirrormate.ja.db pi@rpi:~/mirrormate/
 ```
 
 ## Next Steps
