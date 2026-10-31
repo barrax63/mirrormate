@@ -14,7 +14,16 @@ class StubRecognition {
   start() {
     if (this.running) throw new DOMException("already started", "InvalidStateError");
     this.running = true;
-    setTimeout(() => this.onstart?.(), 0);
+    setTimeout(() => {
+      this.onstart?.();
+      // Browsers report `start` even when the session fails right away, such as with no
+      // mic or no speech service. Set window.__recognitionFailure to an error to do that.
+      if (window.__recognitionFailure && this.running) {
+        this.onerror?.({ error: window.__recognitionFailure });
+        this.running = false;
+        this.onend?.();
+      }
+    }, 0);
   }
 
   stop() {
@@ -32,6 +41,14 @@ class StubRecognition {
 
 window.SpeechRecognition = StubRecognition;
 window.webkitSpeechRecognition = StubRecognition;
+
+// Ends the session that is listening, as browsers do on their own after a while
+window.__endRecognition = () => {
+  const recognition = window.__recognitions.findLast((r) => r.running);
+  if (!recognition) return;
+  recognition.running = false;
+  recognition.onend?.();
+};
 
 // Delivers a final result to the recognizer that is listening, if there is one
 window.__say = (text) => {

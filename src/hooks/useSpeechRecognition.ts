@@ -35,6 +35,12 @@ declare global {
   }
 }
 
+// Web Speech restarts wait this long, doubling each time a session fails quickly
+const MIN_RESTART_DELAY_MS = 100;
+const MAX_RESTART_DELAY_MS = 30000;
+// A session that ran this long worked, however it ended
+const HEALTHY_SESSION_MS = 3000;
+
 /** Available speech recognition providers */
 export type SpeechRecognitionProvider = "web" | "whisper";
 
@@ -105,8 +111,9 @@ export function useSpeechRecognition({
   const shouldRestartRef = useRef(true);
   const isListeningRef = useRef(false);
   const restartAttemptsRef = useRef(0);
-  const maxRestartAttempts = 5;
-  const restartDelayRef = useRef(100);
+  const restartDelayRef = useRef(MIN_RESTART_DELAY_MS);
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const sessionStartedAtRef = useRef<number | null>(null);
 
   // Callback refs to avoid stale closures
   const onResultRef = useRef(onResult);
@@ -298,15 +305,22 @@ export function useSpeechRecognition({
     recognition.interimResults = true;
     recognition.lang = lang;
 
+    const resetRestartBackoff = () => {
+      restartAttemptsRef.current = 0;
+      restartDelayRef.current = MIN_RESTART_DELAY_MS;
+    };
+
     recognition.onstart = () => {
       console.log("[SpeechRecognition] Web Speech started");
       isListeningRef.current = true;
       setIsListening(true);
-      restartAttemptsRef.current = 0;
-      restartDelayRef.current = 100;
+      // Starting proves nothing: browsers fire start, then error and end right after it
+      sessionStartedAtRef.current = Date.now();
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      resetRestartBackoff();
+
       let interimTranscript = "";
       let finalTranscript = "";
 
@@ -342,7 +356,7 @@ export function useSpeechRecognition({
           break;
         case "no-speech":
           console.log("[SpeechRecognition] No speech detected");
-          restartAttemptsRef.current = 0;
+          resetRestartBackoff();
           break;
         case "aborted":
           console.log("[SpeechRecognition] Aborted");
@@ -360,16 +374,14 @@ export function useSpeechRecognition({
       isListeningRef.current = false;
       setIsListening(false);
 
+      const startedAt = sessionStartedAtRef.current;
+      sessionStartedAtRef.current = null;
+      if (startedAt !== null && Date.now() - startedAt >= HEALTHY_SESSION_MS) {
+        resetRestartBackoff();
+      }
+
       // Auto restart with exponential backoff
       if (shouldRestartRef.current && activeProvider === "web") {
-        if (restartAttemptsRef.current >= maxRestartAttempts) {
-          console.warn(
-            "[SpeechRecognition] Max restart attempts reached, waiting longer..."
-          );
-          restartAttemptsRef.current = 0;
-          restartDelayRef.current = 2000;
-        }
-
         const delay = restartDelayRef.current;
         restartAttemptsRef.current++;
 
@@ -377,7 +389,9 @@ export function useSpeechRecognition({
           `[SpeechRecognition] Restarting in ${delay}ms (attempt ${restartAttemptsRef.current})...`
         );
 
-        setTimeout(() => {
+        // Keep one restart pending, or failures would build up parallel retry loops
+        clearTimeout(restartTimerRef.current);
+        restartTimerRef.current = setTimeout(() => {
           if (
             shouldRestartRef.current &&
             !isListeningRef.current &&
@@ -391,7 +405,7 @@ export function useSpeechRecognition({
           }
         }, delay);
 
-        restartDelayRef.current = Math.min(restartDelayRef.current * 1.5, 2000);
+        restartDelayRef.current = Math.min(delay * 2, MAX_RESTART_DELAY_MS);
       }
     };
 
@@ -399,6 +413,7 @@ export function useSpeechRecognition({
 
     return () => {
       shouldRestartRef.current = false;
+      clearTimeout(restartTimerRef.current);
       recognition.abort();
     };
   }, [lang, activeProvider]);
