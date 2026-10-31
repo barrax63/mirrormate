@@ -463,8 +463,9 @@ export function useSpeechRecognition({
         startRecording();
       }
     } else {
-      if (!recognitionRef.current || isListeningRef.current) return;
+      // Set this first: if a pause is still stopping recognition, onend restarts it
       shouldRestartRef.current = true;
+      if (!recognitionRef.current || isListeningRef.current) return;
       try {
         recognitionRef.current.start();
       } catch (e) {

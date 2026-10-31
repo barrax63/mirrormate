@@ -20,10 +20,6 @@ const DEFAULT_AUDIO_MS = 50;
 let audioMs = DEFAULT_AUDIO_MS;
 let log = [];
 
-// Real LLMs take seconds. Replying instantly would let voice replies start playing before
-// recognition has finished stopping, which hits the bug in e2e/control.spec.ts at random.
-const LLM_DELAY_MS = 300;
-
 // 16-bit mono WAV of a sine tone
 function wav(ms) {
   const sampleRate = 8000;
@@ -136,7 +132,7 @@ function handle(req, res, body) {
       log.push({ kind, body });
       if (kind === "vlm") return sendJson(res, reply("person holding a mug"));
       if (kind === "extraction") return sendJson(res, extractionReply(body.messages));
-      return void setTimeout(() => sendJson(res, llmReply(body.messages)), LLM_DELAY_MS);
+      return sendJson(res, llmReply(body.messages));
     }
     case "/api/embed": {
       log.push({ kind: "embed", body });

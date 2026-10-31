@@ -10,11 +10,13 @@ export const JPEG_DATA_URL = /^data:image\/jpeg;base64,/;
 
 const MOCK_URL = "http://127.0.0.1:11555";
 
-// See speech-recognition-stub.js
+// See speech-recognition-stub.js and audio-spy.js
 declare global {
   interface Window {
     __recognitions: { lang: string; running: boolean }[];
     __say: (text: string) => boolean;
+    __audioContexts: AudioContext[];
+    __audioLinks: number;
   }
 }
 

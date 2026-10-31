@@ -1,7 +1,7 @@
 // Replaces SpeechRecognition in the browser, where there is no real speech to recognize.
 // Loaded as is, so it can't rely on anything from the test code. Follows what browsers
 // do: start() throws if already started, and `end` fires asynchronously after stop() or
-// abort(). Recognition stopping late is what exposes the cut-off bug in e2e/control.spec.ts.
+// abort(). That delay matters: a reply can start, or even finish, before `end` fires.
 window.__recognitions = [];
 
 class StubRecognition {
