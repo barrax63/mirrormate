@@ -1,4 +1,5 @@
-import { test, expect, JPEG_DATA_URL } from "./fixtures";
+import path from "node:path";
+import { test, expect, AvatarPage, JPEG_DATA_URL } from "./fixtures";
 
 test.describe("Avatar page", () => {
   test("renders its plugins without errors", async ({ avatar }) => {
@@ -67,5 +68,24 @@ test.describe("Voice flow", () => {
     await avatar.waitForLog("Audio playback ended");
     await avatar.hear("still listening");
     await avatar.waitForPost("/api/chat", 2);
+  });
+
+  test("keeps one AudioContext across replies and releases its nodes", async ({ page }) => {
+    await page.addInitScript({ path: path.join(__dirname, "audio-spy.js") });
+    const avatar = new AvatarPage(page);
+    await avatar.open();
+    await avatar.wakeUp();
+
+    await avatar.hear("first question");
+    await avatar.waitForLog("Audio playback ended");
+    await avatar.hear("second question");
+    await avatar.waitForPost("/api/tts", 2);
+    await expect.poll(() => avatar.logs.filter((log) => log.includes("Audio playback ended")).length).toBe(2);
+
+    const audio = await page.evaluate(() => ({
+      contexts: window.__audioContexts.map((context) => context.state),
+      links: window.__audioLinks,
+    }));
+    expect(audio).toEqual({ contexts: ["running"], links: 0 });
   });
 });

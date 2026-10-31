@@ -260,6 +260,9 @@ export default function AvatarPage() {
 
   const playAudio = useCallback(async (audioBase64: string) => {
     return new Promise<void>(async (resolve) => {
+      // The AudioContext outlives this reply, so its nodes must be disconnected afterwards
+      let releaseNodes = () => {};
+
       try {
         console.log("[Avatar] playAudio: starting...");
 
@@ -302,6 +305,11 @@ export default function AvatarPage() {
         source.connect(analyser);
         analyser.connect(audioContext.destination);
 
+        releaseNodes = () => {
+          source.disconnect();
+          analyser.disconnect();
+        };
+
         audio.onplay = () => {
           console.log("[Avatar] Audio playback started");
           setIsSpeaking(true);
@@ -309,6 +317,7 @@ export default function AvatarPage() {
         };
         audio.onended = () => {
           console.log("[Avatar] Audio playback ended");
+          releaseNodes();
           setIsSpeaking(false);
           setMouthOpenness(0);
           cancelAnimationFrame(animationRef.current);
@@ -317,6 +326,7 @@ export default function AvatarPage() {
         };
         audio.onerror = (e) => {
           console.error("[Avatar] Audio playback error:", e);
+          releaseNodes();
           setIsSpeaking(false);
           setMouthOpenness(0);
           cancelAnimationFrame(animationRef.current);
@@ -328,6 +338,7 @@ export default function AvatarPage() {
         console.log("[Avatar] audio.play() returned");
       } catch (e) {
         console.error("[Avatar] playAudio error:", e);
+        releaseNodes();
         setIsSpeaking(false);
         setMouthOpenness(0);
         resolve();
@@ -522,11 +533,9 @@ export default function AvatarPage() {
     }
   }, []);
 
-  // Receive messages via BroadcastChannel
-  useEffect(() => {
-    channelRef.current = new BroadcastChannel("mirror-channel");
-
-    channelRef.current.onmessage = async (event: MessageEvent<BroadcastMessage>) => {
+  // Handle messages from BroadcastChannel
+  const handleChannelMessage = useCallback(
+    async (event: MessageEvent<BroadcastMessage>) => {
       const { type, payload } = event.data;
 
       switch (type) {
@@ -642,16 +651,38 @@ export default function AvatarPage() {
           }
           break;
       }
-    };
+    },
+    [playAudio, start, stop, broadcastMicStatus, speechEnabled, isListening, currentSpeaker]
+  );
 
+  // Callback ref, so the channel below can stay open while the handler changes
+  const handleChannelMessageRef = useRef(handleChannelMessage);
+
+  useEffect(() => {
+    handleChannelMessageRef.current = handleChannelMessage;
+  }, [handleChannelMessage]);
+
+  // Receive messages via BroadcastChannel
+  useEffect(() => {
+    const channel = new BroadcastChannel("mirror-channel");
+    channel.onmessage = (event: MessageEvent<BroadcastMessage>) => handleChannelMessageRef.current(event);
+    channelRef.current = channel;
+
+    return () => {
+      channel.close();
+      channelRef.current = null;
+    };
+  }, []);
+
+  // Close the AudioContext only when leaving the page: replies play through it
+  useEffect(() => {
     return () => {
       cancelAnimationFrame(animationRef.current);
       if (audioContextRef.current && audioContextRef.current.state !== "closed") {
         audioContextRef.current.close();
       }
-      channelRef.current?.close();
     };
-  }, [playAudio, start, stop, broadcastMicStatus, speechEnabled, isListening, currentSpeaker]);
+  }, []);
 
   // Show idle hint when in wake word waiting mode
   const showIdleHint = isWakeWordEnabled && wakeWordMode === "waiting" && !isSpeaking && !isThinking;

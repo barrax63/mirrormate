@@ -51,25 +51,73 @@ test.describe("Control page", () => {
     await avatar.waitForLog("[Avatar] Audio playback finished");
   });
 
-  test("known bug: plays a reply to the end with the mic listening", async ({ avatar, control, mock }) => {
+  test("plays a reply to the end with the mic listening", async ({ avatar, control, mock }) => {
     await mock.setAudioLength(2000);
 
     await control.send("reply with the mic listening");
-    await avatar.waitForLog("Audio playback started");
 
-    test.fail(true, "Recognition ending re-runs the channel effect, whose cleanup closes the AudioContext");
-    await avatar.waitForLog("Audio playback ended", 6000);
+    await avatar.waitForLog("Audio playback started");
+    await avatar.waitForLog("Audio playback ended");
+    await avatar.waitForLog("[Avatar] Audio playback finished");
   });
 
-  test("known bug: voice works again after a reply with the mic listening", async ({ avatar, control, mock }) => {
+  test("listens again after a reply, so voice keeps working", async ({ avatar, control, mock }) => {
     await mock.setAudioLength(2000);
 
     await control.send("reply before voice");
     await avatar.waitForLog("Audio playback started");
     await expect.poll(() => avatar.isListening()).toBe(false);
+    await avatar.waitForLog("Audio playback ended");
+    await expect.poll(() => avatar.isListening()).toBe(true);
 
-    test.fail(true, "Playback never ends, so recognition never restarts");
-    await expect.poll(() => avatar.isListening(), { timeout: 6000 }).toBe(true);
+    await avatar.wakeUp();
+    await avatar.hear("voice after the reply");
+    await avatar.waitForPost("/api/chat");
+    expect(avatar.postsTo("/api/chat")[0].messages).toEqual([{ role: "user", content: "voice after the reply" }]);
+  });
+
+  test("listens again when a reply ends before recognition has stopped", async ({ avatar, control, mock }) => {
+    // Much shorter than the time the stub takes to fire `end` after stop()
+    await mock.setAudioLength(50);
+
+    await control.send("short reply");
+
+    await avatar.waitForLog("Audio playback ended");
+    await avatar.waitForLog("Web Speech ended");
+    await expect.poll(() => avatar.isListening()).toBe(true);
+  });
+
+  test("listens again after overlapping replies", async ({ avatar, control, mock }) => {
+    await mock.setAudioLength(1000);
+
+    await control.send("first reply");
+    await avatar.waitForLog("Audio playback started");
+    await control.send("second reply");
+    await avatar.waitForPost("/api/tts", 2);
+
+    await expect.poll(() => avatar.logs.filter((log) => log.includes("Audio playback ended")).length).toBe(2);
+    await expect.poll(() => avatar.isListening()).toBe(true);
+  });
+
+  test("shows the mic status as replies pause and resume recognition", async ({ avatar, control, mock }) => {
+    await mock.setAudioLength(2000);
+    await expect(control.page.getByText("Listening", { exact: true })).toBeVisible();
+
+    await control.send("mic status");
+
+    await expect(control.page.getByText("Paused", { exact: true })).toBeVisible();
+    await avatar.waitForLog("Audio playback ended");
+    await expect(control.page.getByText("Listening", { exact: true })).toBeVisible();
+  });
+
+  test("tells a /control page opened later the current mic status", async ({ context, avatar, control }) => {
+    await control.page.getByTitle("Mic Off").click();
+    await avatar.waitForLog("Web Speech ended");
+
+    const later = await context.newPage();
+    await later.goto("/control", { waitUntil: "networkidle" });
+
+    await expect(later.getByText("Mic Off", { exact: true })).toBeVisible();
   });
 
   test("previews a voice with its own /api/tts call", async ({ avatar, control }) => {

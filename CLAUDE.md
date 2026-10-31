@@ -53,6 +53,7 @@ Use `bun audit fix` to patch dependencies, and don't delete entries from `bun.lo
 - `/control` is a separate operator page, with `/control/memory` and `/control/vision` beneath it. It must run in the same browser as the avatar page because the two talk over `BroadcastChannel("mirror-channel")`.
 - `BroadcastMessage` is defined twice, in `src/lib/animation/broadcast-adapter.ts` and `src/app/control/page.tsx`. Update both when adding a message type. `mapBroadcastToEvent` turns messages into events for the avatar's animation state machine in `src/lib/animation/`.
 - Both pages call `/api/chat` themselves with `withAudio: false`. Only the avatar page plays replies: it fetches `/api/tts`, and `/control` asks it to with a `play_audio` message. `/control` calls `/api/tts` itself only for voice preview. The `withAudio` branch in the chat route hardcodes OpenAI TTS and ignores `providers.tts`.
+- The avatar page keeps one `BroadcastChannel` and one `AudioContext` for its whole life, and its channel handler reads current state through a ref. Don't tie either to state: recognition stops during every reply, so closing the `AudioContext` on a state change cuts the reply off.
 - For chat, the hidden `vision-companion` plugin on the avatar page owns the camera. Pages send `camera_capture_request`, receive `camera_capture_response`, and pass the image in the `/api/chat` body. The `see_camera` tool then sends it to the VLM provider.
 
 ### `/api/chat` pipeline (`src/app/api/chat/route.ts`)
