@@ -95,6 +95,21 @@ bun run test
 bun run test:watch
 ```
 
+End-to-end tests run the production build in Chromium with mock backends, a fake camera and stubbed speech recognition. They need no other services:
+
+```bash
+# Once, before the first run
+bunx playwright install chromium
+
+# Build, then run all e2e tests
+bun run test:e2e
+
+# Run one file against the existing build
+bunx playwright test e2e/control.spec.ts
+```
+
+Tests named `known bug: ...`, and Vitest tests marked `it.fails`, cover open bugs and are expected to fail. Playwright prints ✘ for them but counts them as passed. When you fix one, its test fails with "Expected to fail, but passed", so remove the marker in the same change.
+
 ### Pull Requests
 
 1. Fork the repository

@@ -1,0 +1,46 @@
+# Points every provider at e2e/mock-backends.mjs
+providers:
+  llm:
+    enabled: true
+    provider: ollama
+    ollama:
+      model: mock-llm
+      baseUrl: "http://127.0.0.1:11555"
+      maxTokens: 300
+      temperature: 0.7
+
+  tts:
+    enabled: true
+    provider: voicevox
+    voicevox:
+      speaker: 2
+      baseUrl: "http://127.0.0.1:11555"
+
+  stt:
+    enabled: true
+    provider: web
+    # Empty like the committed config/providers.yaml, so the same locale behavior is tested
+    web:
+
+  embedding:
+    enabled: true
+    provider: ollama
+    ollama:
+      model: mock-embedding
+      baseUrl: "http://127.0.0.1:11555"
+
+  memory:
+    enabled: true
+    rag:
+      topK: 8
+      threshold: 0.3
+    extraction:
+      autoExtract: true
+      minConfidence: 0.5
+
+  vlm:
+    enabled: true
+    provider: ollama
+    ollama:
+      model: mock-vlm
+      baseUrl: "http://127.0.0.1:11555"
