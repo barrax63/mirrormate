@@ -10,9 +10,12 @@ function appServer(locale: "en" | "ja", port: number) {
       PROVIDERS_CONFIG: "../e2e/config/providers.yaml",
       FEATURES_CONFIG: "../e2e/config/features.yaml",
       // These would otherwise be read from .env
-      LLM_PROVIDER: "ollama",
+      LLM_PROVIDER: "openai",
       TTS_PROVIDER: "voicevox",
-      STT_PROVIDER: "web",
+      STT_PROVIDER: "openai",
+      // Next never overrides a variable that is already set, so a real key in .env stays unused
+      OPENAI_API_KEY: "e2e-dummy-key",
+      OPENAI_BASE_URL: "http://127.0.0.1:11555/v1",
       // e2e/mock-backends.mjs empties this directory when it starts
       DATABASE_PATH: `e2e/.tmp/${locale}.db`,
     },

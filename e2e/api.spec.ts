@@ -15,6 +15,7 @@ test.describe("/api/chat", () => {
 
     expect(body.message).toBe("mock reply to: tell me something");
     const [llm] = await mock.llmRequestsFor("tell me something");
+    expect(llm.auth).toBe("Bearer e2e-dummy-key");
     expect(llm.body.tools?.map((tool) => tool.function.name)).toContain("show_effect");
     expect(llm.body.messages[0].content).toContain("[Current Information]\nCurrent time:");
   });
@@ -113,9 +114,25 @@ test.describe("other APIs", () => {
     expect(await response.json()).toMatchObject({ enabled: true, phrase: "Hey Mira" });
   });
 
-  test("/api/stt/config reports Web Speech in en-US", async ({ request }) => {
+  test("/api/stt transcribes a recording with OpenAI", async ({ request, mock }) => {
+    await mock.queueTranscript("hello from a file");
+
+    const response = await request.post("/api/stt", {
+      multipart: {
+        audio: { name: "audio.webm", mimeType: "audio/webm", buffer: Buffer.from("not really audio") },
+        language: "en",
+      },
+    });
+
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toMatchObject({ transcript: "hello from a file", language: "en" });
+    const [recording] = await mock.transcriptions();
+    expect(recording).toMatchObject({ auth: "Bearer e2e-dummy-key", model: "whisper-1", language: "en" });
+  });
+
+  test("/api/stt/config reports OpenAI in English", async ({ request }) => {
     const response = await request.get("/api/stt/config");
 
-    expect(await response.json()).toMatchObject({ provider: "web", language: "en-US" });
+    expect(await response.json()).toMatchObject({ provider: "openai", language: "en" });
   });
 });
