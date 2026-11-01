@@ -1,11 +1,11 @@
-# Points every provider at e2e/mock-backends.mjs
+# Points every provider at e2e/mock-backends.mjs. OpenAI gets there through OPENAI_BASE_URL
+# in playwright.config.ts.
 providers:
   llm:
     enabled: true
-    provider: ollama
-    ollama:
+    provider: openai
+    openai:
       model: mock-llm
-      baseUrl: "http://127.0.0.1:11555"
       maxTokens: 300
       temperature: 0.7
 
@@ -18,9 +18,11 @@ providers:
 
   stt:
     enabled: true
-    provider: web
-    # Empty like the committed config/providers.yaml, so the same locale behavior is tested
-    web:
+    provider: openai
+    openai:
+      model: whisper-1
+    silenceDetection:
+      silenceThreshold: 0.1
 
   embedding:
     enabled: true

@@ -75,7 +75,8 @@ test.describe("Control page", () => {
   test("plays a reply to the end with the mic off", async ({ avatar, control, mock }) => {
     await mock.setAudioLength(2000);
     await control.page.getByTitle("Mic Off").click();
-    await avatar.waitForLog("Web Speech ended");
+    await expect(control.page.getByText("Mic Off", { exact: true })).toBeVisible();
+    await expect.poll(() => avatar.isListening()).toBe(false);
 
     await control.send("reply with the mic off");
 
@@ -108,17 +109,6 @@ test.describe("Control page", () => {
     expect(avatar.postsTo("/api/chat")[0].messages).toEqual([{ role: "user", content: "voice after the reply" }]);
   });
 
-  test("listens again when a reply ends before recognition has stopped", async ({ avatar, control, mock }) => {
-    // Much shorter than the time the stub takes to fire `end` after stop()
-    await mock.setAudioLength(50);
-
-    await control.send("short reply");
-
-    await avatar.waitForLog("Audio playback ended");
-    await avatar.waitForLog("Web Speech ended");
-    await expect.poll(() => avatar.isListening()).toBe(true);
-  });
-
   test("listens again after overlapping replies", async ({ avatar, control, mock }) => {
     await mock.setAudioLength(1000);
 
@@ -142,9 +132,33 @@ test.describe("Control page", () => {
     await expect(control.page.getByText("Listening", { exact: true })).toBeVisible();
   });
 
+  test("sends nothing when the mic is turned off before any speech", async ({ avatar, control, mock }) => {
+    await expect.poll(() => avatar.isListening()).toBe(true);
+
+    await control.page.getByTitle("Mic Off").click();
+
+    await expect.poll(() => avatar.liveRecorders()).toBe(0);
+    await avatar.waitForLog("no voice detected, discarding");
+    expect(await mock.transcriptions()).toEqual([]);
+  });
+
+  test("known bug: stops recording when the mic is turned off a second time", async ({ avatar, control }) => {
+    await expect.poll(() => avatar.isListening()).toBe(true);
+    await control.page.getByTitle("Mic Off").click();
+    await expect.poll(() => avatar.liveRecorders()).toBe(0);
+    await control.page.getByTitle("Mic On").click();
+    await expect.poll(() => avatar.isListening()).toBe(true);
+    await control.page.getByTitle("Mic Off").click();
+    await expect.poll(() => avatar.isListening()).toBe(false);
+    await avatar.page.waitForTimeout(500);
+
+    test.fail(true, "Mic On starts two recorders, and only the second one can be stopped");
+    expect(await avatar.liveRecorders()).toBe(0);
+  });
+
   test("tells a /control page opened later the current mic status", async ({ context, avatar, control }) => {
     await control.page.getByTitle("Mic Off").click();
-    await avatar.waitForLog("Web Speech ended");
+    await expect.poll(() => avatar.isListening()).toBe(false);
 
     const later = await context.newPage();
     await later.goto("/control", { waitUntil: "networkidle" });

@@ -1,5 +1,5 @@
-// Stands in for every external backend during e2e runs: Ollama (LLM, VLM, embeddings)
-// and VOICEVOX. It records each request so tests can inspect it.
+// Stands in for every external backend during e2e runs: OpenAI (LLM, transcription),
+// Ollama (VLM, embeddings) and VOICEVOX. It records each request so tests can inspect it.
 //
 // Words in the last user message choose what the fake LLM does:
 //   CALL_LOOP     calls a tool every time, so the route hits its iteration limit
@@ -17,8 +17,13 @@ fs.rmSync(tmpDir, { recursive: true, force: true });
 fs.mkdirSync(tmpDir, { recursive: true });
 
 const DEFAULT_AUDIO_MS = 50;
+// Transcribing takes longer than opening the mic, so the next recording starts before the
+// transcript arrives. Real OpenAI takes about 600 ms.
+const TRANSCRIPTION_MS = 300;
 let audioMs = DEFAULT_AUDIO_MS;
 let log = [];
+let transcripts = [];
+let toolCallCount = 0;
 
 // 16-bit mono WAV of a sine tone
 function wav(ms) {
@@ -53,19 +58,27 @@ function embed(text) {
   return vector.map((x) => x / norm);
 }
 
-const reply = (content) => ({ message: { role: "assistant", content }, done: true });
+const reply = (content) => ({
+  choices: [{ index: 0, message: { role: "assistant", content }, finish_reason: "stop" }],
+});
 
 const toolCall = (name, args) => ({
-  message: {
-    role: "assistant",
-    content: "",
-    tool_calls: [{ function: { name, arguments: args } }],
-  },
-  done: true,
+  choices: [
+    {
+      index: 0,
+      message: {
+        role: "assistant",
+        content: null,
+        tool_calls: [
+          { id: `call_${++toolCallCount}`, type: "function", function: { name, arguments: JSON.stringify(args) } },
+        ],
+      },
+      finish_reason: "tool_calls",
+    },
+  ],
 });
 
 function classifyChat(messages) {
-  if (messages.some((m) => m.images?.length)) return "vlm";
   // Only the extraction prompts open by talking about extracting
   if (/extract|抽出/i.test(messages[0]?.content?.slice(0, 200) ?? "")) return "extraction";
   return "llm";
@@ -111,7 +124,23 @@ function sendJson(res, value, status = 200) {
   res.end(JSON.stringify(value));
 }
 
-function handle(req, res, body) {
+// Answers with the next queued transcript, or nothing, as Whisper does for silence
+async function transcribe(req, res, raw) {
+  const form = await new Response(raw, { headers: { "Content-Type": req.headers["content-type"] } }).formData();
+  const file = form.get("file");
+  const audio = Buffer.from(await file.arrayBuffer());
+  log.push({
+    kind: "stt",
+    auth: req.headers.authorization,
+    model: form.get("model"),
+    language: form.get("language"),
+    audio: { name: file.name, bytes: audio.length, header: audio.subarray(0, 4).toString("hex") },
+  });
+  const text = transcripts.shift() ?? "";
+  setTimeout(() => sendJson(res, { text, language: form.get("language"), duration: 1 }), TRANSCRIPTION_MS);
+}
+
+function handle(req, res, body, raw) {
   const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
 
   switch (url.pathname) {
@@ -120,20 +149,30 @@ function handle(req, res, body) {
       return sendJson(res, log);
     case "/__reset":
       log = [];
+      transcripts = [];
       audioMs = DEFAULT_AUDIO_MS;
       return sendJson(res, { ok: true });
     case "/__audio":
       audioMs = Number(url.searchParams.get("ms"));
       return sendJson(res, { audioMs });
+    case "/__transcript":
+      transcripts.push(body.text);
+      return sendJson(res, { queued: transcripts.length });
 
-    // Ollama
-    case "/api/chat": {
+    // OpenAI
+    case "/v1/chat/completions": {
       const kind = classifyChat(body.messages);
-      log.push({ kind, body });
-      if (kind === "vlm") return sendJson(res, reply("person holding a mug"));
+      log.push({ kind, auth: req.headers.authorization, body });
       if (kind === "extraction") return sendJson(res, extractionReply(body.messages));
       return sendJson(res, llmReply(body.messages));
     }
+    case "/v1/audio/transcriptions":
+      return transcribe(req, res, raw);
+
+    // Ollama
+    case "/api/chat":
+      log.push({ kind: "vlm", body });
+      return sendJson(res, { message: { role: "assistant", content: "person holding a mug" }, done: true });
     case "/api/embed": {
       log.push({ kind: "embed", body });
       const input = Array.isArray(body.input) ? body.input : [body.input];
@@ -166,13 +205,14 @@ http
     const chunks = [];
     req.on("data", (chunk) => chunks.push(chunk));
     req.on("end", () => {
+      const raw = Buffer.concat(chunks);
       let body = {};
       try {
-        body = JSON.parse(Buffer.concat(chunks).toString());
+        body = JSON.parse(raw.toString());
       } catch {
         // Not every request has a JSON body
       }
-      handle(req, res, body);
+      handle(req, res, body, raw);
     });
   })
   .listen(PORT, "127.0.0.1", () => console.log(`Mock backends on port ${PORT}`));

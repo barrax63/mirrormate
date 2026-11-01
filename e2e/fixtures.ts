@@ -10,9 +10,12 @@ export const JPEG_DATA_URL = /^data:image\/jpeg;base64,/;
 
 const MOCK_URL = "http://127.0.0.1:11555";
 
-// See speech-recognition-stub.js and audio-spy.js
+// See fake-mic.js, speech-recognition-stub.js and audio-spy.js
 declare global {
   interface Window {
+    __micListening: () => boolean;
+    __liveRecorders: () => number;
+    __speak: () => boolean;
     __recognitions: { lang: string; running: boolean }[];
     __say: (text: string) => boolean;
     __recognitionFailure?: string | null;
@@ -42,7 +45,9 @@ class RecordedPage {
     page.on("request", (request) => {
       const { pathname } = new URL(request.url());
       if (request.method() === "POST" && pathname.startsWith("/api/")) {
-        this.posts.push({ path: pathname, body: request.postDataJSON() });
+        // /api/stt sends a recording, not JSON
+        const isJson = request.headers()["content-type"]?.includes("application/json");
+        this.posts.push({ path: pathname, body: isJson ? request.postDataJSON() : {} });
       }
     });
   }
@@ -69,17 +74,43 @@ export class AvatarPage extends RecordedPage {
     await this.page.mouse.click(5, 5);
   }
 
-  /** Passes speech to the recognizer, waiting until one is listening */
+  /** Speaks into the mic once it's listening, and waits for the mock to transcribe it as this text */
   async hear(text: string) {
-    await expect
-      .poll(() => this.page.evaluate((said) => window.__say(said), text), { timeout: 10_000 })
-      .toBe(true);
+    await new MockBackends(this.page.request).queueTranscript(text);
+    const transcribed = this.page.waitForResponse("**/api/stt");
+    await expect.poll(() => this.page.evaluate(() => window.__speak()), { timeout: 10_000 }).toBe(true);
+    expect((await transcribed).ok()).toBe(true);
   }
 
   /** Says the wake word and waits for the conversation to start */
   async wakeUp() {
     await this.hear("hey mira");
     await expect(this.page.getByText("In Conversation")).toBeVisible();
+  }
+
+  isListening() {
+    return this.page.evaluate(() => window.__micListening());
+  }
+
+  liveRecorders() {
+    return this.page.evaluate(() => window.__liveRecorders());
+  }
+
+  liveVideoTracks() {
+    return this.page.evaluate(() => {
+      const stream = document.querySelector("video")?.srcObject as MediaStream | null | undefined;
+      return stream?.getVideoTracks().filter((track) => track.readyState === "live").length ?? 0;
+    });
+  }
+}
+
+/** The avatar page listening through the stub in speech-recognition-stub.js */
+export class WebSpeechAvatarPage extends AvatarPage {
+  /** Passes speech to the recognizer, waiting until one is listening */
+  async hear(text: string) {
+    await expect
+      .poll(() => this.page.evaluate((said) => window.__say(said), text), { timeout: 10_000 })
+      .toBe(true);
   }
 
   isListening() {
@@ -96,13 +127,6 @@ export class AvatarPage extends RecordedPage {
 
   recognitionStarts() {
     return this.logs.filter((log) => log.includes("Web Speech started")).length;
-  }
-
-  liveVideoTracks() {
-    return this.page.evaluate(() => {
-      const stream = document.querySelector("video")?.srcObject as MediaStream | null | undefined;
-      return stream?.getVideoTracks().filter((track) => track.readyState === "live").length ?? 0;
-    });
   }
 
   recognitionLanguage() {
@@ -134,12 +158,20 @@ export class ControlPage extends RecordedPage {
 
 interface LoggedRequest {
   kind: "llm" | "vlm" | "extraction" | "embed" | "tts" | "unknown";
+  auth?: string;
   path?: string;
   query?: string;
   body: {
     messages: { role: string; content: string; images?: string[] }[];
     tools?: { function: { name: string } }[];
   };
+}
+
+interface LoggedTranscription {
+  auth: string;
+  model: string;
+  language: string;
+  audio: { name: string; bytes: number; header: string };
 }
 
 export class MockBackends {
@@ -167,6 +199,18 @@ export class MockBackends {
       (request) => request.body.messages.findLast((m) => m.role === "user")?.content === userMessage
     );
   }
+
+  /** Recordings that reached the fake OpenAI, oldest first */
+  async transcriptions(): Promise<LoggedTranscription[]> {
+    const response = await this.request.get(`${MOCK_URL}/__log`);
+    const log: (LoggedTranscription & { kind: string })[] = await response.json();
+    return log.filter((entry) => entry.kind === "stt");
+  }
+
+  /** Makes this the text of the next recording that reaches the fake OpenAI */
+  async queueTranscript(text: string) {
+    await this.request.post(`${MOCK_URL}/__transcript`, { data: { text } });
+  }
 }
 
 export const test = base.extend<{
@@ -177,7 +221,7 @@ export const test = base.extend<{
 }>({
   context: async ({ context }, provide) => {
     await blockOutsideRequests(context);
-    await context.addInitScript({ path: path.join(__dirname, "speech-recognition-stub.js") });
+    await context.addInitScript({ path: path.join(__dirname, "fake-mic.js") });
     await provide(context);
   },
 
@@ -206,5 +250,23 @@ export const test = base.extend<{
     const control = new ControlPage(await context.newPage());
     await control.open();
     await provide(control);
+  },
+});
+
+/** For the tests of Web Speech itself: pages get the stub, and the config asks for Web Speech */
+export const webSpeechTest = test.extend<{ avatar: WebSpeechAvatarPage }>({
+  context: async ({ context }, provide) => {
+    await context.addInitScript({ path: path.join(__dirname, "speech-recognition-stub.js") });
+    await context.route("**/api/stt/config", async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({ response, json: { ...(await response.json()), provider: "web" } });
+    });
+    await provide(context);
+  },
+
+  avatar: async ({ context }, provide) => {
+    const avatar = new WebSpeechAvatarPage(await context.newPage());
+    await avatar.open();
+    await provide(avatar);
   },
 });

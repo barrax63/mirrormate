@@ -1,4 +1,4 @@
-import { test, expect, AvatarPage, EN_URL, JA_URL, JAPANESE } from "./fixtures";
+import { test, expect, EN_URL, JA_URL, JAPANESE } from "./fixtures";
 
 test.describe("English server", () => {
   test("serves English UI text", async ({ page }) => {
@@ -6,23 +6,6 @@ test.describe("English server", () => {
 
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("form input")).toHaveAttribute("placeholder", "Enter message...");
-  });
-
-  test("starts Web Speech in en-US", async ({ avatar }) => {
-    await expect.poll(() => avatar.recognitionLanguage()).toBe("en-US");
-  });
-
-  test("known bug: starts Web Speech in the language from the STT config", async ({ page }) => {
-    await page.route("**/api/stt/config", async (route) => {
-      const response = await route.fetch();
-      await route.fulfill({ response, json: { ...(await response.json()), language: "de-DE" } });
-    });
-    const avatar = new AvatarPage(page);
-    await avatar.open();
-    await expect.poll(() => avatar.recognitionLanguage()).toBeTruthy();
-
-    test.fail(true, "src/app/page.tsx passes no language to useSpeechRecognition");
-    await expect.poll(() => avatar.recognitionLanguage(), { timeout: 2000 }).toBe("de-DE");
   });
 
   test("known bug: sends no Japanese to the LLM", async ({ request, mock }) => {
@@ -49,12 +32,14 @@ test.describe("Japanese server", () => {
     expect(phrase).toMatch(JAPANESE);
   });
 
-  test("wakes on a transcript with Japanese punctuation", async ({ request, avatar }) => {
+  test("wakes on a transcript with Japanese punctuation", async ({ request, avatar, mock }) => {
     const { phrase } = await (await request.get("/api/wakeword")).json();
 
     await avatar.hear(`${phrase.replace(" ", "、")}。`);
 
     await expect(avatar.page.getByText("In Conversation")).toBeVisible();
+    const [recording] = await mock.transcriptions();
+    expect(recording.language).toBe("ja");
   });
 
   test("gives the LLM a Japanese system prompt and rules", async ({ request, mock }) => {
@@ -102,19 +87,9 @@ test.describe("Japanese server", () => {
     });
   });
 
-  test("known bug: starts Web Speech in ja-JP", async ({ avatar }) => {
-    await expect.poll(() => avatar.recognitionLanguage()).toBeTruthy();
-
-    test.fail(true, "src/app/page.tsx passes no language to useSpeechRecognition");
-    await expect.poll(() => avatar.recognitionLanguage(), { timeout: 2000 }).toBe("ja-JP");
-  });
-
-  test("known bug: /api/stt/config reports ja-JP", async ({ request }) => {
+  test("/api/stt/config reports ja-JP", async ({ request }) => {
     const response = await request.get("/api/stt/config");
-    const config = await response.json();
-    expect(config.provider).toBe("web");
 
-    test.fail(true, "An empty stt.web parses to null, so the preset is skipped");
-    expect(config.language).toBe("ja-JP");
+    expect(await response.json()).toMatchObject({ provider: "openai", language: "ja-JP" });
   });
 });

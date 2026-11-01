@@ -95,7 +95,7 @@ bun run test
 bun run test:watch
 ```
 
-End-to-end tests run the production build in Chromium with mock backends, a fake camera and stubbed speech recognition. They need no other services:
+End-to-end tests run the production build in Chromium with mock backends, a fake camera and a fake microphone. They need no other services:
 
 ```bash
 # Once, before the first run

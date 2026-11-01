@@ -1,12 +1,12 @@
-// Records what the page does with Web Audio. Loaded as is, like speech-recognition-stub.js.
-const NativeAudioContext = window.AudioContext;
+// Records what the page does with replies in Web Audio. Loaded as is, like fake-mic.js.
+// Only the contexts that play a reply count: each recording has its own, for volume analysis.
 window.__audioContexts = [];
 
-window.AudioContext = class extends NativeAudioContext {
-  constructor(...args) {
-    super(...args);
-    window.__audioContexts.push(this);
-  }
+const { createMediaElementSource } = AudioContext.prototype;
+
+AudioContext.prototype.createMediaElementSource = function (...args) {
+  if (!window.__audioContexts.includes(this)) window.__audioContexts.push(this);
+  return createMediaElementSource.apply(this, args);
 };
 
 // Connections made minus nodes disconnected. The page connects a source and an analyser
@@ -15,11 +15,11 @@ const { connect, disconnect } = AudioNode.prototype;
 window.__audioLinks = 0;
 
 AudioNode.prototype.connect = function (...args) {
-  window.__audioLinks++;
+  if (window.__audioContexts.includes(this.context)) window.__audioLinks++;
   return connect.apply(this, args);
 };
 
 AudioNode.prototype.disconnect = function (...args) {
-  window.__audioLinks--;
+  if (window.__audioContexts.includes(this.context)) window.__audioLinks--;
   return disconnect.apply(this, args);
 };
