@@ -125,6 +125,8 @@ docker compose up -d
 
 Ollama must listen on an address the container can reach (`OLLAMA_HOST=0.0.0.0`). It has no authentication, so only do this on a trusted network.
 
+VOICEVOX only speaks Japanese and spells out many English words, so this setup suits Japanese replies.
+
 **Wake word**: Say "Hey Mira" to activate.
 
 ---

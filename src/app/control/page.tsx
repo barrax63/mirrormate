@@ -44,6 +44,7 @@ export default function ControlPage() {
     setSelectedSpeaker,
     isLoading: speakersLoading,
     error: speakersError,
+    isEnabled: voicesEnabled,
     previewVoice,
     isPreviewPlaying,
   } = useSpeakerSelector();
@@ -312,28 +313,32 @@ export default function ControlPage() {
             placeholder={t("selectCharacter") || "Select character..."}
           />
 
-          {/* Voice Selector */}
-          <SettingsDropdown<Speaker>
-            label={t("voice") || "Voice"}
-            items={speakers}
-            selectedId={selectedSpeaker}
-            onSelect={(id) => setSelectedSpeaker(id as number)}
-            getId={(s) => s.id}
-            renderItem={(s) => (
-              <span>{s.name} ({s.styleName})</span>
-            )}
-            renderSelected={(s) => s ? `${s.name} (${s.styleName})` : null}
-            disabled={speakersLoading || !!speakersError}
-            placeholder={speakersError || (t("selectVoice") || "Select voice...")}
-          />
+          {voicesEnabled && (
+            <>
+              {/* Voice Selector */}
+              <SettingsDropdown<Speaker>
+                label={t("voice") || "Voice"}
+                items={speakers}
+                selectedId={selectedSpeaker}
+                onSelect={(id) => setSelectedSpeaker(id as number)}
+                getId={(s) => s.id}
+                renderItem={(s) => (
+                  <span>{s.name} ({s.styleName})</span>
+                )}
+                renderSelected={(s) => s ? `${s.name} (${s.styleName})` : null}
+                disabled={speakersLoading || !!speakersError}
+                placeholder={speakersError || (t("selectVoice") || "Select voice...")}
+              />
 
-          {/* Preview Button */}
-          <VoicePreviewButton
-            onClick={() => selectedSpeaker && previewVoice(selectedSpeaker)}
-            isPlaying={isPreviewPlaying}
-            disabled={!selectedSpeaker || speakersLoading}
-            label={t("preview") || "Preview"}
-          />
+              {/* Preview Button */}
+              <VoicePreviewButton
+                onClick={() => selectedSpeaker && previewVoice(selectedSpeaker)}
+                isPlaying={isPreviewPlaying}
+                disabled={!selectedSpeaker || speakersLoading}
+                label={t("preview") || "Preview"}
+              />
+            </>
+          )}
 
           {/* Vision Toggle */}
           <div className="flex items-center gap-2">
