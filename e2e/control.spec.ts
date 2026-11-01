@@ -1,4 +1,36 @@
-import { test, expect, blockOutsideRequests, JAPANESE, JPEG_DATA_URL } from "./fixtures";
+import type { Page, Route } from "@playwright/test";
+import { test, expect, blockOutsideRequests, ControlPage, JAPANESE, JPEG_DATA_URL } from "./fixtures";
+
+test.describe("Voice selector", () => {
+  async function openWithVoices(page: Page, answer: (route: Route) => Promise<void>) {
+    await page.route("**/api/voicevox/speakers", answer);
+    const control = new ControlPage(page);
+    await control.open();
+  }
+
+  // The speaker only reaches VOICEVOX, so a selector would change nothing with OpenAI
+  test("is hidden when replies don't use VOICEVOX", async ({ page }) => {
+    await openWithVoices(page, (route) => route.fulfill({ json: { speakers: [], enabled: false } }));
+
+    await expect(page.getByRole("button", { name: "Vision ON" })).toBeVisible();
+    await expect(page.getByText("Voice", { exact: true })).toBeHidden();
+    await expect(page.getByTitle("Preview")).toBeHidden();
+  });
+
+  test("says VOICEVOX is unavailable when replies use it and it's down", async ({ page }) => {
+    await openWithVoices(page, (route) =>
+      route.fulfill({ status: 503, json: { speakers: [], error: "VOICEVOX unavailable" } })
+    );
+
+    await expect(page.getByRole("button", { name: "VOICEVOX unavailable" })).toBeDisabled();
+  });
+
+  test("stays visible when the voice request fails", async ({ page }) => {
+    await openWithVoices(page, (route) => route.abort());
+
+    await expect(page.getByRole("button", { name: "Failed to fetch speakers" })).toBeDisabled();
+  });
+});
 
 test.describe("Control page", () => {
   test("sends chat itself and has the avatar page speak the reply", async ({ avatar, control }) => {

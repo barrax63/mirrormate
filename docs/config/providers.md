@@ -183,6 +183,10 @@ providers:
       baseUrl: "http://localhost:50021"
 ```
 
+> **Note**: VOICEVOX only speaks Japanese. English words outside its dictionary are spelled out letter by letter, even common ones such as "today" and "morning", so use OpenAI TTS for English replies.
+
+The voice selector on `/control` only appears with this provider, because the OpenAI voice is set in the config.
+
 #### Speaker IDs (Common)
 
 | ID | Character |

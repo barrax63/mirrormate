@@ -24,12 +24,18 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export async function GET() {
   try {
+    const config = loadProvidersConfig();
+
+    // /api/tts only uses the speaker with VOICEVOX, so there's no voice to choose otherwise
+    if (config.providers?.tts?.provider !== "voicevox") {
+      return NextResponse.json({ speakers: [], enabled: false });
+    }
+
     const now = Date.now();
     if (cachedSpeakers && now - cacheTimestamp < CACHE_TTL) {
       return NextResponse.json({ speakers: cachedSpeakers });
     }
 
-    const config = loadProvidersConfig();
     const baseUrl = config.providers?.tts?.voicevox?.baseUrl || "http://localhost:50021";
 
     const response = await fetch(`${baseUrl}/speakers`, {

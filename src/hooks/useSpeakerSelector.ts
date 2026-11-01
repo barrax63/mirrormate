@@ -14,6 +14,7 @@ interface UseSpeakerSelectorReturn {
   setSelectedSpeaker: (id: number) => void;
   isLoading: boolean;
   error: string | null;
+  isEnabled: boolean;
   previewVoice: (speakerId: number, text?: string) => Promise<void>;
   isPreviewPlaying: boolean;
 }
@@ -26,6 +27,7 @@ export function useSpeakerSelector(): UseSpeakerSelectorReturn {
   const [selectedSpeaker, setSelectedSpeakerState] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEnabled, setIsEnabled] = useState(true);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const settingsLoadedRef = useRef(false);
@@ -36,6 +38,8 @@ export function useSpeakerSelector(): UseSpeakerSelectorReturn {
       try {
         const response = await fetch("/api/voicevox/speakers");
         const data = await response.json();
+
+        setIsEnabled(data.enabled !== false);
 
         if (data.error) {
           setError(data.error);
@@ -169,6 +173,7 @@ export function useSpeakerSelector(): UseSpeakerSelectorReturn {
     setSelectedSpeaker,
     isLoading,
     error,
+    isEnabled,
     previewVoice,
     isPreviewPlaying,
   };
