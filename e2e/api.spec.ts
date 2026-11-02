@@ -167,7 +167,12 @@ test.describe("other APIs", () => {
   test("/api/tts fails when ElevenLabs is out of credits", async ({ request, mock }) => {
     const response = await request.post("/api/tts", { data: { text: "QUOTA_EXCEEDED" } });
 
-    expect(response.status()).toBe(500);
+    expect(response.status()).toBe(502);
+    expect(await response.json()).toEqual({
+      error: "ElevenLabs returned 401 (quota_exceeded)",
+      code: "quota_exceeded",
+      service: "elevenlabs",
+    });
     expect(await mock.speech()).toHaveLength(1);
   });
 

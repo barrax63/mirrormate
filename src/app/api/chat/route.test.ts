@@ -1,5 +1,7 @@
+import OpenAI from "openai";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import { ServiceError } from "@/lib/errors/service-error";
 import type { ChatCompletionOptions, ChatCompletionResult } from "@/lib/llm";
 import { POST } from "./route";
 
@@ -443,7 +445,27 @@ describe("POST /api/chat", () => {
       const { status, body } = await say("hello");
 
       expect(status).toBe(500);
-      expect(body).toEqual({ error: "Failed to generate response" });
+      expect(body).toEqual({ error: "connection refused", code: "failed" });
+    });
+
+    it("says when OpenAI rejected the key", async () => {
+      mocks.chat.mockRejectedValue(
+        OpenAI.APIError.generate(401, { error: { message: "Incorrect API key provided" } }, undefined, new Headers())
+      );
+
+      const { status, body } = await say("hello");
+
+      expect(status).toBe(502);
+      expect(body).toMatchObject({ code: "invalid_key", service: "openai" });
+    });
+
+    it("says when the key is missing", async () => {
+      mocks.chat.mockRejectedValue(new ServiceError("missing_key", "openai", "OPENAI_API_KEY is not configured"));
+
+      const { status, body } = await say("hello");
+
+      expect(status).toBe(500);
+      expect(body).toMatchObject({ code: "missing_key", service: "openai" });
     });
   });
 

@@ -133,7 +133,7 @@ test.describe("Control page", () => {
   test("doesn't send the LLM its own error notice as a reply", async ({ control }) => {
     await control.page.route("**/api/chat", (route) => route.abort(), { times: 1 });
     await control.send("first try");
-    await expect(control.page.getByText("Connection interrupted.")).toBeVisible();
+    await expect(control.page.locator("p", { hasText: "Replies: The server can't be reached." })).toBeVisible();
 
     await control.send("second try");
 

@@ -108,13 +108,14 @@ describe("POST /api/tts with ElevenLabs", () => {
   it("fails without a key, without calling ElevenLabs", async () => {
     vi.stubEnv("ELEVENLABS_API_KEY", "");
 
-    const { status } = await speak("hello");
+    const { status, body } = await speak("hello");
 
     expect(status).toBe(500);
+    expect(body).toMatchObject({ code: "missing_key", service: "elevenlabs" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("logs ElevenLabs' own reason when it refuses", async () => {
+  it("logs ElevenLabs' own reason when it refuses, and passes it on", async () => {
     fetchMock.mockResolvedValue(
       Response.json(
         { detail: { status: "quota_exceeded", message: "This request exceeds your quota of 10000." } },
@@ -122,9 +123,23 @@ describe("POST /api/tts with ElevenLabs", () => {
       )
     );
 
-    const { status } = await speak("hello");
+    const { status, body } = await speak("hello");
 
-    expect(status).toBe(500);
+    expect(status).toBe(502);
+    expect(body).toEqual({
+      error: "ElevenLabs returned 401 (quota_exceeded)",
+      code: "quota_exceeded",
+      service: "elevenlabs",
+    });
     expect(String(vi.mocked(console.error).mock.calls[0][1])).toContain("ElevenLabs returned 401 (quota_exceeded)");
+  });
+
+  it("calls ElevenLabs unavailable when it can't be reached", async () => {
+    fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+
+    const { status, body } = await speak("hello");
+
+    expect(status).toBe(503);
+    expect(body).toMatchObject({ code: "unavailable", service: "elevenlabs" });
   });
 });

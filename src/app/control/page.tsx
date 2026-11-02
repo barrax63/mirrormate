@@ -6,6 +6,9 @@ import Link from "next/link";
 import { useVoiceSelector, type Voice } from "@/hooks/useVoiceSelector";
 import { useCharacterSelector, type CharacterPreset } from "@/hooks/useCharacterSelector";
 import { useVisionEnabled } from "@/hooks/useVisionEnabled";
+import { useServiceErrors } from "@/hooks/useServiceErrors";
+import { ServiceErrorList, useServiceErrorText } from "@/components/ServiceErrorList";
+import { routeErrorFrom } from "@/lib/errors/service-errors";
 import { DEFAULT_HISTORY_LIMIT, historyLimitFrom, trimHistory } from "@/lib/chat/history";
 import { SettingsDropdown } from "@/components/SettingsDropdown";
 import { VoicePreviewButton } from "@/components/VoicePreviewButton";
@@ -21,7 +24,7 @@ interface Message {
 }
 
 interface BroadcastMessage {
-  type: "speaking_start" | "speaking_end" | "thinking_start" | "thinking_end" | "response" | "audio" | "user_message" | "play_audio" | "mic_start" | "mic_stop" | "mic_status" | "mic_request_status" | "settings_changed" | "vision_toggle" | "camera_capture_request" | "camera_capture_response";
+  type: "speaking_start" | "speaking_end" | "thinking_start" | "thinking_end" | "response" | "audio" | "user_message" | "play_audio" | "mic_start" | "mic_stop" | "mic_status" | "mic_request_status" | "settings_changed" | "vision_toggle" | "camera_capture_request" | "camera_capture_response" | "service_error" | "service_errors_request";
   payload?: string | boolean | null;
 }
 
@@ -33,6 +36,9 @@ export default function ControlPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [micStatus, setMicStatus] = useState<"off" | "listening" | "paused">("off");
   const { visionEnabled, setVisionEnabled } = useVisionEnabled();
+  // Failed requests of this page and the avatar page
+  const { errors: serviceErrorList, reporter: serviceErrors } = useServiceErrors();
+  const errorText = useServiceErrorText();
   const [isCapturingImage, setIsCapturingImage] = useState(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
   // The server's limit, from its last reply. The page shows the whole conversation, but sends only this much.
@@ -52,7 +58,7 @@ export default function ControlPage() {
     error: voicesError,
     previewVoice,
     isPreviewPlaying,
-  } = useVoiceSelector();
+  } = useVoiceSelector({ serviceErrors });
 
   const {
     characters,
@@ -123,6 +129,18 @@ export default function ControlPage() {
     });
   }, []);
 
+  // Says in the conversation why a reply failed. The avatar page shows it from the shared errors.
+  const showFailure = useCallback(
+    (text: string) => {
+      broadcast({ type: "thinking_end" });
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: "assistant", content: text, timestamp: new Date(), isError: true },
+      ]);
+    },
+    [broadcast]
+  );
+
   const sendMessage = useCallback(
     async (content: string) => {
       if (!content.trim() || isLoading) return;
@@ -172,9 +190,14 @@ export default function ControlPage() {
         });
 
         if (!response.ok) {
-          throw new Error("Failed to get response");
+          const error = await routeErrorFrom(response);
+          console.error("Chat API failed:", response.status, error);
+          serviceErrors.failed("chat", error);
+          showFailure(errorText("chat", error));
+          return;
         }
 
+        serviceErrors.succeeded("chat");
         const data = await response.json();
         historyLimitRef.current = historyLimitFrom(data.historyLimit);
 
@@ -203,22 +226,15 @@ export default function ControlPage() {
         }
       } catch (error) {
         console.error("Error sending message:", error);
-        broadcast({ type: "thinking_end" });
-
-        const errorMessage: Message = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: "Connection interrupted.",
-          timestamp: new Date(),
-          isError: true,
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-        broadcast({ type: "response", payload: "Connection interrupted." });
+        // The app's own server didn't answer
+        const failure = { code: "unavailable" } as const;
+        serviceErrors.failed("chat", failure);
+        showFailure(errorText("chat", failure));
       } finally {
         setIsLoading(false);
       }
     },
-    [messages, isLoading, broadcast, selectedVoice, selectedCharacter, visionEnabled, requestCameraCapture]
+    [messages, isLoading, broadcast, selectedVoice, selectedCharacter, visionEnabled, requestCameraCapture, serviceErrors, errorText, showFailure]
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -294,6 +310,12 @@ export default function ControlPage() {
           </button>
         </div>
       </div>
+
+      {/* Why voice or replies aren't working, here or on the avatar page */}
+      <ServiceErrorList
+        errors={serviceErrorList}
+        className="border-b border-red-500/20 bg-red-500/10 px-6 py-2 space-y-1 text-sm text-red-300"
+      />
 
       {/* Settings Bar */}
       <div className="border-b border-zinc-800/50 px-6 py-3 bg-zinc-900/30">

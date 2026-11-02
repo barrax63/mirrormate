@@ -10,6 +10,7 @@ import {
   OpenAIWhisperProvider,
   LocalWhisperProvider,
 } from "../stt";
+import { ServiceError } from "../errors/service-error";
 
 const cachedProviders = new Map<STTPurpose, STTProvider>();
 
@@ -80,6 +81,10 @@ function createProvider(
     );
     return created;
   } catch (error) {
+    // A missing key, which /api/stt reports as such
+    if (error instanceof ServiceError) {
+      throw error;
+    }
     console.error(`[STT] Failed to initialize ${provider} for ${purpose}:`, error);
     return null;
   }

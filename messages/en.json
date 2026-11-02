@@ -38,5 +38,30 @@
     "timeText": "In {minutes} minutes",
     "title": "You have an event {timeText}",
     "message": "You have \"{summary}\" {timeText}."
+  },
+  "errors": {
+    "line": "{route}: {message}",
+    "routes": {
+      "wakeWord": "Wake word",
+      "speech": "Voice input",
+      "chat": "Replies",
+      "tts": "Speech"
+    },
+    "services": {
+      "openai": "OpenAI",
+      "elevenlabs": "ElevenLabs",
+      "localWhisper": "Local Whisper",
+      "ollama": "Ollama",
+      "app": "The server"
+    },
+    "codes": {
+      "missing_key": "{service} has no API key. Add it to .env and restart.",
+      "invalid_key": "{service} rejected the API key.",
+      "missing_permissions": "The {service} API key lacks a permission this needs.",
+      "quota_exceeded": "{service} is out of credit.",
+      "rate_limited": "{service} is limiting requests. Trying again later.",
+      "unavailable": "{service} can't be reached.",
+      "failed": "{service} returned an error. The server log has details."
+    }
   }
 }

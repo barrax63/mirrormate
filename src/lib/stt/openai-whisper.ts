@@ -5,6 +5,7 @@ import {
   TranscribeResult,
   OpenAIWhisperConfig,
 } from "./types";
+import { ServiceError } from "../errors/service-error";
 
 /**
  * OpenAI Whisper STT Provider
@@ -16,13 +17,17 @@ export class OpenAIWhisperProvider implements STTProvider {
 
   constructor(config: OpenAIWhisperConfig = {}) {
     if (!process.env.OPENAI_API_KEY) {
-      throw new Error(
+      throw new ServiceError(
+        "missing_key",
+        "openai",
         "[OpenAIWhisperProvider] OPENAI_API_KEY environment variable is required"
       );
     }
 
     this.client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
+      // As for the LLM: a failed transcription is reported, and the page decides when to retry
+      maxRetries: 0,
     });
     this.config = config;
   }

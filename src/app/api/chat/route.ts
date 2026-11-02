@@ -9,6 +9,8 @@ import { RAGService, getSimpleContext, MemoryService } from "@/lib/memory";
 import { getUserRepository, getUserSettingsRepository } from "@/lib/repositories";
 import { getLocale } from "@/lib/app";
 import { historyLimitFrom, trimHistory } from "@/lib/chat/history";
+import { serviceErrorResponse } from "@/lib/errors/classify";
+import type { Service } from "@/lib/errors/service-error";
 
 const MAX_TOOL_ITERATIONS = 3;
 const DEFAULT_USER_ID = "default-user";
@@ -271,10 +273,16 @@ export async function POST(request: NextRequest) {
       historyLimit,
     });
   } catch (error) {
-    console.error("Chat API error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate response" },
-      { status: 500 }
-    );
+    return serviceErrorResponse(error, "Chat API", llmService());
+  }
+}
+
+/** The LLM's backend, which a failed fetch here was most likely on its way to */
+function llmService(): Service | undefined {
+  try {
+    return loadProvidersConfig().providers?.llm?.provider === "ollama" ? "ollama" : "openai";
+  } catch {
+    // The config itself may be what failed
+    return undefined;
   }
 }

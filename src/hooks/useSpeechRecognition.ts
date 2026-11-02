@@ -3,6 +3,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { useAudioRecorder, type Take } from "./useAudioRecorder";
 import { STTClientConfig, STTPurpose, SilenceDetectionConfig } from "@/lib/stt";
+import { routeErrorFrom, type ServiceErrorReporter } from "@/lib/errors/service-errors";
 
 // Web Speech API types
 interface SpeechRecognitionEvent extends Event {
@@ -62,6 +63,8 @@ interface UseSpeechRecognitionOptions {
    * go to local Whisper only, and are cut short so a long talk can't delay the wake word.
    */
   listeningForWakeWord: boolean;
+  /** Told how each Whisper request went, and asked first whether to wait */
+  serviceErrors?: ServiceErrorReporter;
 }
 
 interface UseSpeechRecognitionReturn {
@@ -102,6 +105,7 @@ export function useSpeechRecognition({
   lang = "en-US",
   provider: providerOverride,
   listeningForWakeWord,
+  serviceErrors,
 }: UseSpeechRecognitionOptions): UseSpeechRecognitionReturn {
   // State
   const [isListening, setIsListening] = useState(false);
@@ -136,6 +140,11 @@ export function useSpeechRecognition({
   // Callback refs to avoid stale closures
   const onResultRef = useRef(onResult);
   const onInterimResultRef = useRef(onInterimResult);
+  const serviceErrorsRef = useRef(serviceErrors);
+
+  useEffect(() => {
+    serviceErrorsRef.current = serviceErrors;
+  }, [serviceErrors]);
 
   useEffect(() => {
     onResultRef.current = onResult;
@@ -198,6 +207,12 @@ export function useSpeechRecognition({
           ? "wakeWord"
           : "speech";
 
+      const serviceErrors = serviceErrorsRef.current;
+      if (serviceErrors?.isBackingOff(purpose)) {
+        console.log(`[SpeechRecognition] Not sending audio: ${purpose} failed, waiting before trying again`);
+        return;
+      }
+
       // Recordings overlap while waiting, so several can be transcribed at once
       transcriptionsRef.current++;
       setIsTranscribing(true);
@@ -222,6 +237,7 @@ export function useSpeechRecognition({
         });
 
         if (response.ok) {
+          serviceErrors?.succeeded(purpose);
           const data = await response.json();
           if (data.transcript && data.transcript.trim()) {
             console.log(
@@ -241,16 +257,15 @@ export function useSpeechRecognition({
             onInterimResultRef.current?.("");
           }
         } else {
-          const errorData = await response.json().catch(() => ({}));
-          console.error(
-            "[SpeechRecognition] Whisper API error:",
-            response.status,
-            errorData
-          );
+          const error = await routeErrorFrom(response);
+          console.error("[SpeechRecognition] Whisper API error:", response.status, error);
+          serviceErrors?.failed(purpose, error);
           onInterimResultRef.current?.("");
         }
       } catch (error) {
         console.error("[SpeechRecognition] Whisper transcription error:", error);
+        // The app's own server didn't answer
+        serviceErrors?.failed(purpose, { code: "unavailable" });
         onInterimResultRef.current?.("");
       } finally {
         transcriptionsRef.current--;

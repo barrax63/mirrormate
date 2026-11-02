@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { LLMProvider, ChatCompletionOptions, ChatCompletionResult, ChatMessage } from "./types";
 import { ToolCall } from "../tools/types";
+import { ServiceError } from "../errors/service-error";
 
 export interface OpenAIConfig {
   model?: string;
@@ -16,11 +17,14 @@ export class OpenAIProvider implements LLMProvider {
 
   constructor(config: OpenAIConfig = {}) {
     if (!process.env.OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+      throw new ServiceError("missing_key", "openai", "OPENAI_API_KEY is not configured");
     }
 
     this.client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
+      // The SDK would retry 429s too, even when the account is out of credit. A failed reply
+      // is reported instead, and the avatar page decides when to ask again.
+      maxRetries: 0,
     });
 
     this.model = config.model || "gpt-6-luna";

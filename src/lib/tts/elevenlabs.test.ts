@@ -66,6 +66,19 @@ describe("listVoices", () => {
     expect(await listVoices(undefined)).toEqual([{ id: "id-sarah", name: "Sarah" }]);
   });
 
+  it.each([
+    [401, "invalid_api_key", "invalid_key"],
+    [401, "missing_permissions", "missing_permissions"],
+    [401, "quota_exceeded", "quota_exceeded"],
+    [429, "too_many_concurrent_requests", "rate_limited"],
+    [500, "internal_server_error", "failed"],
+    [503, undefined, "unavailable"],
+  ])("tells a %i with %s apart as %s", async (httpStatus, status, code) => {
+    fetchMock.mockResolvedValue(Response.json(status ? { detail: { status } } : {}, { status: httpStatus }));
+
+    await expect(listVoices(undefined)).rejects.toMatchObject({ code, service: "elevenlabs" });
+  });
+
   it("fails without a key, without asking ElevenLabs", async () => {
     vi.stubEnv("ELEVENLABS_API_KEY", "");
 
