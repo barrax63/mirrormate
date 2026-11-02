@@ -112,6 +112,20 @@ test.describe("Control page", () => {
     expect(control.errors).toEqual([]);
   });
 
+  test("doesn't send the LLM its own error notice as a reply", async ({ control }) => {
+    await control.page.route("**/api/chat", (route) => route.abort(), { times: 1 });
+    await control.send("first try");
+    await expect(control.page.getByText("Connection interrupted.")).toBeVisible();
+
+    await control.send("second try");
+
+    await expect(control.page.getByText("mock reply to: second try")).toBeVisible();
+    expect(control.postsTo("/api/chat").at(-1)?.messages).toEqual([
+      { role: "user", content: "first try" },
+      { role: "user", content: "second try" },
+    ]);
+  });
+
   test("can't reach the avatar page from another browser profile", async ({ browser, avatar, baseURL }) => {
     const otherProfile = await browser.newContext({ baseURL });
     await blockOutsideRequests(otherProfile);
