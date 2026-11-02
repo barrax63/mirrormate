@@ -63,6 +63,8 @@ export function useAudioRecorder({
   const animationFrameRef = useRef<number>(0);
   const shouldStopRef = useRef(false);
   const hasAudioStartedRef = useRef(false);
+  // True while waiting for the mic, before the recorder or isRecording can show it
+  const isOpeningRef = useRef(false);
 
   // Callback refs to avoid stale closures
   const onAudioReadyRef = useRef(onAudioReady);
@@ -205,10 +207,19 @@ export function useAudioRecorder({
    * Start recording audio
    */
   const startRecording = useCallback(async () => {
-    if (isRecording || !isSupported) {
+    if (!isSupported) {
       return;
     }
 
+    // Cleared before the check, so a start also undoes a stop that came while the mic was opening
+    shouldStopRef.current = false;
+    // Checks refs, not isRecording: that's only set once the mic is open, so a second start
+    // would open another recorder that nothing can stop
+    if (isOpeningRef.current || mediaRecorderRef.current?.state === "recording") {
+      return;
+    }
+
+    isOpeningRef.current = true;
     try {
       // Request microphone access with noise reduction
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -218,6 +229,12 @@ export function useAudioRecorder({
           autoGainControl: true,
         },
       });
+
+      if (shouldStopRef.current) {
+        console.log("[AudioRecorder] Stopped while the mic was opening");
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
 
       streamRef.current = stream;
 
@@ -303,8 +320,10 @@ export function useAudioRecorder({
           console.error("[AudioRecorder] No microphone found");
         }
       }
+    } finally {
+      isOpeningRef.current = false;
     }
-  }, [isRecording, isSupported, monitorAudio]);
+  }, [isSupported, monitorAudio]);
 
   // Cleanup on unmount
   useEffect(() => {

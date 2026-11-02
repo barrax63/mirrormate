@@ -1,5 +1,5 @@
 import type { Page, Route } from "@playwright/test";
-import { test, expect, blockOutsideRequests, ControlPage, JAPANESE, JPEG_DATA_URL } from "./fixtures";
+import { test, expect, blockOutsideRequests, AvatarPage, ControlPage, JAPANESE, JPEG_DATA_URL } from "./fixtures";
 
 test.describe("Voice selector", () => {
   async function openWithVoices(page: Page, answer: (route: Route) => Promise<void>) {
@@ -142,7 +142,7 @@ test.describe("Control page", () => {
     expect(await mock.transcriptions()).toEqual([]);
   });
 
-  test("known bug: stops recording when the mic is turned off a second time", async ({ avatar, control }) => {
+  test("stops recording when the mic is turned off a second time", async ({ avatar, control }) => {
     await expect.poll(() => avatar.isListening()).toBe(true);
     await control.page.getByTitle("Mic Off").click();
     await expect.poll(() => avatar.liveRecorders()).toBe(0);
@@ -152,8 +152,82 @@ test.describe("Control page", () => {
     await expect.poll(() => avatar.isListening()).toBe(false);
     await avatar.page.waitForTimeout(500);
 
-    test.fail(true, "Mic On starts two recorders, and only the second one can be stopped");
     expect(await avatar.liveRecorders()).toBe(0);
+    expect(await avatar.liveMicStreams()).toBe(0);
+  });
+
+  test("uploads one recording after the mic is turned back on", async ({ avatar, control, mock }) => {
+    await expect.poll(() => avatar.isListening()).toBe(true);
+    await control.page.getByTitle("Mic Off").click();
+    await expect.poll(() => avatar.liveRecorders()).toBe(0);
+    await control.page.getByTitle("Mic On").click();
+    await expect.poll(() => avatar.isListening()).toBe(true);
+
+    await avatar.hear("hello");
+
+    const [recording] = await mock.transcriptions();
+    expect(recording.audio.webmFiles).toBe(1);
+  });
+
+  // The page asks for the mic as it loads, and it stays opening until releaseMic()
+  test.describe("while the mic is still opening", () => {
+    test.use({ micHeld: true });
+
+    async function turnOff(avatar: AvatarPage, control: ControlPage) {
+      await control.page.getByTitle("Mic Off").click();
+      await expect(avatar.page.getByText("Mic Off", { exact: true }).first()).toBeVisible();
+    }
+
+    function recordingStarts(avatar: AvatarPage) {
+      return avatar.logs.filter((log) => log.includes("[AudioRecorder] Started recording")).length;
+    }
+
+    test.beforeEach(async ({ avatar }) => {
+      await expect.poll(() => avatar.micRequests()).toBeGreaterThan(0);
+    });
+
+    test("closes it if the mic is turned off", async ({ avatar, control }) => {
+      await turnOff(avatar, control);
+
+      await avatar.releaseMic();
+
+      expect(await avatar.liveRecorders()).toBe(0);
+      expect(await avatar.liveMicStreams()).toBe(0);
+    });
+
+    test("records once if the mic is turned off and back on", async ({ avatar, control }) => {
+      await turnOff(avatar, control);
+      await control.page.getByTitle("Mic On").click();
+      await expect(avatar.page.getByText("Paused", { exact: true })).toBeVisible();
+
+      await avatar.releaseMic();
+
+      expect(await avatar.liveRecorders()).toBe(1);
+      expect(await avatar.liveMicStreams()).toBe(1);
+    });
+
+    test("closes it without recording if a reply starts", async ({ avatar, control, mock }) => {
+      await mock.setAudioLength(3000);
+      await control.send("long reply");
+      await avatar.waitForLog("Audio playback started");
+
+      await avatar.releaseMic();
+
+      expect(recordingStarts(avatar)).toBe(0);
+      expect(await avatar.liveMicStreams()).toBe(0);
+      await avatar.waitForLog("Audio playback ended");
+      await expect.poll(() => avatar.isListening()).toBe(true);
+    });
+
+    test("records once if a reply starts and ends", async ({ avatar, control }) => {
+      await control.send("short reply");
+      await avatar.waitForLog("Audio playback ended");
+
+      await avatar.releaseMic();
+
+      expect(await avatar.liveRecorders()).toBe(1);
+      expect(await avatar.liveMicStreams()).toBe(1);
+    });
   });
 
   test("tells a /control page opened later the current mic status", async ({ context, avatar, control }) => {

@@ -4,6 +4,9 @@ const SPEECH_MS = 300;
 // A real mic takes a moment to open, and an instant one would hide races in the recorder
 const MIC_OPEN_MS = 100;
 const recorders = [];
+const streams = [];
+const heldOpens = [];
+let micRequests = 0;
 
 const NativeMediaRecorder = window.MediaRecorder;
 window.MediaRecorder = class extends NativeMediaRecorder {
@@ -22,7 +25,9 @@ if (navigator.mediaDevices) {
 
   navigator.mediaDevices.getUserMedia = async (constraints) => {
     if (!constraints.audio) return getUserMedia(constraints);
+    micRequests++;
     await new Promise((resolve) => setTimeout(resolve, MIC_OPEN_MS));
+    if (window.__micHeld) await new Promise((resolve) => heldOpens.push(resolve));
     if (!context) {
       context = new AudioContext();
       tone = context.createGain();
@@ -34,6 +39,7 @@ if (navigator.mediaDevices) {
     // The recorder stops the tracks when it's done, so each recording needs its own stream
     const destination = context.createMediaStreamDestination();
     tone.connect(destination);
+    streams.push(destination.stream);
     return destination.stream;
   };
 }
@@ -41,6 +47,17 @@ if (navigator.mediaDevices) {
 window.__micListening = () => recorders.at(-1)?.state === "recording";
 
 window.__liveRecorders = () => recorders.filter((recorder) => recorder.state === "recording").length;
+
+window.__liveMicStreams = () =>
+  streams.filter((stream) => stream.getTracks().some((track) => track.readyState === "live")).length;
+
+window.__micRequests = () => micRequests;
+
+// While window.__micHeld is set, the mic stays opening until this is called
+window.__releaseMic = () => {
+  window.__micHeld = false;
+  heldOpens.splice(0).forEach((open) => open());
+};
 
 // Makes a sound for the recorder that is listening, if there is one
 window.__speak = () => {
