@@ -37,10 +37,12 @@ export async function PUT(request: NextRequest) {
     const userRepo = getUserRepository();
     await userRepo.findOrCreate(currentUserId);
 
+    // Only the fields in the request change: /control saves the character and the voice
+    // separately, and each would otherwise clear the other. null clears a field.
     const settingsRepo = getUserSettingsRepository();
     const updated = await settingsRepo.update(currentUserId, {
-      speakerId: speakerId ?? null,
-      characterId: characterId ?? null,
+      ...(speakerId !== undefined && { speakerId }),
+      ...(characterId !== undefined && { characterId }),
     });
 
     return NextResponse.json({
