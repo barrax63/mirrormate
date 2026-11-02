@@ -411,6 +411,9 @@ export default function AvatarPage() {
     async (transcript: string) => {
       if (isProcessing || isSpeaking) return;
 
+      // Until the wake word config has loaded, everything heard counts as wake word audio
+      if (!wakeWordConfig) return;
+
       // Wake word mode handling
       if (isWakeWordEnabled) {
         if (wakeWordMode === "waiting") {
@@ -507,13 +510,14 @@ export default function AvatarPage() {
         setIsProcessing(false);
       }
     },
-    [isProcessing, isSpeaking, playAudio, isWakeWordEnabled, wakeWordMode, checkForWakeWord, resetWakeWordTimeout, currentVoice, currentCharacter, requestCameraCapture]
+    [isProcessing, isSpeaking, playAudio, wakeWordConfig, isWakeWordEnabled, wakeWordMode, checkForWakeWord, resetWakeWordTimeout, currentVoice, currentCharacter, requestCameraCapture]
   );
 
-  // Speech recognition hook
+  // Speech recognition hook. Until the wake word config has loaded, it listens as if waiting.
   const { isListening, isSupported, start, stop, pause, resume } = useSpeechRecognition({
     onResult: handleSpeechResult,
     onInterimResult: setInterimText,
+    listeningForWakeWord: !wakeWordConfig || (isWakeWordEnabled && wakeWordMode === "waiting"),
   });
 
   // Pause speech recognition while speaking

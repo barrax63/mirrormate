@@ -7,9 +7,7 @@ export async function GET() {
     return NextResponse.json(config);
   } catch (error) {
     console.error("[WakeWord API] Error:", error);
-    return NextResponse.json(
-      { enabled: false, phrase: "Hey Mira", timeout: 15 },
-      { status: 200 }
-    );
+    // No fallback: one with the wake word off would send everything heard to stt.provider
+    return NextResponse.json({ error: "Failed to load the wake word config" }, { status: 500 });
   }
 }

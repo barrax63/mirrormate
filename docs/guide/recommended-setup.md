@@ -100,7 +100,7 @@ brew services start ollama
 ollama pull gpt-oss:20b
 ```
 
-### Start Docker Services (Whisper + PLaMo)
+### Start Docker Services (PLaMo)
 
 First, install Docker via [OrbStack](https://orbstack.dev/) (recommended for Apple Silicon):
 
@@ -117,8 +117,9 @@ docker compose -f compose.studio.yaml up -d
 ```
 
 This starts:
-- **faster-whisper** (:8080) - Speech-to-text, used when `stt.provider` is `local`
 - **PLaMo-Embedding-1B** (:8000) - Japanese-optimized text embedding
+
+Local Whisper runs next to the app, from `compose.yaml`.
 
 ### Verify Services
 
@@ -273,7 +274,7 @@ graph LR
 ### Mac Studio
 
 ```bash
-# Start services (Whisper + PLaMo)
+# Start services (PLaMo)
 docker compose -f compose.studio.yaml up -d
 
 # Stop services

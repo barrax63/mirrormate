@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useAudioRecorder } from "./useAudioRecorder";
-import { STTClientConfig, SilenceDetectionConfig } from "@/lib/stt";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { useAudioRecorder, type Take } from "./useAudioRecorder";
+import { STTClientConfig, STTPurpose, SilenceDetectionConfig } from "@/lib/stt";
 
 // Web Speech API types
 interface SpeechRecognitionEvent extends Event {
@@ -57,6 +57,11 @@ interface UseSpeechRecognitionOptions {
   lang?: string;
   /** Override provider selection from config */
   provider?: SpeechRecognitionProvider;
+  /**
+   * True while waiting for the wake word. Whisper recordings made at any point while it's true
+   * go to local Whisper only, and are cut short so a long talk can't delay the wake word.
+   */
+  listeningForWakeWord: boolean;
 }
 
 interface UseSpeechRecognitionReturn {
@@ -96,6 +101,7 @@ export function useSpeechRecognition({
   onVolumeChange,
   lang = "en-US",
   provider: providerOverride,
+  listeningForWakeWord,
 }: UseSpeechRecognitionOptions): UseSpeechRecognitionReturn {
   // State
   const [isListening, setIsListening] = useState(false);
@@ -115,6 +121,17 @@ export function useSpeechRecognition({
   const restartDelayRef = useRef(MIN_RESTART_DELAY_MS);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const sessionStartedAtRef = useRef<number | null>(null);
+
+  // Wake word refs, all times from Date.now()
+  const listeningForWakeWordRef = useRef(listeningForWakeWord);
+  // When the conversation started, or null while waiting for the wake word
+  const conversationSinceRef = useRef<number | null>(null);
+  // The last recording whose transcript arrived while waiting, which the wake word came from
+  const lastWaitingTakeRef = useRef<Take | null>(null);
+  // When the recording with the wake word stopped. Recordings that started earlier hold what
+  // the room said before it.
+  const wakeWordEndRef = useRef(0);
+  const transcriptionsRef = useRef(0);
 
   // Callback refs to avoid stale closures
   const onResultRef = useRef(onResult);
@@ -171,20 +188,32 @@ export function useSpeechRecognition({
    * Called when audio recording is complete
    */
   const handleWhisperTranscription = useCallback(
-    async (audioBlob: Blob) => {
+    async (audioBlob: Blob, take: Take) => {
+      // Wake word audio if it was waiting at any point during the recording
+      const conversationSince = conversationSinceRef.current;
+      const purpose: STTPurpose =
+        listeningForWakeWordRef.current ||
+        conversationSince === null ||
+        take.startedAt < conversationSince
+          ? "wakeWord"
+          : "speech";
+
+      // Recordings overlap while waiting, so several can be transcribed at once
+      transcriptionsRef.current++;
       setIsTranscribing(true);
       onInterimResultRef.current?.("...");
 
       try {
         const formData = new FormData();
         formData.append("audio", audioBlob, "audio.webm");
+        formData.append("purpose", purpose);
         // Use language from server config, fallback to prop, then convert BCP 47 to ISO 639-1
         const effectiveLang = sttConfig?.language || lang;
         const whisperLang = effectiveLang.split("-")[0];
         formData.append("language", whisperLang);
 
         console.log(
-          `[SpeechRecognition] Sending audio to Whisper: ${audioBlob.size} bytes`
+          `[SpeechRecognition] Sending audio to Whisper: ${audioBlob.size} bytes, purpose: ${purpose}`
         );
 
         const response = await fetch("/api/stt", {
@@ -199,6 +228,13 @@ export function useSpeechRecognition({
               `[SpeechRecognition] Whisper result: "${data.transcript}"`
             );
             onInterimResultRef.current?.("");
+            if (listeningForWakeWordRef.current) {
+              lastWaitingTakeRef.current = take;
+            } else if (take.startedAt < wakeWordEndRef.current) {
+              // Also heard the room before the wake word, or is the overlap of the one it was in
+              console.log("[SpeechRecognition] Ignoring a recording from before the wake word");
+              return;
+            }
             onResultRef.current(data.transcript);
           } else {
             console.log("[SpeechRecognition] Whisper returned empty transcript");
@@ -217,7 +253,10 @@ export function useSpeechRecognition({
         console.error("[SpeechRecognition] Whisper transcription error:", error);
         onInterimResultRef.current?.("");
       } finally {
-        setIsTranscribing(false);
+        transcriptionsRef.current--;
+        if (transcriptionsRef.current === 0) {
+          setIsTranscribing(false);
+        }
       }
     },
     [lang, sttConfig?.language]
@@ -255,6 +294,7 @@ export function useSpeechRecognition({
     hasAudioStarted,
     startRecording,
     stopRecording: stopAudioRecording,
+    dropTakes,
   } = useAudioRecorder({
     onAudioReady: handleWhisperTranscription,
     onVolumeChange: handleVolumeChange,
@@ -262,7 +302,26 @@ export function useSpeechRecognition({
     silenceConfig: sttConfig?.silenceDetection as
       | Partial<SilenceDetectionConfig>
       | undefined,
+    rolling: listeningForWakeWord ? (sttConfig?.wakeWord ?? null) : null,
   });
+
+  // A layout effect, so recordings see a change of mode as soon as possible
+  useLayoutEffect(() => {
+    listeningForWakeWordRef.current = listeningForWakeWord;
+    if (listeningForWakeWord) {
+      conversationSinceRef.current = null;
+      lastWaitingTakeRef.current = null;
+      return;
+    }
+
+    const now = Date.now();
+    const wakeWordEnd = lastWaitingTakeRef.current?.stoppedAt ?? now;
+    conversationSinceRef.current = now;
+    wakeWordEndRef.current = wakeWordEnd;
+    // Recordings from before the wake word ended hold what the room said before it, and ones
+    // that haven't heard anything yet would still go to local Whisper. A new one replaces them.
+    dropTakes((take) => take.startedAt < wakeWordEnd || take.voiceAt === null);
+  }, [listeningForWakeWord, dropTakes]);
 
   // Show interim feedback while recording (Whisper mode)
   useEffect(() => {

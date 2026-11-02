@@ -1,5 +1,6 @@
 # Points every provider at e2e/mock-backends.mjs. OpenAI gets there through OPENAI_BASE_URL
-# in playwright.config.ts, and ElevenLabs through tts.elevenlabs.baseUrl.
+# in playwright.config.ts, ElevenLabs through tts.elevenlabs.baseUrl, and local Whisper
+# through stt.local.baseUrl.
 providers:
   llm:
     enabled: true
@@ -22,8 +23,17 @@ providers:
   stt:
     enabled: true
     provider: openai
+    wakeWord:
+      provider: local
+      # Short, so tests reach the cut quickly
+      maxRecordingDuration: 2000
+      overlap: 1000
     openai:
       model: gpt-transcribe
+    local:
+      # Its own path, so tests can tell fake local Whisper from fake OpenAI
+      baseUrl: "http://127.0.0.1:11555/local-whisper"
+      model: Systran/faster-whisper-small
     silenceDetection:
       silenceThreshold: 0.1
 

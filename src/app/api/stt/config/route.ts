@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSTTClientConfig } from "@/lib/providers/stt";
+import { DEFAULT_WAKE_WORD_RECORDING } from "@/lib/stt";
 
 /**
  * GET /api/stt/config
@@ -9,6 +10,7 @@ import { getSTTClientConfig } from "@/lib/providers/stt";
  * - enabled: boolean - Whether STT is enabled
  * - provider: string - Current provider (openai, local, web)
  * - silenceDetection: object - Silence detection settings
+ * - wakeWord: object - How recordings are cut while waiting for the wake word
  * - language: string - Language code for transcription
  */
 export async function GET() {
@@ -29,6 +31,7 @@ export async function GET() {
         minRecordingDuration: 500,
         maxRecordingDuration: 60000,
       },
+      wakeWord: DEFAULT_WAKE_WORD_RECORDING,
       language: "en-US",
     });
   }

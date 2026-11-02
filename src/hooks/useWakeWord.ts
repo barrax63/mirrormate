@@ -33,19 +33,19 @@ export function useWakeWord({
   const [config, setConfig] = useState<WakeWordConfig | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch wake word config
+  // Fetch wake word config. Without one, the page treats everything heard as wake word audio,
+  // so a default with the wake word off would send it all to stt.provider.
   useEffect(() => {
     async function fetchConfig() {
       try {
         const res = await fetch("/api/wakeword");
-        if (res.ok) {
-          const data: WakeWordConfig = await res.json();
-          setConfig(data);
+        if (!res.ok) {
+          throw new Error(`Wake word config request failed: ${res.status}`);
         }
+        const data: WakeWordConfig = await res.json();
+        setConfig(data);
       } catch (error) {
         console.error("[WakeWord] Failed to fetch config:", error);
-        // Use default config
-        setConfig({ enabled: false, phrase: "Hey Mira", timeout: 15 });
       }
     }
     fetchConfig();

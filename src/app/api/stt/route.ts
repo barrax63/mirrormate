@@ -8,6 +8,8 @@ import { getCharacterNames } from "@/lib/character";
  *
  * Request: multipart/form-data
  * - audio: Blob (required) - Audio file (webm, mp3, wav, etc.)
+ * - purpose: "wakeWord" | "speech" (required) - wakeWord for anything heard while waiting for
+ *   the wake word, which only local Whisper transcribes, and speech for what's said after it
  * - language: string (optional) - Language code (e.g., "ja", "en")
  *
  * Response:
@@ -17,21 +19,31 @@ import { getCharacterNames } from "@/lib/character";
  */
 export async function POST(request: NextRequest) {
   try {
-    const provider = getSTTProvider();
+    const formData = await request.formData();
+    const audioFile = formData.get("audio") as File | null;
+    const language = formData.get("language") as string | null;
+    const purpose = formData.get("purpose");
+
+    if (purpose !== "wakeWord" && purpose !== "speech") {
+      return NextResponse.json(
+        { error: "Send the purpose of the recording as 'purpose': 'wakeWord' or 'speech'." },
+        { status: 400 }
+      );
+    }
+
+    const provider = getSTTProvider(purpose);
 
     if (!provider) {
       return NextResponse.json(
         {
           error:
-            "STT provider not configured. Set provider to 'openai' or 'local' in providers.yaml, or use Web Speech API on client.",
+            purpose === "wakeWord"
+              ? "No wake word provider. Set stt.wakeWord.provider to 'local' in providers.yaml: wake word audio never goes to a cloud service."
+              : "STT provider not configured. Set provider to 'openai' or 'local' in providers.yaml, or use Web Speech API on client.",
         },
         { status: 400 }
       );
     }
-
-    const formData = await request.formData();
-    const audioFile = formData.get("audio") as File | null;
-    const language = formData.get("language") as string | null;
 
     if (!audioFile) {
       return NextResponse.json(
@@ -74,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `[STT API] Transcribing: ${audioFile.size} bytes, type: ${audioFile.type}, provider: ${provider.getProviderName()}`
+      `[STT API] Transcribing: ${audioFile.size} bytes, type: ${audioFile.type}, purpose: ${purpose}, provider: ${provider.getProviderName()}`
     );
 
     // Convert File to Buffer

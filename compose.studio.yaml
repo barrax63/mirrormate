@@ -1,22 +1,11 @@
 # Mac Studio deployment
-# Run heavy services: PLaMo Embedding, Whisper (Ollama runs natively)
+# Run heavy services: PLaMo Embedding (Ollama runs natively, and Whisper runs next to the
+# app in compose.yaml)
 # Usage: docker compose -f compose.studio.yaml up -d
 
 name: mirrormate-studio
 
 services:
-  # faster-whisper-server (OpenAI API compatible)
-  # CPU version for Apple Silicon (M1/M2 Ultra is fast enough)
-  # For NVIDIA GPU, use: image: fedirz/faster-whisper-server:latest-cuda
-  faster-whisper:
-    image: fedirz/faster-whisper-server:latest-cpu
-    ports:
-      - "8080:8000"
-    environment:
-      - WHISPER__MODEL=large-v3 # tiny, base, small, medium, large-v3
-      - WHISPER__INFERENCE_DEVICE=cpu
-    restart: unless-stopped
-
   plamo-embedding:
     build:
       context: ./plamo-server

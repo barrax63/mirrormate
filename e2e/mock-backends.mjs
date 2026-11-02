@@ -1,6 +1,6 @@
 // Stands in for every external backend during e2e runs: OpenAI (LLM, transcription,
-// embeddings, vision) and ElevenLabs (speech, voices). It records each request so tests can
-// inspect it.
+// embeddings, vision), ElevenLabs (speech, voices) and local Whisper (transcription, under
+// /local-whisper). It records each request so tests can inspect it.
 // Like the real API, the fake OpenAI rejects parameters that gpt-6-luna and gpt-transcribe
 // don't accept.
 //
@@ -24,12 +24,13 @@ fs.mkdirSync(tmpDir, { recursive: true });
 
 const DEFAULT_AUDIO_MS = 50;
 // Transcribing takes longer than opening the mic, so the next recording starts before the
-// transcript arrives. Real OpenAI takes about 600 ms.
+// transcript arrives. Real OpenAI takes about 600 ms, and local Whisper about 1.2 s.
 const TRANSCRIPTION_MS = 300;
+// Recordings from e2e/fake-mic.js end with this, then the words said during them as JSON
+const TRANSCRIPT_MARK = Buffer.from("\nMOCK-TRANSCRIPT:");
 let audioMs = DEFAULT_AUDIO_MS;
-let transcriptionMs = TRANSCRIPTION_MS;
+let localWhisper = { down: false, ms: TRANSCRIPTION_MS };
 let log = [];
-let transcripts = [];
 let toolCallCount = 0;
 
 // Silent MPEG-1 Layer III frames at 128 kbps, 44.1 kHz and mono, the format the app asks
@@ -143,15 +144,38 @@ function countWebmFiles(audio) {
   return count;
 }
 
-// Answers with the next queued transcript, or nothing for silence, in gpt-transcribe's shape
-async function transcribe(req, res, raw) {
+// What was said during a recording, or nothing for one without the mark
+function heardIn(audio) {
+  const at = audio.lastIndexOf(TRANSCRIPT_MARK);
+  if (at === -1) return "";
+  try {
+    return JSON.parse(audio.subarray(at + TRANSCRIPT_MARK.length).toString());
+  } catch {
+    return "";
+  }
+}
+
+async function readUpload(req, raw) {
   const form = await new Response(raw, { headers: { "Content-Type": req.headers["content-type"] } }).formData();
   const file = form.get("file");
   const audio = Buffer.from(await file.arrayBuffer());
+  const description = {
+    name: file.name,
+    bytes: audio.length,
+    header: audio.subarray(0, 4).toString("hex"),
+    webmFiles: countWebmFiles(audio),
+  };
+  return { form, audio, description };
+}
+
+// Answers with what was said during the recording, in gpt-transcribe's shape
+async function transcribe(req, res, raw) {
+  const { form, audio, description } = await readUpload(req, raw);
   // The SDK sends arrays as repeated `name[]` fields, and the API also takes plain `name`
   const list = (name) => [...form.getAll(`${name}[]`), ...form.getAll(name)];
   const languages = list("languages");
   const responseFormat = form.get("response_format") ?? "json";
+  const text = heardIn(audio);
   log.push({
     kind: "stt",
     auth: req.headers.authorization,
@@ -160,12 +184,8 @@ async function transcribe(req, res, raw) {
     languages,
     keywords: list("keywords"),
     responseFormat,
-    audio: {
-      name: file.name,
-      bytes: audio.length,
-      header: audio.subarray(0, 4).toString("hex"),
-      webmFiles: countWebmFiles(audio),
-    },
+    audio: description,
+    text,
   });
 
   if (form.get("language") && languages.length > 0) {
@@ -175,9 +195,30 @@ async function transcribe(req, res, raw) {
     return sendOpenAIError(res, "response_format", `${responseFormat} isn't supported`);
   }
 
-  const text = transcripts.shift() ?? "";
   const reply = { text, languages: languages.slice(0, 1).map((code) => ({ code })), usage: { type: "duration", seconds: 1 } };
-  setTimeout(() => (responseFormat === "text" ? res.end(text) : sendJson(res, reply)), transcriptionMs);
+  setTimeout(() => (responseFormat === "text" ? res.end(text) : sendJson(res, reply)), TRANSCRIPTION_MS);
+}
+
+// Answers like speaches, which serves the same route as OpenAI. While it's down, it drops the
+// connection, as a stopped container would refuse it.
+async function transcribeLocally(req, res, raw) {
+  if (localWhisper.down) {
+    log.push({ kind: "local-stt", refused: true });
+    return req.socket.destroy();
+  }
+
+  const { form, audio, description } = await readUpload(req, raw);
+  const text = heardIn(audio);
+  log.push({
+    kind: "local-stt",
+    auth: req.headers.authorization,
+    model: form.get("model"),
+    language: form.get("language"),
+    audio: description,
+    text,
+  });
+
+  setTimeout(() => sendJson(res, { text }), localWhisper.ms);
 }
 
 // ElevenLabs' error shape. 401 covers a wrong key and running out of credits alike.
@@ -236,19 +277,22 @@ function handle(req, res, body, raw) {
       return sendJson(res, log);
     case "/__reset":
       log = [];
-      transcripts = [];
       audioMs = DEFAULT_AUDIO_MS;
-      transcriptionMs = TRANSCRIPTION_MS;
+      localWhisper = { down: false, ms: TRANSCRIPTION_MS };
       return sendJson(res, { ok: true });
     case "/__audio":
       audioMs = Number(url.searchParams.get("ms"));
       return sendJson(res, { audioMs });
-    case "/__transcription":
-      transcriptionMs = Number(url.searchParams.get("ms"));
-      return sendJson(res, { transcriptionMs });
-    case "/__transcript":
-      transcripts.push(body.text);
-      return sendJson(res, { queued: transcripts.length });
+    case "/__local-whisper":
+      localWhisper = { ...localWhisper, ...body };
+      return sendJson(res, localWhisper);
+
+    // Local Whisper, and the route LocalWhisperProvider falls back to
+    case "/local-whisper/v1/audio/transcriptions":
+      return transcribeLocally(req, res, raw);
+    case "/local-whisper/transcribe":
+      if (localWhisper.down) return req.socket.destroy();
+      return sendJson(res, { error: "mock: speaches has no such route" }, 404);
 
     // OpenAI
     case "/v1/chat/completions": {

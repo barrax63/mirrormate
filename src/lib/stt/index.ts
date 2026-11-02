@@ -12,11 +12,13 @@ export type {
   LocalWhisperConfig,
   WebSpeechConfig,
   SilenceDetectionConfig,
+  STTPurpose,
+  WakeWordRecordingConfig,
   STTConfig,
   STTClientConfig,
 } from "./types";
 
-export { DEFAULT_SILENCE_CONFIG } from "./types";
+export { DEFAULT_SILENCE_CONFIG, DEFAULT_WAKE_WORD_RECORDING } from "./types";
 
 // Providers
 export { OpenAIWhisperProvider } from "./openai-whisper";

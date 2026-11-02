@@ -38,9 +38,13 @@ test.describe("Japanese server", () => {
     await avatar.hear(`${phrase.replace(" ", "、")}。`);
 
     await expect(avatar.page.getByText("In Conversation")).toBeVisible();
-    const [recording] = await mock.transcriptions();
-    expect(recording.languages).toEqual(["ja"]);
-    expect(recording.keywords).toContain("ミラ");
+    const [wakeWord] = await mock.localTranscriptions();
+    expect(wakeWord.language).toBe("ja");
+
+    await avatar.hear("今何時");
+    const [speech] = await mock.transcriptions();
+    expect(speech.languages).toEqual(["ja"]);
+    expect(speech.keywords).toContain("ミラ");
   });
 
   test("gives the LLM a Japanese system prompt and rules", async ({ request, mock }) => {

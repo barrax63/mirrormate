@@ -4,14 +4,13 @@ Mirror Mate can be deployed using Docker with a recommended split architecture.
 
 ## Recommended Architecture
 
-Run heavy services on a powerful server (e.g., Mac Studio) and the UI on a lightweight device (e.g., Raspberry Pi), connected via Tailscale:
+Run heavy services on a powerful server (e.g., Mac Studio) and the UI on a lightweight device (e.g., Raspberry Pi), connected via Tailscale. Local Whisper runs next to the app, because it hears everything said in the room while the app waits for the wake word:
 
 ```mermaid
 flowchart TB
     subgraph Tailscale["Tailscale Network"]
         subgraph Studio["Mac Studio (studio)"]
             Ollama["Ollama (native)<br/>:11434"]
-            Whisper["faster-whisper (Docker)<br/>:8080"]
             PLaMo["PLaMo-Embedding (Docker)<br/>:8000"]
         end
 
@@ -20,15 +19,17 @@ flowchart TB
                 App["Next.js App"]
                 SQLite[(SQLite<br/>Memory)]
             end
+            Whisper["whisper (speaches)<br/>no published port"]
             Volume[("mirrormate-data<br/>volume")] -.-> SQLite
         end
 
         MM -->|http://studio:11434| Ollama
-        MM -->|http://studio:8080| Whisper
         MM -->|http://studio:8000| PLaMo
+        MM -->|"http://whisper:8000<br/>before the wake word"| Whisper
     end
 
     MM -->|HTTPS| ElevenLabs["ElevenLabs (cloud)<br/>speech"]
+    MM -->|"HTTPS<br/>after the wake word"| OpenAI["OpenAI (cloud)<br/>speech recognition"]
 ```
 
 ## Quick Start
@@ -50,14 +51,12 @@ docker compose -f compose.studio.yaml up -d
 ```
 
 This starts:
-- **faster-whisper** (:8080) - Speech-to-text (Whisper)
 - **PLaMo-Embedding-1B** (:8000) - Japanese-optimized embedding
 
 3. **Verify**
 
 ```bash
 curl http://localhost:11434/api/tags    # Ollama
-curl http://localhost:8080/health       # Whisper
 curl http://localhost:8000/health       # PLaMo
 ```
 
@@ -85,11 +84,12 @@ providers:
     provider: elevenlabs  # Needs ELEVENLABS_API_KEY in .env
 
   stt:
-    provider: local  # Use local Whisper instead of Web Speech API
+    provider: openai  # What's said after the wake word. Needs OPENAI_API_KEY in .env
+    wakeWord:
+      provider: local  # Everything heard before it, which stays on this machine
     local:
-      baseUrl: "http://studio:8080"  # Tailscale hostname
-      model: large-v3
-      language: ja
+      baseUrl: "http://whisper:8000"  # The whisper service in compose.yaml
+      model: Systran/faster-whisper-small
 
   embedding:
     provider: ollama
@@ -97,13 +97,15 @@ providers:
       baseUrl: "http://studio:8000"  # PLaMo server
 ```
 
-Inside the container, `studio` resolves to `STUDIO_IP` through `extra_hosts` in `compose.yaml`.
+Inside the container, `studio` resolves to `STUDIO_IP` through `extra_hosts` in `compose.yaml`, and `whisper` to the Whisper container.
 
-3. **Start UI**
+3. **Start the app and Whisper**
 
 ```bash
 docker compose up -d
 ```
+
+The first start downloads the Whisper model, about half a gigabyte, into the `whisper-models` volume. The app only starts once Whisper answers on `/health`, so this takes a minute or more.
 
 4. **Access**
 
@@ -111,7 +113,7 @@ Open http://localhost:3000
 
 ## Compose Files
 
-### compose.yaml (UI - Raspberry Pi)
+### compose.yaml (App and Whisper - Raspberry Pi)
 
 ```yaml
 services:
@@ -123,6 +125,7 @@ services:
       - "${BIND_ADDRESS:-127.0.0.1}:3000:3000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
       - GOOGLE_SERVICE_ACCOUNT_EMAIL=${GOOGLE_SERVICE_ACCOUNT_EMAIL}
       - GOOGLE_PRIVATE_KEY=${GOOGLE_PRIVATE_KEY}
       - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID}
@@ -133,26 +136,36 @@ services:
     volumes:
       - ./config:/app/config:ro
       - mirrormate-data:/app/data
+    depends_on:
+      whisper:
+        condition: service_healthy
+    restart: unless-stopped
+
+  whisper:
+    image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cpu@sha256:2163775b6df5e451a71200e8f675fed68dbd8ab184fc604453d549e486f22fd2
+    environment:
+      - 'PRELOAD_MODELS=["Systran/faster-whisper-small"]'
+      - ENABLE_UI=false
+      - WHISPER__INFERENCE_DEVICE=cpu
+      - STT_MODEL_TTL=-1  # keeps the model loaded
+    volumes:
+      - whisper-models:/home/ubuntu/.cache/huggingface/hub
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      # ...
     restart: unless-stopped
 
 volumes:
   mirrormate-data:
+  whisper-models:
 ```
+
+The image is pinned to a digest, so it can't change under you. `speaches` answers `model: small` with a 404, so `stt.local.model` needs the full ID.
 
 ### compose.studio.yaml (Services - Mac Studio)
 
 ```yaml
 services:
-  # Speech-to-Text (Whisper)
-  faster-whisper:
-    image: fedirz/faster-whisper-server:latest-cpu
-    ports:
-      - "8080:8000"
-    environment:
-      - WHISPER__MODEL=large-v3
-      - WHISPER__INFERENCE_DEVICE=cpu
-    restart: unless-stopped
-
   # Embedding
   plamo-embedding:
     build:
@@ -179,7 +192,7 @@ BIND_ADDRESS=100.x.x.x  # for example, this machine's Tailscale IP (tailscale ip
 - Browsers only allow the mic and camera on localhost or HTTPS, so the avatar page needs one of those for voice and vision.
 - `/control` must run in the same browser as the avatar page, so another device can only use it for pages that don't need the avatar, such as `/control/memory`.
 
-`compose.studio.yaml` publishes faster-whisper and PLaMo on all interfaces, also without authentication, because an app on another machine has to reach them. Ollama with `OLLAMA_HOST=0.0.0.0` is the same. Keep that machine on a trusted network, such as Tailscale, or restrict those ports with a firewall.
+The Whisper container publishes no port, so only the app can reach it. `compose.studio.yaml` publishes PLaMo on all interfaces, also without authentication, because an app on another machine has to reach it. Ollama with `OLLAMA_HOST=0.0.0.0` is the same. Keep that machine on a trusted network, such as Tailscale, or restrict those ports with a firewall.
 
 ## Data Persistence
 
@@ -234,34 +247,13 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 
 ## GPU Support
 
-### NVIDIA GPU (Linux)
+### Whisper
 
-For faster inference with NVIDIA GPU:
+`compose.yaml` runs Whisper on the CPU. On the x86 machine it was tested on, `small` took about 1.2 s per recording on 16 cores and 4.4 s on one, and used up to 2.6 GB of memory. It hasn't been measured on a Raspberry Pi, and a 2 GB Pi doesn't have the memory. On a machine that can't spare it, point `stt.local.baseUrl` at Whisper on another machine you trust with the room's audio, or use `Systran/faster-whisper-base`, which recognized the wake word less reliably in testing.
 
-```yaml
-services:
-  # Whisper with CUDA
-  faster-whisper:
-    image: fedirz/faster-whisper-server:latest-cuda
-    ports:
-      - "8080:8000"
-    environment:
-      - WHISPER__MODEL=large-v3
-      - WHISPER__INFERENCE_DEVICE=cuda
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-```
+`speaches` also publishes CUDA images, which haven't been tried with Mirror Mate.
 
 ### Apple Silicon (Mac Studio)
-
-Use CPU versions. Apple Silicon is fast enough for real-time inference:
-
-- **faster-whisper**: `large-v3` model processes 30s audio in ~15s
 
 Note: Metal GPU acceleration is not available in Docker containers.
 
@@ -281,23 +273,23 @@ Note: Metal GPU acceleration is not available in Docker containers.
 
 **Solution**: Config is mounted as read-only and cached when first loaded, so restart the container after editing it: `docker compose restart mirrormate`. No rebuild is needed.
 
-### Whisper not transcribing
+### Wake word not recognized
 
-**Error**: No transcription returned or empty response
+**Error**: The avatar never wakes, and the browser console shows `Whisper API error: 500`
+
+While local Whisper is down, the wake word stops working. Nothing heard is sent to `stt.provider` instead.
 
 **Solution**:
-1. Check faster-whisper container: `docker compose -f compose.studio.yaml ps`
-2. Check logs: `docker compose -f compose.studio.yaml logs faster-whisper`
-3. First request may be slow (model loading)
-4. Verify endpoint: `curl http://studio:8080/health`
-5. Check `providers.yaml` has `provider: local` (not `web`)
+1. Check the Whisper container: `docker compose ps whisper`
+2. Check logs: `docker compose logs whisper`
+3. A 404 in the app's log means `stt.local.model` isn't a full model ID such as `Systran/faster-whisper-small`
 
 ## Commands
 
 ### Mac Studio
 
 ```bash
-# Start Whisper and PLaMo Embedding
+# Start PLaMo Embedding
 docker compose -f compose.studio.yaml up -d
 
 # View logs
@@ -310,7 +302,7 @@ docker compose -f compose.studio.yaml down
 ### Raspberry Pi
 
 ```bash
-# Start UI
+# Start the app and Whisper
 docker compose up -d
 
 # View logs

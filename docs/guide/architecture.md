@@ -79,7 +79,7 @@ flowchart TB
         Ollama["Ollama<br/>(LLM/Embedding/VLM)"]
         OpenAI["OpenAI<br/>(LLM/STT)"]
         ElevenLabs["ElevenLabs<br/>(TTS)"]
-        Whisper["faster-whisper<br/>(STT)"]
+        Whisper["speaches<br/>(local STT, wake word)"]
         OpenMeteo["Open-Meteo<br/>(Weather)"]
         GoogleCal["Google Calendar"]
         OllamaSearch["Ollama Web Search<br/>(Search)"]
@@ -236,7 +236,8 @@ data/
       │
       ▼
 2. Speech recognition (useSpeechRecognition)
-   Web Speech API, or POST /api/stt for Whisper
+   Web Speech API, or POST /api/stt for Whisper: local Whisper
+   until the wake word, stt.provider after it
       │
       ▼
 3. Wake word check and camera capture

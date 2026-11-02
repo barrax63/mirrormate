@@ -112,6 +112,25 @@ export const DEFAULT_SILENCE_CONFIG: SilenceDetectionConfig = {
   maxRecordingDuration: 60000,
 };
 
+/** What a recording is for: finding the wake word, or what's said after it */
+export type STTPurpose = "wakeWord" | "speech";
+
+/**
+ * How recordings are cut while waiting for the wake word. Someone talking would otherwise
+ * delay the wake word until they stop.
+ */
+export interface WakeWordRecordingConfig {
+  /** Longest a recording runs after it first hears sound (ms) */
+  maxRecordingDuration: number;
+  /** How much earlier the next recording starts, so a phrase at the cut is whole in it (ms) */
+  overlap: number;
+}
+
+export const DEFAULT_WAKE_WORD_RECORDING: WakeWordRecordingConfig = {
+  maxRecordingDuration: 10000,
+  overlap: 3000,
+};
+
 /**
  * Full STT configuration
  */
@@ -137,5 +156,6 @@ export interface STTClientConfig {
   enabled: boolean;
   provider: string;
   silenceDetection: SilenceDetectionConfig;
+  wakeWord: WakeWordRecordingConfig;
   language: string;
 }

@@ -2,21 +2,29 @@ import { loadProvidersConfig } from "./config-loader";
 import { STTProviderConfig } from "./types";
 import {
   STTProvider,
+  STTPurpose,
   STTClientConfig,
+  WakeWordRecordingConfig,
   DEFAULT_SILENCE_CONFIG,
+  DEFAULT_WAKE_WORD_RECORDING,
   OpenAIWhisperProvider,
   LocalWhisperProvider,
 } from "../stt";
 
-let cachedProvider: STTProvider | null = null;
+const cachedProviders = new Map<STTPurpose, STTProvider>();
 
 /**
- * Get STT provider based on configuration
- * Returns null if provider is "web" (handled client-side) or disabled
+ * Get the STT provider for one purpose, based on configuration.
+ * Returns null if it's disabled, or for speech if the provider is "web" (handled client-side).
+ *
+ * Wake word audio only ever goes to local Whisper, so what's said in the room before the wake
+ * word stays on this machine. If that fails, so does the request: it never falls back to
+ * stt.provider.
  */
-export function getSTTProvider(): STTProvider | null {
-  if (cachedProvider) {
-    return cachedProvider;
+export function getSTTProvider(purpose: STTPurpose): STTProvider | null {
+  const cached = cachedProviders.get(purpose);
+  if (cached) {
+    return cached;
   }
 
   const config = loadProvidersConfig();
@@ -27,6 +35,17 @@ export function getSTTProvider(): STTProvider | null {
     return null;
   }
 
+  if (purpose === "wakeWord") {
+    const provider: string = sttConfig.wakeWord?.provider ?? "local";
+    if (provider !== "local") {
+      console.error(
+        `[STT] stt.wakeWord.provider is ${provider}, but only local is allowed: wake word audio stays on this machine`
+      );
+      return null;
+    }
+    return createProvider("local", sttConfig, purpose);
+  }
+
   const provider = sttConfig.provider || "web";
 
   // "web" provider is handled client-side via Web Speech API
@@ -35,32 +54,35 @@ export function getSTTProvider(): STTProvider | null {
     return null;
   }
 
-  if (provider === "openai") {
-    try {
-      cachedProvider = new OpenAIWhisperProvider(sttConfig.openai || {});
-      console.log("[STT] Using OpenAI Whisper");
-      return cachedProvider;
-    } catch (error) {
-      console.error("[STT] Failed to initialize OpenAI Whisper:", error);
-      return null;
-    }
-  }
-
-  if (provider === "local") {
-    try {
-      cachedProvider = new LocalWhisperProvider(sttConfig.local || {});
-      console.log(
-        `[STT] Using Local Whisper at ${sttConfig.local?.baseUrl || "http://localhost:8080"}`
-      );
-      return cachedProvider;
-    } catch (error) {
-      console.error("[STT] Failed to initialize Local Whisper:", error);
-      return null;
-    }
+  if (provider === "openai" || provider === "local") {
+    return createProvider(provider, sttConfig, purpose);
   }
 
   console.warn(`[STT] Unknown provider: ${provider}, falling back to web`);
   return null;
+}
+
+function createProvider(
+  provider: "openai" | "local",
+  sttConfig: STTProviderConfig,
+  purpose: STTPurpose
+): STTProvider | null {
+  try {
+    const created =
+      provider === "openai"
+        ? new OpenAIWhisperProvider(sttConfig.openai || {})
+        : new LocalWhisperProvider(sttConfig.local || {});
+    cachedProviders.set(purpose, created);
+    console.log(
+      provider === "openai"
+        ? `[STT] Using OpenAI Whisper for ${purpose}`
+        : `[STT] Using Local Whisper at ${sttConfig.local?.baseUrl || "http://localhost:8080"} for ${purpose}`
+    );
+    return created;
+  } catch (error) {
+    console.error(`[STT] Failed to initialize ${provider} for ${purpose}:`, error);
+    return null;
+  }
 }
 
 /**
@@ -74,6 +96,19 @@ export function getSTTConfig(): STTProviderConfig {
       provider: "web",
     }
   );
+}
+
+/** stt.wakeWord's recording settings, with the defaults for any that are missing or invalid */
+function getWakeWordRecordingConfig(config: STTProviderConfig): WakeWordRecordingConfig {
+  const { maxRecordingDuration, overlap } = config.wakeWord ?? {};
+  const max =
+    typeof maxRecordingDuration === "number" && maxRecordingDuration > 0
+      ? maxRecordingDuration
+      : DEFAULT_WAKE_WORD_RECORDING.maxRecordingDuration;
+  const validOverlap =
+    typeof overlap === "number" && overlap >= 0 ? overlap : DEFAULT_WAKE_WORD_RECORDING.overlap;
+  // Each recording has to run for a while on its own, or they would pile up
+  return { maxRecordingDuration: max, overlap: validOverlap < max ? validOverlap : max / 2 };
 }
 
 /**
@@ -101,14 +136,15 @@ export function getSTTClientConfig(): STTClientConfig {
       ...DEFAULT_SILENCE_CONFIG,
       ...config.silenceDetection,
     },
+    wakeWord: getWakeWordRecordingConfig(config),
     language,
   };
 }
 
 /**
- * Clear the cached STT provider
+ * Clear the cached STT providers
  * Useful for testing or when configuration changes
  */
 export function clearSTTProviderCache(): void {
-  cachedProvider = null;
+  cachedProviders.clear();
 }

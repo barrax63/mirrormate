@@ -22,14 +22,24 @@ providers:
 
   stt:
     enabled: true
-    provider: web  # openai, local, or web
+    # openai, local, or web. Hears what's said after the wake word. With the wake word off
+    # (wakeWord.enabled: false in config/locales/*/character.yaml), it hears everything said
+    # in the room.
+    provider: openai
+    wakeWord:
+      # Hears everything said in the room while waiting for the wake word. Only local is
+      # allowed, so none of it leaves this machine. If local Whisper is down, the wake word
+      # stops working: nothing falls back to provider.
+      provider: local
+      maxRecordingDuration: 10000  # ms after sound starts that a recording is cut, so talk can't delay the wake word
+      overlap: 3000                # ms the next recording starts before the cut, so the phrase is whole in one
     openai:
       model: gpt-transcribe
       # language is loaded from locale preset
       temperature: 0
     local:
-      baseUrl: "http://studio:8080"  # faster-whisper-server
-      model: large-v3
+      baseUrl: "http://whisper:8000"  # speaches, in compose.yaml
+      model: Systran/faster-whisper-small  # the full ID: speaches answers "small" with a 404
       # language is loaded from locale preset
     web:
       # language is loaded from locale preset

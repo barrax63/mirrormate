@@ -18,7 +18,9 @@ providers:
 
   stt:
     enabled: true
-    provider: web  # openai, local, or web
+    provider: openai  # openai, local, or web
+    wakeWord:
+      provider: local
     # ...
 
   vlm:
@@ -189,7 +191,34 @@ STT providers enable speech recognition for voice input. Mirror Mate supports mu
 |----------|-------------|------------------|----------|
 | Web Speech API | Browser native (Chrome/Edge) | No | Good |
 | OpenAI | Cloud API (`gpt-transcribe`) | Yes | Excellent |
-| Local Whisper | Self-hosted (faster-whisper) | No | Excellent |
+| Local Whisper | Self-hosted (`speaches`) | No | Good with `small` |
+
+### Wake Word Audio
+
+While Mirror Mate waits for the wake word, it records everything said in the room, including by guests and the TV, to look for the phrase. That audio only goes to local Whisper, so it stays on your machine. `stt.provider` only hears what's said after the wake word.
+
+```yaml
+providers:
+  stt:
+    enabled: true
+    provider: openai  # What's said after the wake word
+    wakeWord:
+      provider: local  # Everything heard before it
+      maxRecordingDuration: 10000
+      overlap: 3000
+    local:
+      baseUrl: "http://whisper:8000"
+      model: Systran/faster-whisper-small
+```
+
+- `local` is the only choice for `wakeWord.provider`, and the default. Any other value turns the wake word off rather than send room audio elsewhere.
+- If local Whisper is down, the wake word stops working, and the browser console shows the error. Nothing falls back to `stt.provider`.
+- A recording counts as wake word audio if Mirror Mate was waiting for the wake word at any point while it was made, such as one that started in a conversation that timed out before it ended.
+- While waiting, a recording is cut `maxRecordingDuration` ms after its sound starts, so someone talking can't delay the wake word until they stop. The next recording starts `overlap` ms before the cut, so a phrase said at the cut is whole in it. The overlap has to be longer than the phrase, and shorter than `maxRecordingDuration`.
+
+::: warning
+With the wake word off (`wakeWord.enabled: false` in the [character config](character.md)), there's nothing to wait for, so everything said in the room goes to `stt.provider`. With `provider: openai`, that means OpenAI hears and bills it all.
+:::
 
 ### Web Speech API (Default)
 
@@ -227,41 +256,34 @@ The provider sends the language as `languages`, and the names of the configured 
 **Pros**: Excellent accuracy, many languages, returned nothing for silence and noise in testing, where Whisper invents text
 **Cons**: API cost ($0.0045/minute), requires internet
 
-### Local Whisper (faster-whisper)
+### Local Whisper (speaches)
 
-Self-hosted Whisper for privacy and cost savings. Uses [faster-whisper-server](https://github.com/fedirz/faster-whisper-server) with OpenAI-compatible API.
+Self-hosted Whisper, which hears the wake word, and everything else too with `provider: local`. `compose.yaml` runs [speaches](https://github.com/speaches-ai/speaches) next to the app, with an OpenAI-compatible API and no published port.
 
 ```yaml
 providers:
   stt:
     enabled: true
-    provider: local
+    provider: local  # Or keep openai, and use local Whisper only for the wake word
     local:
-      baseUrl: "http://studio:8080"  # Your whisper server
-      model: large-v3  # tiny, base, small, medium, large-v3
+      baseUrl: "http://whisper:8000"  # The whisper service in compose.yaml
+      model: Systran/faster-whisper-small
       language: ja
 ```
 
-#### Setup with Docker
-
-```bash
-# On Mac Studio (or any server)
-docker compose -f compose.studio.yaml up -d faster-whisper
-```
+`speaches` answers short names such as `small` with a 404, so give the full model ID. `compose.yaml` downloads `Systran/faster-whisper-small` on the first start.
 
 See [Docker Documentation](/guide/docker) for details.
 
 #### Models
 
-| Model | Size | Accuracy | Speed (30s audio) |
-|-------|------|----------|-------------------|
-| `tiny` | 39M | Low | ~2s |
-| `base` | 74M | Medium | ~4s |
-| `small` | 244M | Good | ~8s |
-| `medium` | 769M | Very Good | ~12s |
-| `large-v3` | 1.5G | Excellent | ~15s |
+Measured on one x86 machine, on the wake word in English and German. `small` ran on `speaches`, and the others on an older Whisper server, which used about 0.4 GB less for `small`:
 
-*Speed measured on Apple M1/M2 Ultra (CPU mode)*
+| Model | Wake words recognized | Per recording, 16 cores | Memory |
+|-------|-----------------------|-------------------------|--------|
+| `Systran/faster-whisper-tiny` | Fewest, with misspellings such as "Kalumira" | ~0.3 s | ~0.7 GB |
+| `Systran/faster-whisper-base` | All of one real voice, fewer synthesized ones | ~0.5 s | ~0.9 GB |
+| `Systran/faster-whisper-small` | Most | ~1.2 s | ~2.6 GB |
 
 ### Silence Detection
 
@@ -288,7 +310,10 @@ providers:
 
 | Option | Type | Description | Default |
 |--------|------|-------------|---------|
-| `provider` | string | `web`, `openai`, or `local` | `web` |
+| `provider` | string | `web`, `openai`, or `local`, for what's said after the wake word | `web` |
+| `wakeWord.provider` | string | `local`, for everything heard before the wake word | `local` |
+| `wakeWord.maxRecordingDuration` | number | While waiting, ms after its sound starts that a recording is cut | `10000` |
+| `wakeWord.overlap` | number | ms the next recording starts before the cut | `3000` |
 | `openai.model` | string | OpenAI transcription model | `gpt-transcribe` |
 | `openai.language` | string | Language code (ISO 639-1) | auto |
 | `local.baseUrl` | string | Whisper server URL | `http://localhost:8080` |

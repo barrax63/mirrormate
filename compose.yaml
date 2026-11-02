@@ -1,5 +1,6 @@
 # Production deployment (Raspberry Pi / any host)
-# Runs UI only, connects to Mac Studio via Tailscale for heavy services
+# Runs the app and local Whisper, and connects to Mac Studio via Tailscale for the other
+# heavy services
 # Usage: docker compose up -d
 #
 # Set STUDIO_IP in .env to the machine running them:
@@ -27,7 +28,35 @@ services:
     volumes:
       - ./config:/app/config:ro
       - mirrormate-data:/app/data
+    depends_on:
+      whisper:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Local Whisper (speaches), at http://whisper:8000 in config/providers.yaml. It hears
+  # everything said in the room while the app waits for the wake word, so that stays on this
+  # machine. No port is published, so only the app can reach it.
+  whisper:
+    image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cpu@sha256:2163775b6df5e451a71200e8f675fed68dbd8ab184fc604453d549e486f22fd2
+    environment:
+      - 'PRELOAD_MODELS=["Systran/faster-whisper-small"]'
+      - ENABLE_UI=false
+      - WHISPER__INFERENCE_DEVICE=cpu
+      # Keeps the model loaded. Otherwise it's unloaded after 5 quiet minutes, and the next
+      # wake word waits a second longer while it loads again.
+      - STT_MODEL_TTL=-1
+    volumes:
+      - whisper-models:/home/ubuntu/.cache/huggingface/hub
+    healthcheck:
+      # Answers only once the model is downloaded, which the first start does
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10m
+      start_interval: 2s
     restart: unless-stopped
 
 volumes:
   mirrormate-data:
+  whisper-models:
