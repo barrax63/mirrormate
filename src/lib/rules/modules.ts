@@ -4,6 +4,8 @@ import * as yaml from "js-yaml";
 import dns from "dns";
 import { ModulesConfig, ModuleConfig, RuleAction, ModuleResult } from "./types";
 import { getFeatureContext } from "../features/registry";
+import { loadFeaturesConfig } from "../features/config-loader";
+import { getTimePreset } from "../presets";
 import { executeTool } from "../tools";
 import { getLocale, type Locale } from "../app";
 
@@ -73,10 +75,18 @@ const wikipediaSettings = {
   },
 } as const;
 
+// Today in the time feature's timezone. The server's own date can differ, and is UTC in Docker.
+function getToday(): { month: number; day: number } {
+  const timeZone = loadFeaturesConfig().features.time?.timezone || getTimePreset().timezone;
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, month: "numeric", day: "numeric" }).formatToParts(
+    new Date()
+  );
+  const getPart = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return { month: getPart("month"), day: getPart("day") };
+}
+
 async function fetchTodayInfo(): Promise<string> {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
+  const { month, day } = getToday();
   const locale = getLocale();
   const settings = wikipediaSettings[locale] || wikipediaSettings.en;
 
