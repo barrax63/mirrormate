@@ -15,6 +15,8 @@ interface Message {
   content: string;
   timestamp: Date;
   hasImage?: boolean;
+  /** A notice shown when a request failed, which the LLM never wrote */
+  isError?: boolean;
 }
 
 interface BroadcastMessage {
@@ -154,10 +156,12 @@ export default function ControlPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            messages: [...messages, userMessage].map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
+            messages: [...messages, userMessage]
+              .filter((m) => !m.isError)
+              .map((m) => ({
+                role: m.role,
+                content: m.content,
+              })),
             characterId: selectedCharacter || undefined,
             image: capturedImage || undefined,
           }),
@@ -201,6 +205,7 @@ export default function ControlPage() {
           role: "assistant",
           content: "Connection interrupted.",
           timestamp: new Date(),
+          isError: true,
         };
         setMessages((prev) => [...prev, errorMessage]);
         broadcast({ type: "response", payload: "Connection interrupted." });
