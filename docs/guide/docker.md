@@ -275,7 +275,7 @@ Note: Metal GPU acceleration is not available in Docker containers.
 
 ### Wake word not recognized
 
-**Error**: The avatar never wakes, and the browser console shows `Whisper API error: 500`
+**Error**: The avatar never wakes, and says "Wake word: Local Whisper can't be reached." or "Local Whisper returned an error."
 
 While local Whisper is down, the wake word stops working. Nothing heard is sent to `stt.provider` instead.
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { loadProvidersConfig } from "@/lib/providers/config-loader";
 import type { TTSProviderConfig } from "@/lib/providers/types";
 import { getLocale } from "@/lib/app";
+import { serviceErrorResponse } from "@/lib/errors/classify";
 import {
   ELEVENLABS_MODEL,
   ELEVENLABS_VOICE_ID,
@@ -88,10 +89,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ audio: audioBase64 });
   } catch (error) {
-    console.error("TTS API error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate audio" },
-      { status: 500 }
-    );
+    // A failed fetch here can only have been on its way to ElevenLabs
+    return serviceErrorResponse(error, "TTS API", "elevenlabs");
   }
 }

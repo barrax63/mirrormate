@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { routeErrorFrom, type ServiceErrorReporter } from "@/lib/errors/service-errors";
 
 export interface Voice {
   id: string;
@@ -22,7 +23,12 @@ const STORAGE_KEY = "mirrormate:voice";
 // Held a speaker number from the old speech engine, which means nothing to ElevenLabs
 const OLD_STORAGE_KEY = "mirrormate:speaker";
 
-export function useVoiceSelector(): UseVoiceSelectorReturn {
+interface UseVoiceSelectorOptions {
+  /** Told how each preview's speech request went */
+  serviceErrors?: ServiceErrorReporter;
+}
+
+export function useVoiceSelector({ serviceErrors }: UseVoiceSelectorOptions = {}): UseVoiceSelectorReturn {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedVoice, setSelectedVoiceState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -120,9 +126,14 @@ export function useVoiceSelector(): UseVoiceSelectorReturn {
       });
 
       if (!response.ok) {
-        throw new Error("TTS failed");
+        const error = await routeErrorFrom(response);
+        console.error("Preview failed:", response.status, error);
+        serviceErrors?.failed("tts", error);
+        setIsPreviewPlaying(false);
+        return;
       }
 
+      serviceErrors?.succeeded("tts");
       const data = await response.json();
 
       if (data.audio) {
@@ -153,7 +164,7 @@ export function useVoiceSelector(): UseVoiceSelectorReturn {
       console.error("Preview failed");
       setIsPreviewPlaying(false);
     }
-  }, [isPreviewPlaying]);
+  }, [isPreviewPlaying, serviceErrors]);
 
   return {
     voices,

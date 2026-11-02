@@ -10,6 +10,13 @@ export const JPEG_DATA_URL = /^data:image\/jpeg;base64,/;
 
 const MOCK_URL = "http://127.0.0.1:11555";
 
+/** An error for a fake backend to answer with, see MockBackends.fail */
+export interface Failure {
+  status: 401 | 429 | 500 | 503 | null;
+  code?: string;
+  retryAfter?: number;
+}
+
 /** One recording made through fake-mic.js, with the words said during it */
 export interface Recording {
   startedAt: number;
@@ -96,11 +103,11 @@ export class AvatarPage extends RecordedPage {
     await this.page.mouse.click(5, 5);
   }
 
-  /** Says this into the mic once it's listening, and waits for the transcript */
-  async hear(text: string) {
+  /** Says this into the mic once it's listening, and waits for the transcript, or the error with failing */
+  async hear(text: string, { failing = false } = {}) {
     const transcribed = this.page.waitForResponse("**/api/stt");
     await this.say(text);
-    expect((await transcribed).ok()).toBe(true);
+    expect((await transcribed).ok()).toBe(!failing);
   }
 
   /** Says this into the mic once it's listening, over this many milliseconds */
@@ -318,6 +325,14 @@ export class MockBackends {
   /** Makes the fake local Whisper drop every connection, or take this long to answer */
   async setLocalWhisper(state: { down?: boolean; ms?: number }) {
     await this.request.post(`${MOCK_URL}/__local-whisper`, { data: state });
+  }
+
+  /**
+   * Makes a backend answer every request with this error, as the real one does, until reset or
+   * a status of null. code is OpenAI's error code, or ElevenLabs' detail.status.
+   */
+  async fail(api: "transcription" | "chat" | "speech" | "localWhisper", failure: Failure) {
+    await this.request.post(`${MOCK_URL}/__fail`, { data: { api, ...failure } });
   }
 
   /** Speech requests that reached the fake ElevenLabs, oldest first */

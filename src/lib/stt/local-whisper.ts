@@ -4,6 +4,7 @@ import {
   TranscribeResult,
   LocalWhisperConfig,
 } from "./types";
+import { ServiceError } from "../errors/service-error";
 
 /**
  * Local Whisper STT Provider
@@ -78,7 +79,9 @@ export class LocalWhisperProvider implements STTProvider {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(
+        throw new ServiceError(
+          response.status >= 502 && response.status <= 504 ? "unavailable" : "failed",
+          "localWhisper",
           `Local Whisper API error: ${response.status} - ${errorText}`
         );
       }
@@ -123,8 +126,18 @@ export class LocalWhisperProvider implements STTProvider {
           duration: altData.duration,
         };
       } catch {
-        // Re-throw original error with more context
-        throw new Error(
+        // Re-throw original error with more context. One that isn't an error status means the
+        // server couldn't be reached.
+        if (error instanceof ServiceError) {
+          throw new ServiceError(
+            error.code,
+            "localWhisper",
+            `[LocalWhisperProvider] Local Whisper server at ${this.baseUrl} failed: ${error.message}`
+          );
+        }
+        throw new ServiceError(
+          "unavailable",
+          "localWhisper",
           `[LocalWhisperProvider] Failed to connect to local Whisper server at ${this.baseUrl}: ${error instanceof Error ? error.message : "Unknown error"}`
         );
       }

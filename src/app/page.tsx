@@ -11,6 +11,9 @@ import { useAvatarState } from "@/hooks/useAvatarState";
 import { useAnimationController } from "@/hooks/useAnimationController";
 import { useLongThinkingPulse } from "@/hooks/useLongThinkingPulse";
 import { useVisionEnabled } from "@/hooks/useVisionEnabled";
+import { useServiceErrors } from "@/hooks/useServiceErrors";
+import { ServiceErrorList } from "@/components/ServiceErrorList";
+import { routeErrorFrom } from "@/lib/errors/service-errors";
 import { DEFAULT_HISTORY_LIMIT, historyLimitFrom, trimHistory } from "@/lib/chat/history";
 import { FloatingInfo, InfoCard, detectInfoFromResponse } from "@/components/FloatingInfo";
 import PluginRenderer from "@/components/PluginRenderer";
@@ -50,6 +53,9 @@ export default function AvatarPage() {
     resolve: (image: string | null) => void;
     timeout: NodeJS.Timeout;
   } | null>(null);
+
+  // Failed requests, shown on the page and /control, and when to try again
+  const { errors: serviceErrorList, reporter: serviceErrors } = useServiceErrors();
 
   // Read through a ref, so the capture below always sees the current setting
   const { visionEnabled } = useVisionEnabled();
@@ -361,6 +367,47 @@ export default function AvatarPage() {
     });
   }, [analyzeAudio]);
 
+  // Asks /api/tts for speech and plays it. Reports how it went, and waits after a rejected key,
+  // no credit or a rate limit. Returns whether there was audio to play.
+  const speak = useCallback(
+    async (text: string, voice: string | undefined): Promise<boolean> => {
+      if (serviceErrors.isBackingOff("tts")) {
+        console.log("[Avatar] Not asking for speech: it failed, waiting before trying again");
+        return false;
+      }
+
+      let audio: string | null;
+      try {
+        const res = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, voice }),
+        });
+        if (!res.ok) {
+          const error = await routeErrorFrom(res);
+          console.error("[Avatar] TTS API failed:", res.status, error);
+          serviceErrors.failed("tts", error);
+          return false;
+        }
+        serviceErrors.succeeded("tts");
+        ({ audio } = await res.json());
+      } catch (e) {
+        console.error("[Avatar] TTS error:", e);
+        // The app's own server didn't answer
+        serviceErrors.failed("tts", { code: "unavailable" });
+        return false;
+      }
+
+      if (!audio) {
+        console.warn("[Avatar] TTS returned no audio data");
+        return false;
+      }
+      await playAudio(audio);
+      return true;
+    },
+    [serviceErrors, playAudio]
+  );
+
   // Handle reminder notifications
   const handleReminder = useCallback(
     async (reminder: Reminder) => {
@@ -380,25 +427,10 @@ export default function AvatarPage() {
       if (!isSpeaking && !isProcessing) {
         const message = tReminder("message", { timeText, summary: reminder.summary });
         setDisplayText(message);
-
-        try {
-          const res = await fetch("/api/tts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: message, voice: currentVoice ?? undefined }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.audio) {
-              await playAudio(data.audio);
-            }
-          }
-        } catch (e) {
-          console.error("Reminder TTS error:", e);
-        }
+        await speak(message, currentVoice ?? undefined);
       }
     },
-    [isSpeaking, isProcessing, playAudio, currentVoice, tReminder]
+    [isSpeaking, isProcessing, speak, currentVoice, tReminder]
   );
 
   // Reminder hook (config loaded from YAML)
@@ -432,6 +464,11 @@ export default function AvatarPage() {
         }
       }
 
+      if (serviceErrors.isBackingOff("chat")) {
+        console.log("[Avatar] Not asking for a reply: it failed, waiting before trying again");
+        return;
+      }
+
       setIsProcessing(true);
       setUserText(transcript);
       setInterimText("");
@@ -461,6 +498,7 @@ export default function AvatarPage() {
         });
 
         if (res.ok) {
+          serviceErrors.succeeded("chat");
           const data = await res.json();
           setIsThinking(false);
           setDisplayText(data.message);
@@ -489,31 +527,24 @@ export default function AvatarPage() {
 
           // Play TTS
           if (data.message) {
-            const ttsRes = await fetch("/api/tts", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text: data.message, voice: currentVoice ?? undefined }),
-            });
-
-            if (ttsRes.ok) {
-              const ttsData = await ttsRes.json();
-              if (ttsData.audio) {
-                await playAudio(ttsData.audio);
-              }
-            }
+            await speak(data.message, currentVoice ?? undefined);
           }
         } else {
-          console.error("Chat error:", res.status);
+          const error = await routeErrorFrom(res);
+          console.error("Chat error:", res.status, error);
+          serviceErrors.failed("chat", error);
           setIsThinking(false);
         }
       } catch (e) {
         console.error("Chat error:", e);
+        // The app's own server didn't answer
+        serviceErrors.failed("chat", { code: "unavailable" });
         setIsThinking(false);
       } finally {
         setIsProcessing(false);
       }
     },
-    [isProcessing, isSpeaking, playAudio, wakeWordConfig, isWakeWordEnabled, wakeWordMode, checkForWakeWord, resetWakeWordTimeout, currentVoice, currentCharacter, requestCameraCapture]
+    [isProcessing, isSpeaking, speak, serviceErrors, wakeWordConfig, isWakeWordEnabled, wakeWordMode, checkForWakeWord, resetWakeWordTimeout, currentVoice, currentCharacter, requestCameraCapture]
   );
 
   // Speech recognition hook. Until the wake word config has loaded, it listens as if waiting.
@@ -521,6 +552,7 @@ export default function AvatarPage() {
     onResult: handleSpeechResult,
     onInterimResult: setInterimText,
     listeningForWakeWord: !wakeWordConfig || (isWakeWordEnabled && wakeWordMode === "waiting"),
+    serviceErrors,
   });
 
   // Pause speech recognition while speaking
@@ -585,44 +617,24 @@ export default function AvatarPage() {
           break;
         case "play_audio":
           if (payload) {
-            // Call TTS API and play audio
+            // Parse payload - can be JSON object with text and voice, or plain text string
+            let text = payload;
+            let voice: string | undefined;
+
             try {
-              // Parse payload - can be JSON object with text and voice, or plain text string
-              let text = payload;
-              let voice: string | undefined;
-
-              try {
-                const parsed = JSON.parse(payload);
-                if (typeof parsed === "object" && parsed.text) {
-                  text = parsed.text;
-                  voice = parsed.voice ?? currentVoice ?? undefined;
-                }
-              } catch {
-                // Not JSON, use as plain text
-                voice = currentVoice ?? undefined;
+              const parsed = JSON.parse(payload);
+              if (typeof parsed === "object" && parsed.text) {
+                text = parsed.text;
+                voice = parsed.voice ?? currentVoice ?? undefined;
               }
+            } catch {
+              // Not JSON, use as plain text
+              voice = currentVoice ?? undefined;
+            }
 
-              console.log("[Avatar] play_audio: requesting TTS", { text: text.substring(0, 50), voice });
-
-              const res = await fetch("/api/tts", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text, voice }),
-              });
-              if (res.ok) {
-                const data = await res.json();
-                if (data.audio) {
-                  console.log("[Avatar] TTS success, playing audio...");
-                  await playAudio(data.audio);
-                  console.log("[Avatar] Audio playback finished");
-                } else {
-                  console.warn("[Avatar] TTS returned no audio data");
-                }
-              } else {
-                console.error("[Avatar] TTS API failed:", res.status, await res.text());
-              }
-            } catch (e) {
-              console.error("[Avatar] TTS error:", e);
+            console.log("[Avatar] play_audio: requesting TTS", { text: text.substring(0, 50), voice });
+            if (await speak(text, voice)) {
+              console.log("[Avatar] Audio playback finished");
             }
           }
           break;
@@ -676,7 +688,7 @@ export default function AvatarPage() {
           break;
       }
     },
-    [playAudio, start, stop, broadcastMicStatus, speechEnabled, isListening, currentVoice]
+    [speak, start, stop, broadcastMicStatus, speechEnabled, isListening, currentVoice]
   );
 
   // Callback ref, so the channel below can stay open while the handler changes
@@ -786,6 +798,12 @@ export default function AvatarPage() {
           </div>
         )}
       </div>
+
+      {/* Why voice isn't working, under the mic status */}
+      <ServiceErrorList
+        errors={serviceErrorList}
+        className="absolute top-10 right-4 max-w-sm space-y-1 text-right text-xs text-red-300/80 z-30"
+      />
 
       {/* User Message - Top */}
       <div className="w-full h-[15%] flex items-end justify-center px-8 pb-4">

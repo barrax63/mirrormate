@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSTTProvider } from "@/lib/providers/stt";
 import { getCharacterNames } from "@/lib/character";
+import { serviceErrorResponse } from "@/lib/errors/classify";
 
 /**
  * POST /api/stt
@@ -16,6 +17,8 @@ import { getCharacterNames } from "@/lib/character";
  * - transcript: string - Transcribed text
  * - language: string (optional) - Detected language
  * - duration: number (optional) - Audio duration in seconds
+ *
+ * On failure: error, and code and service saying why (see src/lib/errors/service-error.ts)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -34,15 +37,13 @@ export async function POST(request: NextRequest) {
     const provider = getSTTProvider(purpose);
 
     if (!provider) {
-      return NextResponse.json(
-        {
-          error:
-            purpose === "wakeWord"
-              ? "No wake word provider. Set stt.wakeWord.provider to 'local' in providers.yaml: wake word audio never goes to a cloud service."
-              : "STT provider not configured. Set provider to 'openai' or 'local' in providers.yaml, or use Web Speech API on client.",
-        },
-        { status: 400 }
-      );
+      const error =
+        purpose === "wakeWord"
+          ? "No wake word provider. Set stt.wakeWord.provider to 'local' in providers.yaml: wake word audio never goes to a cloud service."
+          : "STT provider not configured. Set provider to 'openai' or 'local' in providers.yaml, or use Web Speech API on client.";
+      // The page tells the user to look here
+      console.error(`[STT API] ${error}`);
+      return NextResponse.json({ error, code: "failed" }, { status: 400 });
     }
 
     if (!audioFile) {
@@ -109,11 +110,6 @@ export async function POST(request: NextRequest) {
       duration: result.duration,
     });
   } catch (error) {
-    console.error("[STT API] Error:", error);
-
-    const errorMessage =
-      error instanceof Error ? error.message : "Failed to transcribe audio";
-
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return serviceErrorResponse(error, "STT API");
   }
 }

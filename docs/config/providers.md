@@ -177,7 +177,7 @@ Speech follows the app's locale. Emoji and markdown are removed before speaking,
 
 The voice selector on `/control` lists the account's voices, the default ones and any you've added, as they were when the app started. Restart it to see voices added since. A character's `recommendedVoice` in `characters.yaml` is a voice ID from that list, and picking the character picks its voice.
 
-The free plan includes 10,000 credits a month. `eleven_v4_turbo` cost 0.2 to 0.5 credits per character in testing, so a 100-character reply costs 20 to 50. When credits run out, ElevenLabs answers with a 401 whose `detail.status` is `quota_exceeded`, and replies appear on screen without being spoken.
+The free plan includes 10,000 credits a month. `eleven_v4_turbo` cost 0.2 to 0.5 credits per character in testing, so a 100-character reply costs 20 to 50. When credits run out, ElevenLabs answers with a 401 whose `detail.status` is `quota_exceeded`. Replies then appear on screen without being spoken, and both pages say "Speech: ElevenLabs is out of credit." See [When something fails](#when-something-fails).
 
 ---
 
@@ -212,7 +212,7 @@ providers:
 ```
 
 - `local` is the only choice for `wakeWord.provider`, and the default. Any other value turns the wake word off rather than send room audio elsewhere.
-- If local Whisper is down, the wake word stops working, and the browser console shows the error. Nothing falls back to `stt.provider`.
+- If local Whisper is down, the wake word stops working, and both pages say "Wake word: Local Whisper can't be reached." Nothing falls back to `stt.provider`.
 - A recording counts as wake word audio if Mirror Mate was waiting for the wake word at any point while it was made, such as one that started in a conversation that timed out before it ended.
 - While waiting, a recording is cut `maxRecordingDuration` ms after its sound starts, so someone talking can't delay the wake word until they stop. The next recording starts `overlap` ms before the cut, so a phrase said at the cut is whole in it. The overlap has to be longer than the phrase, and shorter than `maxRecordingDuration`.
 
@@ -485,6 +485,26 @@ providers:
 | `knowledge` | Facts and learned information |
 
 See [Memory Documentation](/guide/memory) for details.
+
+---
+
+## When something fails
+
+When a request to a provider fails, the avatar page shows why under the mic status, and `/control` shows it at the top, such as "Voice input: OpenAI rejected the API key." The line goes away once a request of the same kind works again. Each part has its own line: the wake word, voice input after it, replies and speech.
+
+| Message | Cause |
+|---------|-------|
+| has no API key | `OPENAI_API_KEY` or `ELEVENLABS_API_KEY` isn't set |
+| rejected the API key | A wrong or revoked key |
+| lacks a permission this needs | A restricted key without the permission, such as ElevenLabs Text to Speech |
+| is out of credit | OpenAI's `insufficient_quota`, or ElevenLabs' `quota_exceeded` |
+| is limiting requests | A rate limit |
+| can't be reached | The service is down, or the network is |
+| returned an error | Any other error, which the server log has |
+
+After a missing or rejected key, a missing permission, no credit or a rate limit, the avatar page stops asking for that kind of request for 30 seconds, then twice as long each time it fails again, up to 10 minutes. A rate limit that says how long to wait is waited out instead. Asking again on every utterance wouldn't help, so what's said meanwhile is dropped. `/control` still sends what you type each time.
+
+The app asks OpenAI once per request, without the SDK's own retries, which would also retry a 429 for an account out of credit.
 
 ---
 

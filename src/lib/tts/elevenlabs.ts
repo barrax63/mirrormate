@@ -1,4 +1,5 @@
 import type { TTSProviderConfig } from "../providers/types";
+import { ServiceError, type ServiceErrorCode } from "../errors/service-error";
 
 type ElevenLabsConfig = TTSProviderConfig["elevenlabs"];
 
@@ -19,9 +20,18 @@ export function getElevenLabsBaseUrl(config: ElevenLabsConfig): string {
 export function getElevenLabsApiKey(): string {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) {
-    throw new Error("ELEVENLABS_API_KEY is not configured");
+    throw new ServiceError("missing_key", "elevenlabs", "ELEVENLABS_API_KEY is not configured");
   }
   return apiKey;
+}
+
+function errorCode(httpStatus: number, status: unknown): ServiceErrorCode {
+  if (status === "quota_exceeded") return "quota_exceeded";
+  if (status === "missing_permissions") return "missing_permissions";
+  if (httpStatus === 401) return "invalid_key";
+  if (httpStatus === 429) return "rate_limited";
+  if (httpStatus >= 502 && httpStatus <= 504) return "unavailable";
+  return "failed";
 }
 
 /**
@@ -29,10 +39,14 @@ export function getElevenLabsApiKey(): string {
  * credits are all 401s, and only detail.status tells them apart: invalid_api_key,
  * missing_permissions, quota_exceeded
  */
-export async function elevenLabsError(response: Response): Promise<Error> {
+export async function elevenLabsError(response: Response): Promise<ServiceError> {
   const body = await response.json().catch(() => null);
   const status = body?.detail?.status;
-  return new Error(`ElevenLabs returned ${response.status}${status ? ` (${status})` : ""}`);
+  return new ServiceError(
+    errorCode(response.status, status),
+    "elevenlabs",
+    `ElevenLabs returned ${response.status}${status ? ` (${status})` : ""}`
+  );
 }
 
 async function fetchVoices(config: ElevenLabsConfig): Promise<Voice[]> {

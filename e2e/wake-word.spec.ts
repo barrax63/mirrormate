@@ -53,10 +53,12 @@ test.describe("Wake word audio", () => {
     for (const text of ["hey mira", "what time is it"]) {
       const failed = avatar.page.waitForResponse("**/api/stt");
       await avatar.say(text);
-      expect((await failed).status()).toBe(500);
+      expect((await failed).status()).toBe(503);
     }
 
     await avatar.waitForLog("Whisper API error");
+    const reason = avatar.page.getByText("Wake word: Local Whisper can't be reached.");
+    await expect(reason).toBeVisible();
     await expect(avatar.page.getByText('Say "Hey Mira"').first()).toBeVisible();
     expect(await mock.localTranscriptions()).toEqual([
       { kind: "local-stt", refused: true },
@@ -66,6 +68,7 @@ test.describe("Wake word audio", () => {
 
     await mock.setLocalWhisper({ down: false });
     await avatar.wakeUp();
+    await expect(reason).toBeHidden();
     expect(await mock.transcriptions()).toEqual([]);
   });
 
@@ -223,8 +226,10 @@ test.describe("/api/stt", () => {
 
     const response = await transcribe(request, { purpose: "wakeWord" });
 
-    expect(response.status()).toBe(500);
-    expect((await response.json()).error).toContain("Failed to connect to local Whisper server");
+    expect(response.status()).toBe(503);
+    const body = await response.json();
+    expect(body).toMatchObject({ code: "unavailable", service: "localWhisper" });
+    expect(body.error).toContain("Failed to connect to local Whisper server");
     expect(await mock.transcriptions()).toEqual([]);
   });
 

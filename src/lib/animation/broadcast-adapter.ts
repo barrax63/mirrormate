@@ -34,7 +34,10 @@ export interface BroadcastMessage {
     | "camera_capture_request"
     | "camera_capture_response"
     // Payload "on" or "off", handled by useVisionEnabled
-    | "vision_toggle";
+    | "vision_toggle"
+    // A failed or recovered route, and a request for the current ones, handled by useServiceErrors
+    | "service_error"
+    | "service_errors_request";
   payload?: string;
 }
 
@@ -100,6 +103,8 @@ export function mapBroadcastToEvent(message: BroadcastMessage): AvatarEvent | nu
     case "avatar_state_change":
     case "camera_capture_request":
     case "camera_capture_response":
+    case "service_error":
+    case "service_errors_request":
       return null;
 
     default:

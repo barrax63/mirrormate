@@ -12,6 +12,10 @@
 //
 // And in text for speech, QUOTA_EXCEEDED makes the fake ElevenLabs answer as it does when the
 // account is out of credits.
+//
+// POST /__fail with { api, status, code, retryAfter } makes one backend answer every request with
+// that error, in the real service's shape, until /__reset or a status of null. api is
+// transcription or chat (OpenAI), speech (ElevenLabs) or localWhisper.
 import fs from "node:fs";
 import http from "node:http";
 
@@ -30,6 +34,7 @@ const TRANSCRIPTION_MS = 300;
 const TRANSCRIPT_MARK = Buffer.from("\nMOCK-TRANSCRIPT:");
 let audioMs = DEFAULT_AUDIO_MS;
 let localWhisper = { down: false, ms: TRANSCRIPTION_MS };
+let failures = {};
 let log = [];
 let toolCallCount = 0;
 
@@ -168,6 +173,25 @@ async function readUpload(req, raw) {
   return { form, audio, description };
 }
 
+// OpenAI's error shapes. A 429 is a rate limit, or no credit with code insufficient_quota.
+function sendOpenAIFailure(res, { status, code, retryAfter }) {
+  const outOfCredit = code === "insufficient_quota";
+  const [type, message] =
+    status === 401
+      ? ["invalid_request_error", "Incorrect API key provided"]
+      : status === 429
+        ? outOfCredit
+          ? ["insufficient_quota", "You exceeded your current quota"]
+          : ["requests", "Rate limit reached"]
+        : ["server_error", "The server had an error while processing your request"];
+  res.writeHead(status, { "Content-Type": "application/json", ...(retryAfter && { "retry-after": String(retryAfter) }) });
+  res.end(
+    JSON.stringify({
+      error: { message: `mock: ${message}`, type, param: null, code: code ?? (status === 401 ? "invalid_api_key" : null) },
+    })
+  );
+}
+
 // Answers with what was said during the recording, in gpt-transcribe's shape
 async function transcribe(req, res, raw) {
   const { form, audio, description } = await readUpload(req, raw);
@@ -188,6 +212,7 @@ async function transcribe(req, res, raw) {
     text,
   });
 
+  if (failures.transcription) return sendOpenAIFailure(res, failures.transcription);
   if (form.get("language") && languages.length > 0) {
     return sendOpenAIError(res, "language", "language and languages can't be sent together");
   }
@@ -218,6 +243,7 @@ async function transcribeLocally(req, res, raw) {
     text,
   });
 
+  if (failures.localWhisper) return sendJson(res, { detail: "mock: failure" }, failures.localWhisper.status);
   setTimeout(() => sendJson(res, { text }), localWhisper.ms);
 }
 
@@ -255,6 +281,11 @@ function speak(req, res, body, url, voiceId) {
   });
 
   if (!apiKey) return sendElevenLabsError(res, 401, "invalid_api_key", "Invalid API key");
+  if (failures.speech) {
+    const { status, code } = failures.speech;
+    const defaultCode = { 401: "invalid_api_key", 429: "too_many_concurrent_requests" }[status] ?? "internal_server_error";
+    return sendElevenLabsError(res, status, code ?? defaultCode, "failure");
+  }
   if (body.text?.includes("QUOTA_EXCEEDED")) return sendElevenLabsError(res, 401, "quota_exceeded", "out of credits");
   if ((body.text?.length ?? 0) > 10000) {
     return sendElevenLabsError(res, 400, "max_character_limit_exceeded", "text over 10000 characters");
@@ -279,7 +310,11 @@ function handle(req, res, body, raw) {
       log = [];
       audioMs = DEFAULT_AUDIO_MS;
       localWhisper = { down: false, ms: TRANSCRIPTION_MS };
+      failures = {};
       return sendJson(res, { ok: true });
+    case "/__fail":
+      failures = { ...failures, [body.api]: body.status ? body : undefined };
+      return sendJson(res, failures);
     case "/__audio":
       audioMs = Number(url.searchParams.get("ms"));
       return sendJson(res, { audioMs });
@@ -298,6 +333,7 @@ function handle(req, res, body, raw) {
     case "/v1/chat/completions": {
       const kind = classifyChat(body.messages);
       log.push({ kind, auth: req.headers.authorization, body });
+      if (failures.chat) return sendOpenAIFailure(res, failures.chat);
       const rejected = rejectedChatParam(body);
       if (rejected) return sendOpenAIError(res, ...rejected);
       if (kind === "vlm") return sendJson(res, reply("person holding a mug"));
