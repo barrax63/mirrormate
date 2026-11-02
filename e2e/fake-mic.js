@@ -6,7 +6,9 @@ const MIC_OPEN_MS = 100;
 const recorders = [];
 const streams = [];
 const heldOpens = [];
+const cameraStreams = [];
 let micRequests = 0;
+let cameraRequests = 0;
 
 const NativeMediaRecorder = window.MediaRecorder;
 window.MediaRecorder = class extends NativeMediaRecorder {
@@ -24,7 +26,13 @@ if (navigator.mediaDevices) {
   const getUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 
   navigator.mediaDevices.getUserMedia = async (constraints) => {
-    if (!constraints.audio) return getUserMedia(constraints);
+    if (!constraints.audio) {
+      // Counted, so tests can tell the camera never opened
+      cameraRequests++;
+      const stream = await getUserMedia(constraints);
+      cameraStreams.push(stream);
+      return stream;
+    }
     micRequests++;
     await new Promise((resolve) => setTimeout(resolve, MIC_OPEN_MS));
     if (window.__micHeld) await new Promise((resolve) => heldOpens.push(resolve));
@@ -52,6 +60,11 @@ window.__liveMicStreams = () =>
   streams.filter((stream) => stream.getTracks().some((track) => track.readyState === "live")).length;
 
 window.__micRequests = () => micRequests;
+
+window.__cameraRequests = () => cameraRequests;
+
+window.__liveCameraTracks = () =>
+  cameraStreams.flatMap((stream) => stream.getVideoTracks()).filter((track) => track.readyState === "live").length;
 
 // While window.__micHeld is set, the mic stays opening until this is called
 window.__releaseMic = () => {

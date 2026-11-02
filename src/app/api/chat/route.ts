@@ -6,7 +6,7 @@ import { getToolDefinitions, executeTool, getPendingEffect, clearPendingEffect, 
 import { executeRule, formatRuleContext } from "@/lib/rules";
 import { loadProvidersConfig, getEmbeddingProvider } from "@/lib/providers";
 import { RAGService, getSimpleContext, MemoryService } from "@/lib/memory";
-import { getUserRepository } from "@/lib/repositories";
+import { getUserRepository, getUserSettingsRepository } from "@/lib/repositories";
 import { getLocale } from "@/lib/app";
 
 const MAX_TOOL_ITERATIONS = 3;
@@ -49,12 +49,12 @@ function getMemoryService(): MemoryService | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, userId, characterId, image } = await request.json();
+    const { messages, userId, characterId, image: requestImage } = await request.json();
 
     console.log("[Chat] Request received:", {
       messageCount: messages?.length,
-      hasImage: !!image,
-      imageLength: image ? image.length : 0,
+      hasImage: !!requestImage,
+      imageLength: requestImage ? requestImage.length : 0,
       characterId,
     });
 
@@ -67,6 +67,13 @@ export async function POST(request: NextRequest) {
     // Create user if not exists
     const userRepo = getUserRepository();
     await userRepo.findOrCreate(currentUserId);
+
+    // With Vision off, a camera frame goes no further, whichever page sent it
+    const settings = await getUserSettingsRepository().findOrCreate(currentUserId);
+    const image = settings.visionEnabled ? requestImage : undefined;
+    if (requestImage && !image) {
+      console.log("[Chat] Vision is off, ignoring the camera image");
+    }
 
     // Get the last user message for rule matching
     const lastUserMessage = messages

@@ -66,7 +66,7 @@ test.describe("Voice selector", () => {
     expect(speech.path).toBe(`/v1/text-to-speech/${LILY}`);
     await expect
       .poll(async () => (await control.page.request.get("/api/settings")).json())
-      .toEqual({ voice: LILY, characterId: "luna" });
+      .toEqual({ voice: LILY, characterId: "luna", visionEnabled: true });
   });
 
   test("previews a voice with its own /api/tts call", async ({ avatar, control }) => {
@@ -314,7 +314,7 @@ test.describe("Vision toggle", () => {
     expect(chat.image).toBeUndefined();
   });
 
-  test("known bug: keeps the image out of voice requests while off", async ({ avatar, control }) => {
+  test("keeps the image out of voice requests while off", async ({ avatar, control }) => {
     await control.turnVisionOff();
     await avatar.wakeUp();
 
@@ -322,27 +322,62 @@ test.describe("Vision toggle", () => {
     await avatar.waitForPost("/api/chat");
     const [chat] = avatar.postsTo("/api/chat");
     expect(chat.messages).toEqual([{ role: "user", content: "can you see me" }]);
-
-    test.fail(true, "Nothing receives vision_toggle, so the voice flow always captures a frame");
     expect(chat.image).toBeUndefined();
   });
 
-  test("known bug: stops the camera while off", async ({ avatar, control }) => {
+  test("stops the camera while off", async ({ avatar, control }) => {
     expect(await avatar.liveVideoTracks()).toBe(1);
 
     await control.turnVisionOff();
 
-    test.fail(true, "Nothing receives vision_toggle, so the stream keeps running");
-    await expect.poll(() => avatar.liveVideoTracks(), { timeout: 3000 }).toBe(0);
+    await expect.poll(() => avatar.liveVideoTracks()).toBe(0);
   });
 
-  test("known bug: stays off after a reload", async ({ control }) => {
+  test("turns the camera and the images back on with Vision", async ({ avatar, control }) => {
     await control.turnVisionOff();
+    await expect.poll(() => avatar.liveVideoTracks()).toBe(0);
 
-    await control.page.reload({ waitUntil: "networkidle" });
-    await expect(control.page.getByRole("button", { name: /^Vision O/ })).toBeVisible();
+    await control.page.getByRole("button", { name: "Vision OFF" }).click();
 
-    test.fail(true, "The setting isn't saved, so a reload turns Vision back on");
-    await expect(control.page.getByRole("button", { name: "Vision OFF" })).toBeVisible({ timeout: 2000 });
+    await expect.poll(() => avatar.liveVideoTracks()).toBe(1);
+    await avatar.wakeUp();
+    await avatar.hear("can you see me now");
+    await avatar.waitForPost("/api/chat");
+    expect(avatar.postsTo("/api/chat")[0].image).toMatch(JPEG_DATA_URL);
+  });
+
+  test.describe("after a reload", () => {
+    test.beforeEach(async ({ control }) => {
+      await control.turnVisionOff();
+      await expect
+        .poll(async () => (await (await control.page.request.get("/api/settings")).json()).visionEnabled)
+        .toBe(false);
+    });
+
+    test("stays off on /control", async ({ control }) => {
+      await control.page.reload({ waitUntil: "networkidle" });
+
+      // The button is disabled until the setting has loaded
+      await expect(control.page.getByRole("button", { name: "Vision OFF" })).toBeEnabled();
+    });
+
+    test("shows off on a /control opened later", async ({ context }) => {
+      const later = await context.newPage();
+      await later.goto("/control", { waitUntil: "networkidle" });
+
+      await expect(later.getByRole("button", { name: "Vision OFF" })).toBeEnabled();
+    });
+
+    test("never opens the camera on the avatar page, and sends no image", async ({ avatar }) => {
+      await avatar.page.reload({ waitUntil: "networkidle" });
+      await avatar.page.waitForTimeout(1000);
+
+      expect(await avatar.cameraRequests()).toBe(0);
+      expect(await avatar.liveVideoTracks()).toBe(0);
+      await avatar.wakeUp();
+      await avatar.hear("can you see me");
+      await avatar.waitForPost("/api/chat");
+      expect(avatar.postsTo("/api/chat")[0].image).toBeUndefined();
+    });
   });
 });

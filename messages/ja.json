@@ -23,6 +23,10 @@
     "selectVoice": "声を選択...",
     "voicesUnavailable": "声を読み込めません",
     "previewText": "こんにちは、私の声はこんな感じです。",
+    "visionOn": "ビジョン ON",
+    "visionOff": "ビジョン OFF",
+    "visionOnTitle": "カメラオン：質問のたびに画像を送り、AIが必要なときに見ます",
+    "visionOffTitle": "カメラオフ：撮影も送信もしません",
     "selectCharacter": "キャラクターを選択..."
   },
   "status": {

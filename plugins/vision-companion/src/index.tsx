@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useVisionEnabled } from "@/hooks/useVisionEnabled";
 
 export interface VisionCompanionConfig {
   cameraWidth?: number;
@@ -24,6 +25,8 @@ export function VisionCompanion({ config }: VisionCompanionProps) {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const { visionEnabled } = useVisionEnabled();
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [hasCamera, setHasCamera] = useState(true);
@@ -34,7 +37,8 @@ export function VisionCompanion({ config }: VisionCompanionProps) {
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
-    if (!video || !canvas || video.readyState < 2) {
+    // No camera while Vision is off
+    if (!streamRef.current || !video || !canvas || video.readyState < 2) {
       return null;
     }
 
@@ -77,11 +81,17 @@ export function VisionCompanion({ config }: VisionCompanionProps) {
     };
   }, [captureImage]);
 
-  // Start camera stream
+  // Run the camera while Vision is on. Until the setting has loaded it stays off.
   useEffect(() => {
+    if (visionEnabled !== true) return;
+
+    let stopped = false;
+    let stream: MediaStream | null = null;
+    const video = videoRef.current;
+
     async function startCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           video: {
             width: { ideal: mergedConfig.cameraWidth },
             height: { ideal: mergedConfig.cameraHeight },
@@ -89,9 +99,16 @@ export function VisionCompanion({ config }: VisionCompanionProps) {
           },
         });
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
+        // Vision was turned off while the camera was opening
+        if (stopped) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+        if (video) {
+          video.srcObject = stream;
+          await video.play();
           setIsInitialized(true);
           console.log("[VisionCompanion] Camera started");
           if (mergedConfig.showDebug) {
@@ -99,6 +116,7 @@ export function VisionCompanion({ config }: VisionCompanionProps) {
           }
         }
       } catch (error) {
+        if (stopped) return;
         console.error("[VisionCompanion] Camera access denied:", error);
         setHasCamera(false);
         if (mergedConfig.showDebug) {
@@ -110,12 +128,17 @@ export function VisionCompanion({ config }: VisionCompanionProps) {
     startCamera();
 
     return () => {
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
+      stopped = true;
+      stream?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      if (video) video.srcObject = null;
+      setIsInitialized(false);
+      console.log("[VisionCompanion] Camera stopped");
+      if (mergedConfig.showDebug) {
+        setDebugInfo("Camera off");
       }
     };
-  }, [mergedConfig.cameraWidth, mergedConfig.cameraHeight, mergedConfig.showDebug]);
+  }, [visionEnabled, mergedConfig.cameraWidth, mergedConfig.cameraHeight, mergedConfig.showDebug]);
 
   // Hidden elements for camera capture
   if (!mergedConfig.showDebug) {

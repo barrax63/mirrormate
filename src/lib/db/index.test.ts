@@ -47,7 +47,7 @@ describe("user_settings", () => {
     return names;
   }
 
-  it("replaces the old speaker number with an empty voice, and keeps the character", async () => {
+  it("replaces the old speaker number with an empty voice, keeps the character, and turns Vision on", async () => {
     const old = new Database(dbPath);
     old.exec(SCHEMA_WITH_SPEAKER_ID);
     old.prepare("INSERT INTO users (id, created_at) VALUES ('default-user', 1700000000)").run();
@@ -60,8 +60,8 @@ describe("user_settings", () => {
 
     const [settings] = await getDb().select().from(userSettings);
 
-    expect(settings).toMatchObject({ userId: "default-user", voice: null, characterId: "luna" });
-    expect(columns()).toEqual(["id", "user_id", "character_id", "updated_at", "voice"]);
+    expect(settings).toMatchObject({ userId: "default-user", voice: null, characterId: "luna", visionEnabled: true });
+    expect(columns()).toEqual(["id", "user_id", "character_id", "updated_at", "voice", "vision_enabled"]);
   });
 
   it("starts again cleanly on a database that's already migrated", async () => {
@@ -75,12 +75,39 @@ describe("user_settings", () => {
     await db.insert(users).values({ id: "u1", createdAt: new Date() });
     await db.insert(userSettings).values({ id: "s1", userId: "u1", voice: "voice-id", updatedAt: new Date() });
 
-    expect(columns()).toEqual(["id", "user_id", "character_id", "updated_at", "voice"]);
+    expect(columns()).toEqual(["id", "user_id", "character_id", "updated_at", "voice", "vision_enabled"]);
   });
 
-  it("creates new databases with a voice column", () => {
-    getDb();
+  it("creates new databases with voice and Vision columns", async () => {
+    const db = getDb();
+    await db.insert(users).values({ id: "u1", createdAt: new Date() });
+    await db.insert(userSettings).values({ id: "s1", userId: "u1", updatedAt: new Date() });
 
-    expect(columns()).toEqual(["id", "user_id", "voice", "character_id", "updated_at"]);
+    const [settings] = await db.select().from(userSettings);
+    expect(settings.visionEnabled).toBe(true);
+    expect(columns()).toEqual(["id", "user_id", "voice", "character_id", "vision_enabled", "updated_at"]);
+  });
+
+  it("adds the Vision setting, on, to a database from before it existed", async () => {
+    const old = new Database(dbPath);
+    old.exec(`
+      CREATE TABLE users (id TEXT PRIMARY KEY, created_at INTEGER NOT NULL);
+      CREATE TABLE user_settings (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        voice TEXT,
+        character_id TEXT,
+        updated_at INTEGER NOT NULL
+      );
+    `);
+    old.prepare("INSERT INTO users (id, created_at) VALUES ('default-user', 1700000000)").run();
+    old
+      .prepare("INSERT INTO user_settings (id, user_id, voice, updated_at) VALUES ('s1', 'default-user', 'voice-id', 1700000000)")
+      .run();
+    old.close();
+
+    const [settings] = await getDb().select().from(userSettings);
+
+    expect(settings).toMatchObject({ voice: "voice-id", visionEnabled: true });
   });
 });

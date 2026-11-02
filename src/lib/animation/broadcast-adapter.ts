@@ -32,7 +32,9 @@ export interface BroadcastMessage {
     | "sleep_wake"
     // Vision chat types
     | "camera_capture_request"
-    | "camera_capture_response";
+    | "camera_capture_response"
+    // Payload "on" or "off", handled by useVisionEnabled
+    | "vision_toggle";
   payload?: string;
 }
 

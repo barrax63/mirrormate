@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       voice: settings.voice,
       characterId: settings.characterId,
+      visionEnabled: settings.visionEnabled,
     });
   } catch (error) {
     console.error("Settings GET error:", error);
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { userId, voice, characterId } = await request.json();
+    const { userId, voice, characterId, visionEnabled } = await request.json();
     const currentUserId = userId || DEFAULT_USER_ID;
 
     // Ensure user exists
@@ -43,11 +44,13 @@ export async function PUT(request: NextRequest) {
     const updated = await settingsRepo.update(currentUserId, {
       ...(voice !== undefined && { voice }),
       ...(characterId !== undefined && { characterId }),
+      ...(typeof visionEnabled === "boolean" && { visionEnabled }),
     });
 
     return NextResponse.json({
       voice: updated.voice,
       characterId: updated.characterId,
+      visionEnabled: updated.visionEnabled,
     });
   } catch (error) {
     console.error("Settings PUT error:", error);

@@ -8,6 +8,7 @@ import { getDb, userSettings, type UserSettings } from "../db";
 export interface UpdateSettingsInput {
   voice?: string | null;
   characterId?: string | null;
+  visionEnabled?: boolean;
 }
 
 export class UserSettingsRepository {
@@ -34,6 +35,7 @@ export class UserSettingsRepository {
         userId,
         voice: null,
         characterId: null,
+        visionEnabled: true,
         updatedAt: new Date(),
       })
       .returning();
