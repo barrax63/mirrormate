@@ -80,7 +80,7 @@ test.describe("Voice flow", () => {
     await avatar.hear("hello");
 
     const [recording] = await mock.transcriptions();
-    expect(recording).toMatchObject({ auth: "Bearer e2e-dummy-key", model: "whisper-1", language: "en" });
+    expect(recording).toMatchObject({ auth: "Bearer e2e-dummy-key", model: "gpt-transcribe", languages: ["en"] });
     // The start of every WebM file
     expect(recording.audio).toMatchObject({ name: "audio.webm", header: "1a45dfa3" });
     expect(recording.audio.bytes).toBeGreaterThan(1000);

@@ -20,7 +20,7 @@ providers:
     enabled: true
     provider: openai
     openai:
-      model: whisper-1
+      model: gpt-transcribe
     silenceDetection:
       silenceThreshold: 0.1
 

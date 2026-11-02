@@ -36,6 +36,8 @@ export interface TranscribeOptions {
   prompt?: string;
   /** Temperature for sampling (0-1, lower = more deterministic) */
   temperature?: number;
+  /** Words to spell as given, such as character names. Only OpenAI uses them. */
+  keywords?: string[];
 }
 
 /**
@@ -56,8 +58,8 @@ export interface TranscribeResult {
  * OpenAI Whisper specific configuration
  */
 export interface OpenAIWhisperConfig {
-  /** Model to use (currently only whisper-1) */
-  model?: "whisper-1";
+  /** Model to use, gpt-transcribe by default */
+  model?: string;
   /** Language code for transcription */
   language?: string;
   /** Prompt to guide transcription */

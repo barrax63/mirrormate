@@ -42,7 +42,7 @@ providers:
 
 | Provider | Description | API Key Required |
 |----------|-------------|------------------|
-| OpenAI | GPT-4o, GPT-4o-mini | Yes |
+| OpenAI | `gpt-6-luna` | Yes |
 | Ollama | Local LLM hosting | No |
 
 ### OpenAI
@@ -62,17 +62,16 @@ providers:
     enabled: true
     provider: openai
     openai:
-      model: gpt-4o-mini  # or gpt-4o
+      model: gpt-6-luna
       maxTokens: 300
       temperature: 0.7
 ```
 
 #### Models
 
-| Model | Description | Speed | Cost |
-|-------|-------------|-------|------|
-| `gpt-4o` | Most capable | Medium | Higher |
-| `gpt-4o-mini` | Fast and efficient | Fast | Lower |
+`gpt-6-luna` is the default. The provider turns its reasoning off with `reasoning_effort: "none"`, since tools and `temperature` only work that way, and sends `maxTokens` as `max_completion_tokens`.
+
+Models without reasoning, such as `gpt-4o-mini`, reject `reasoning_effort` with a 400, so they don't work with this provider. OpenAI shuts `gpt-4o-mini` down on January 14, 2027.
 
 ### Ollama
 
@@ -209,7 +208,7 @@ STT providers enable speech recognition for voice input. Mirror Mate supports mu
 | Provider | Description | API Key Required | Accuracy |
 |----------|-------------|------------------|----------|
 | Web Speech API | Browser native (Chrome/Edge) | No | Good |
-| OpenAI Whisper | Cloud API | Yes | Excellent |
+| OpenAI | Cloud API (`gpt-transcribe`) | Yes | Excellent |
 | Local Whisper | Self-hosted (faster-whisper) | No | Excellent |
 
 ### Web Speech API (Default)
@@ -228,9 +227,9 @@ providers:
 
 > **Note**: Brave has the API, but every session fails with a `network` error, so voice input stays on "Paused". Use a Whisper provider in Brave.
 
-### OpenAI Whisper
+### OpenAI Transcription
 
-High-accuracy speech recognition using OpenAI's Whisper API.
+High-accuracy speech recognition using OpenAI's `gpt-transcribe`.
 
 ```yaml
 providers:
@@ -238,13 +237,15 @@ providers:
     enabled: true
     provider: openai
     openai:
-      model: whisper-1
+      model: gpt-transcribe
       language: ja  # ISO 639-1 code (or omit for auto-detect)
       temperature: 0
 ```
 
-**Pros**: Excellent accuracy (especially Japanese), 99+ languages
-**Cons**: API cost ($0.006/minute), requires internet
+The provider sends the language as `languages`, and the names of the configured characters as `keywords`, so that names such as Mira are spelled as configured. OpenAI shuts `whisper-1` down on February 26, 2027.
+
+**Pros**: Excellent accuracy, many languages, returned nothing for silence and noise in testing, where Whisper invents text
+**Cons**: API cost ($0.0045/minute), requires internet
 
 ### Local Whisper (faster-whisper)
 
@@ -308,7 +309,7 @@ providers:
 | Option | Type | Description | Default |
 |--------|------|-------------|---------|
 | `provider` | string | `web`, `openai`, or `local` | `web` |
-| `openai.model` | string | Whisper model | `whisper-1` |
+| `openai.model` | string | OpenAI transcription model | `gpt-transcribe` |
 | `openai.language` | string | Language code (ISO 639-1) | auto |
 | `local.baseUrl` | string | Whisper server URL | `http://localhost:8080` |
 | `local.model` | string | Model name | `base` |

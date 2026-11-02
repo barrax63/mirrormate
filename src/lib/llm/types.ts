@@ -24,14 +24,15 @@ export interface ChatCompletionOptions {
 export interface ChatCompletionResult {
   content: string;
   toolCalls?: ToolCall[];
-  finishReason: "stop" | "tool_calls";
+  /** "length" means the reply was cut off at maxTokens */
+  finishReason: "stop" | "tool_calls" | "length";
 }
 
 export interface StreamChunk {
   content: string;
   done: boolean;
   toolCalls?: ToolCall[];
-  finishReason?: "stop" | "tool_calls";
+  finishReason?: "stop" | "tool_calls" | "length";
 }
 
 export interface LLMProvider {

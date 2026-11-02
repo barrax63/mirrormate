@@ -16,7 +16,10 @@ test.describe("/api/chat", () => {
     expect(body.message).toBe("mock reply to: tell me something");
     const [llm] = await mock.llmRequestsFor("tell me something");
     expect(llm.auth).toBe("Bearer e2e-dummy-key");
+    // The mock rejects max_tokens, and tools without reasoning_effort "none"
+    expect(llm.body).toMatchObject({ reasoning_effort: "none", max_completion_tokens: 300 });
     expect(llm.body.tools?.map((tool) => tool.function.name)).toContain("show_effect");
+    expect(llm.body.messages[0].content).toContain("read aloud by a speech engine");
     expect(llm.body.messages[0].content).toContain("[Current Information]\nCurrent time:");
   });
 
@@ -125,9 +128,16 @@ test.describe("other APIs", () => {
     });
 
     expect(response.status()).toBe(200);
-    expect(await response.json()).toMatchObject({ transcript: "hello from a file", language: "en" });
+    expect(await response.json()).toEqual({ transcript: "hello from a file", language: "en", duration: 1 });
     const [recording] = await mock.transcriptions();
-    expect(recording).toMatchObject({ auth: "Bearer e2e-dummy-key", model: "whisper-1", language: "en" });
+    expect(recording).toMatchObject({
+      auth: "Bearer e2e-dummy-key",
+      model: "gpt-transcribe",
+      language: null,
+      languages: ["en"],
+      responseFormat: "json",
+    });
+    expect(recording.keywords).toEqual(expect.arrayContaining(["Mira", "Luna"]));
   });
 
   test("/api/stt/config reports OpenAI in English", async ({ request }) => {

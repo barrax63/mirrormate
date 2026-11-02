@@ -63,7 +63,7 @@ export interface VLMProviderConfig extends ProviderConfig {
 export interface STTProviderConfig extends ProviderConfig {
   provider: "openai" | "local" | "web";
   openai?: {
-    model?: "whisper-1";
+    model?: string;
     language?: string;
     prompt?: string;
     temperature?: number;
