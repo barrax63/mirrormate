@@ -54,7 +54,7 @@ Use `bun audit fix` to patch dependencies, and don't delete entries from `bun.lo
 - `BroadcastMessage` is defined twice, in `src/lib/animation/broadcast-adapter.ts` and `src/app/control/page.tsx`. Update both when adding a message type. `mapBroadcastToEvent` turns messages into events for the avatar's animation state machine in `src/lib/animation/`.
 - Both pages call `/api/chat` themselves. Only the avatar page plays replies: it fetches `/api/tts`, and `/control` asks it to with a `play_audio` message. `/control` calls `/api/tts` itself only for voice preview.
 - The avatar page keeps one `BroadcastChannel` and one `AudioContext` for its whole life, and its channel handler reads current state through a ref. Don't tie either to state: recognition stops during every reply, so closing the `AudioContext` on a state change cuts the reply off.
-- For chat, the hidden `vision-companion` plugin on the avatar page owns the camera. Pages send `camera_capture_request`, receive `camera_capture_response`, and pass the image in the `/api/chat` body. The `see_camera` tool then sends it to the VLM provider.
+- For chat, the hidden `vision-companion` plugin on the avatar page owns the camera. Pages send `camera_capture_request`, receive `camera_capture_response`, and pass the image in the `/api/chat` body. The `see_camera` tool then sends it to the VLM provider. The Vision toggle on `/control` is `user_settings.vision_enabled`, read and changed through `useVisionEnabled`, which shares changes as `vision_toggle`. While it's off, or not yet loaded, the plugin keeps the camera closed and the pages capture nothing, and `/api/chat` drops any image it's sent.
 
 ### `/api/chat` pipeline (`src/app/api/chat/route.ts`)
 

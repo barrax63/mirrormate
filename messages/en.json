@@ -23,6 +23,10 @@
     "selectVoice": "Select voice...",
     "voicesUnavailable": "Voices unavailable",
     "previewText": "Hello, this is what my voice sounds like.",
+    "visionOn": "Vision ON",
+    "visionOff": "Vision OFF",
+    "visionOnTitle": "Camera on: a frame goes with each question, for the AI to look at if it needs to",
+    "visionOffTitle": "Camera off: nothing is captured or sent",
     "selectCharacter": "Select character..."
   },
   "status": {

@@ -17,6 +17,8 @@ declare global {
     __liveRecorders: () => number;
     __liveMicStreams: () => number;
     __micRequests: () => number;
+    __cameraRequests: () => number;
+    __liveCameraTracks: () => number;
     __micHeld?: boolean;
     __releaseMic: () => void;
     __speak: () => boolean;
@@ -115,11 +117,13 @@ export class AvatarPage extends RecordedPage {
     await this.page.waitForTimeout(500);
   }
 
+  /** Live tracks of every camera stream this page opened */
   liveVideoTracks() {
-    return this.page.evaluate(() => {
-      const stream = document.querySelector("video")?.srcObject as MediaStream | null | undefined;
-      return stream?.getVideoTracks().filter((track) => track.readyState === "live").length ?? 0;
-    });
+    return this.page.evaluate(() => window.__liveCameraTracks());
+  }
+
+  cameraRequests() {
+    return this.page.evaluate(() => window.__cameraRequests());
   }
 }
 
@@ -298,7 +302,7 @@ export const test = base.extend<{
   resetState: [
     async ({ mock, request }, provide) => {
       await mock.reset();
-      await request.put("/api/settings", { data: { voice: null, characterId: null } });
+      await request.put("/api/settings", { data: { voice: null, characterId: null, visionEnabled: true } });
       await provide();
     },
     { auto: true },

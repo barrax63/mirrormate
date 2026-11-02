@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getAllContexts: vi.fn(),
   getFeatureContext: vi.fn(),
   findOrCreate: vi.fn(),
+  findSettings: vi.fn(),
   retrieve: vi.fn(),
   formatContext: vi.fn(),
   getSimpleContext: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("@/lib/features/registry", () => ({
 
 vi.mock("@/lib/repositories", () => ({
   getUserRepository: () => ({ findOrCreate: mocks.findOrCreate }),
+  getUserSettingsRepository: () => ({ findOrCreate: mocks.findSettings }),
 }));
 
 vi.mock("@/lib/providers", () => ({
@@ -102,6 +104,7 @@ describe("POST /api/chat", () => {
     mocks.formatContext.mockReturnValue("");
     mocks.touchMemories.mockResolvedValue(undefined);
     mocks.processConversation.mockResolvedValue(undefined);
+    mocks.findSettings.mockResolvedValue({ visionEnabled: true });
   });
 
   afterEach(() => {
@@ -294,6 +297,16 @@ describe("POST /api/chat", () => {
       expect(mocks.analyzeImage).toHaveBeenCalledWith(image, expect.stringContaining("their hands"));
       expect(llmRequests[1].messages.at(-1)?.content).toBe("A person holding a mug");
       expect(body.message).toBe("Nice mug");
+    });
+
+    it("drops the image while Vision is off, so see_camera has nothing to send", async () => {
+      mocks.findSettings.mockResolvedValue({ visionEnabled: false });
+      scriptLLM(toolCalls(["see_camera", { focus: "their hands" }]), text("I can't see you"));
+
+      await say("what am I holding?", { image: "data:image/jpeg;base64,AAAA" });
+
+      expect(systemPrompt(llmRequests[0])).not.toContain("[Tool Usage]");
+      expect(mocks.analyzeImage).not.toHaveBeenCalled();
     });
   });
 

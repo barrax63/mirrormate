@@ -28,6 +28,8 @@ export const userSettings = sqliteTable("user_settings", {
     .references(() => users.id, { onDelete: "cascade" }),
   voice: text("voice"), // ElevenLabs voice ID
   characterId: text("character_id"), // Character preset ID
+  // Whether the camera may be used. Off stops it and keeps frames out of every request.
+  visionEnabled: integer("vision_enabled", { mode: "boolean" }).notNull().default(true),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

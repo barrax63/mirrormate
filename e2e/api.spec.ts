@@ -70,6 +70,16 @@ test.describe("/api/chat", () => {
     expect(vlm.body.messages[0].content).toContainEqual({ type: "image_url", image_url: { url: image } });
   });
 
+  test("drops the camera image while Vision is off", async ({ request, mock }) => {
+    await request.put("/api/settings", { data: { visionEnabled: false } });
+
+    await chat(request, "CALL_CAMERA please", { image: "data:image/jpeg;base64,QUJD" });
+
+    expect(await mock.log("vlm")).toEqual([]);
+    const [llm] = await mock.llmRequestsFor("CALL_CAMERA please");
+    expect(llm.body.messages[0].content).not.toContain("[Tool Usage]");
+  });
+
   test("extracts memories after replying and finds them in later requests", async ({ request, mock }) => {
     await chat(request, "my code is REMEMBER_canary");
 
@@ -160,13 +170,28 @@ test.describe("other APIs", () => {
   test("/api/settings keeps the character when the voice is saved, and the other way round", async ({ request }) => {
     await request.put("/api/settings", { data: { characterId: "luna" } });
     await request.put("/api/settings", { data: { voice: "pFZP5JQG7iQjIQuC4Bku" } });
-    expect(await (await request.get("/api/settings")).json()).toEqual({ voice: "pFZP5JQG7iQjIQuC4Bku", characterId: "luna" });
+    expect(await (await request.get("/api/settings")).json()).toEqual({
+      voice: "pFZP5JQG7iQjIQuC4Bku",
+      characterId: "luna",
+      visionEnabled: true,
+    });
 
     await request.put("/api/settings", { data: { characterId: "sora" } });
-    expect(await (await request.get("/api/settings")).json()).toEqual({ voice: "pFZP5JQG7iQjIQuC4Bku", characterId: "sora" });
+    await request.put("/api/settings", { data: { visionEnabled: false } });
+    expect(await (await request.get("/api/settings")).json()).toEqual({
+      voice: "pFZP5JQG7iQjIQuC4Bku",
+      characterId: "sora",
+      visionEnabled: false,
+    });
 
     await request.put("/api/settings", { data: { voice: null } });
-    expect(await (await request.get("/api/settings")).json()).toEqual({ voice: null, characterId: "sora" });
+    expect(await (await request.get("/api/settings")).json()).toEqual({ voice: null, characterId: "sora", visionEnabled: false });
+  });
+
+  test("/api/settings ignores a Vision value that isn't true or false", async ({ request }) => {
+    await request.put("/api/settings", { data: { visionEnabled: "off" } });
+
+    expect((await (await request.get("/api/settings")).json()).visionEnabled).toBe(true);
   });
 
   test("/api/plugins includes the hidden vision plugin", async ({ request }) => {

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useVoiceSelector, type Voice } from "@/hooks/useVoiceSelector";
 import { useCharacterSelector, type CharacterPreset } from "@/hooks/useCharacterSelector";
+import { useVisionEnabled } from "@/hooks/useVisionEnabled";
 import { SettingsDropdown } from "@/components/SettingsDropdown";
 import { VoicePreviewButton } from "@/components/VoicePreviewButton";
 
@@ -28,7 +29,7 @@ export default function ControlPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [micStatus, setMicStatus] = useState<"off" | "listening" | "paused">("off");
-  const [visionEnabled, setVisionEnabled] = useState(true);
+  const { visionEnabled, setVisionEnabled } = useVisionEnabled();
   const [isCapturingImage, setIsCapturingImage] = useState(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -123,7 +124,7 @@ export default function ControlPage() {
 
       // Capture camera image when vision is enabled (LLM will decide if it needs to use see_camera tool)
       let capturedImage: string | null = null;
-      if (visionEnabled) {
+      if (visionEnabled === true) {
         capturedImage = await requestCameraCapture();
         if (capturedImage) {
           console.log("[Control] Camera image captured for vision");
@@ -335,26 +336,20 @@ export default function ControlPage() {
           {/* Vision Toggle */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                const newValue = !visionEnabled;
-                setVisionEnabled(newValue);
-                channelRef.current?.postMessage({
-                  type: "vision_toggle",
-                  payload: newValue,
-                });
-              }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              onClick={() => setVisionEnabled(!visionEnabled)}
+              disabled={visionEnabled === null}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors disabled:opacity-30 ${
                 visionEnabled
                   ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
                   : "bg-zinc-800 text-white/40 hover:bg-zinc-700"
               }`}
-              title={visionEnabled ? "Vision greeting enabled" : "Vision greeting disabled"}
+              title={visionEnabled ? t("visionOnTitle") : t("visionOffTitle")}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
-              <span className="text-sm">{visionEnabled ? "Vision ON" : "Vision OFF"}</span>
+              <span className="text-sm">{visionEnabled ? t("visionOn") : t("visionOff")}</span>
             </button>
           </div>
 

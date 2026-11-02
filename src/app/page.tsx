@@ -10,6 +10,7 @@ import { useReminder, Reminder } from "@/hooks/useReminder";
 import { useAvatarState } from "@/hooks/useAvatarState";
 import { useAnimationController } from "@/hooks/useAnimationController";
 import { useLongThinkingPulse } from "@/hooks/useLongThinkingPulse";
+import { useVisionEnabled } from "@/hooks/useVisionEnabled";
 import { FloatingInfo, InfoCard, detectInfoFromResponse } from "@/components/FloatingInfo";
 import PluginRenderer from "@/components/PluginRenderer";
 import { mapBroadcastToEvent, type BroadcastMessage } from "@/lib/animation/broadcast-adapter";
@@ -47,10 +48,18 @@ export default function AvatarPage() {
     timeout: NodeJS.Timeout;
   } | null>(null);
 
+  // Read through a ref, so the capture below always sees the current setting
+  const { visionEnabled } = useVisionEnabled();
+  const visionEnabledRef = useRef(visionEnabled);
+  useEffect(() => {
+    visionEnabledRef.current = visionEnabled;
+  }, [visionEnabled]);
+
   // Request camera capture from vision companion plugin
   const requestCameraCapture = useCallback((): Promise<string | null> => {
     return new Promise((resolve) => {
-      if (!channelRef.current) {
+      // No frame while Vision is off, or before the setting has loaded
+      if (!channelRef.current || visionEnabledRef.current !== true) {
         resolve(null);
         return;
       }
@@ -427,7 +436,7 @@ export default function AvatarPage() {
       messagesRef.current.push({ role: "user", content: transcript });
 
       try {
-        // Always capture camera image for voice input (LLM will decide if it needs to use see_camera tool)
+        // Capture a camera frame while Vision is on (LLM will decide if it needs to use see_camera tool)
         const capturedImage = await requestCameraCapture();
         if (capturedImage) {
           console.log("[Avatar] Camera image captured:", capturedImage.length, "chars");

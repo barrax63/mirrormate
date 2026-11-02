@@ -84,6 +84,7 @@ function initializeSchema(sqlite: Database.Database): void {
         user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
         voice TEXT,
         character_id TEXT,
+        vision_enabled INTEGER NOT NULL DEFAULT 1,
         updated_at INTEGER NOT NULL
       );
 
@@ -118,6 +119,7 @@ function runMigrations(sqlite: Database.Database): void {
         user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
         voice TEXT,
         character_id TEXT,
+        vision_enabled INTEGER NOT NULL DEFAULT 1,
         updated_at INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id);
@@ -136,6 +138,14 @@ function runMigrations(sqlite: Database.Database): void {
       sqlite.exec("ALTER TABLE user_settings DROP COLUMN speaker_id");
     })();
     console.log("[DB] Migration complete: user_settings.voice added");
+  }
+
+  // Migration: Add the Vision setting, on as before it could be turned off
+  const columns = sqlite.prepare("PRAGMA table_info(user_settings)").all() as { name: string }[];
+  if (!columns.some((column) => column.name === "vision_enabled")) {
+    console.log("[DB] Running migration: Adding user_settings.vision_enabled...");
+    sqlite.exec("ALTER TABLE user_settings ADD COLUMN vision_enabled INTEGER NOT NULL DEFAULT 1");
+    console.log("[DB] Migration complete: user_settings.vision_enabled added");
   }
 }
 
