@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSTTProvider } from "@/lib/providers/stt";
+import { getCharacterNames } from "@/lib/character";
 
 /**
  * POST /api/stt
@@ -80,9 +81,10 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await audioFile.arrayBuffer();
     const audioBuffer = Buffer.from(arrayBuffer);
 
-    // Transcribe
+    // Transcribe. Without the names, gpt-transcribe wrote Mira as Myra or Mia.
     const result = await provider.transcribe(audioBuffer, {
       language: language || undefined,
+      keywords: getCharacterNames(),
     });
 
     console.log(

@@ -54,11 +54,14 @@ export class OpenAIWhisperProvider implements STTProvider {
 
     const response = await this.client.audio.transcriptions.create({
       file,
-      model: this.config.model || "whisper-1",
-      language,
+      model: this.config.model || "gpt-transcribe",
+      // gpt-transcribe rejects language and languages together
+      languages: language ? [language] : undefined,
+      keywords: options?.keywords?.length ? options.keywords : undefined,
       prompt,
       temperature,
-      response_format: "verbose_json",
+      // verbose_json returns a 400 with gpt-transcribe
+      response_format: "json",
     });
 
     console.log(
@@ -67,8 +70,8 @@ export class OpenAIWhisperProvider implements STTProvider {
 
     return {
       transcript: response.text,
-      language: response.language,
-      duration: response.duration,
+      language: response.languages?.[0]?.code,
+      duration: response.usage?.type === "duration" ? response.usage.seconds : undefined,
     };
   }
 }

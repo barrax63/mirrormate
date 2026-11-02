@@ -23,7 +23,7 @@ const defaultConfig: ProvidersConfig = {
       enabled: true,
       provider: "openai",
       openai: {
-        model: "gpt-4o-mini",
+        model: "gpt-6-luna",
         maxTokens: 300,
         temperature: 0.7,
       },

@@ -23,7 +23,7 @@ export class OpenAIProvider implements LLMProvider {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    this.model = config.model || "gpt-4o-mini";
+    this.model = config.model || "gpt-6-luna";
     this.defaultMaxTokens = config.maxTokens || 300;
     this.defaultTemperature = config.temperature || 0.7;
   }
@@ -56,10 +56,14 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   async chat(options: ChatCompletionOptions): Promise<ChatCompletionResult> {
-    const requestParams: OpenAI.ChatCompletionCreateParams = {
+    const requestParams: OpenAI.ChatCompletionCreateParamsNonStreaming = {
       model: this.model,
       messages: this.convertMessages(options.messages),
-      max_tokens: options.maxTokens || this.defaultMaxTokens,
+      // Tools and temperature are only accepted with reasoning off. Older models without
+      // reasoning reject this parameter.
+      reasoning_effort: "none",
+      // The API rejects max_tokens
+      max_completion_tokens: options.maxTokens || this.defaultMaxTokens,
       temperature: options.temperature || this.defaultTemperature,
     };
 
@@ -79,11 +83,12 @@ export class OpenAIProvider implements LLMProvider {
     const message = choice?.message;
 
     if (choice?.finish_reason === "tool_calls" && message?.tool_calls) {
-      const toolCalls: ToolCall[] = message.tool_calls.map((tc) => ({
-        id: tc.id,
-        name: tc.function.name,
-        arguments: JSON.parse(tc.function.arguments),
-      }));
+      // Only function tools are defined, so other kinds of calls can't occur
+      const toolCalls: ToolCall[] = message.tool_calls.flatMap((tc) =>
+        tc.type === "function"
+          ? [{ id: tc.id, name: tc.function.name, arguments: JSON.parse(tc.function.arguments) }]
+          : []
+      );
 
       return {
         content: message.content || "",
@@ -92,9 +97,13 @@ export class OpenAIProvider implements LLMProvider {
       };
     }
 
+    if (choice?.finish_reason === "length") {
+      console.warn(`[OpenAI] Reply cut off at ${requestParams.max_completion_tokens} tokens`);
+    }
+
     return {
       content: message?.content || "",
-      finishReason: "stop",
+      finishReason: choice?.finish_reason === "length" ? "length" : "stop",
     };
   }
 }
