@@ -181,15 +181,21 @@ interface LoggedRequest {
   path?: string;
   query?: string;
   body: {
+    model?: string;
     messages: { role: string; content: string; images?: string[] }[];
     tools?: { function: { name: string } }[];
+    reasoning_effort?: string;
+    max_completion_tokens?: number;
   };
 }
 
 interface LoggedTranscription {
   auth: string;
   model: string;
-  language: string;
+  language: string | null;
+  languages: string[];
+  keywords: string[];
+  responseFormat: string;
   audio: { name: string; bytes: number; header: string; webmFiles: number };
 }
 

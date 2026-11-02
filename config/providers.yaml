@@ -3,7 +3,7 @@ providers:
     enabled: true
     provider: ollama  # openai or ollama
     openai:
-      model: gpt-4o-mini
+      model: gpt-6-luna
       maxTokens: 300
       temperature: 0.7
     ollama:
@@ -27,7 +27,7 @@ providers:
     enabled: true
     provider: web  # openai, local, or web
     openai:
-      model: whisper-1
+      model: gpt-transcribe
       # language is loaded from locale preset
       temperature: 0
     local:

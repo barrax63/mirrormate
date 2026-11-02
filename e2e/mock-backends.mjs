@@ -1,5 +1,7 @@
 // Stands in for every external backend during e2e runs: OpenAI (LLM, transcription),
 // Ollama (VLM, embeddings) and VOICEVOX. It records each request so tests can inspect it.
+// Like the real API, the fake OpenAI rejects parameters that gpt-6-luna and gpt-transcribe
+// don't accept.
 //
 // Words in the last user message choose what the fake LLM does:
 //   CALL_LOOP     calls a tool every time, so the route hits its iteration limit
@@ -124,6 +126,20 @@ function sendJson(res, value, status = 200) {
   res.end(JSON.stringify(value));
 }
 
+// The real API's error shape. The messages aren't OpenAI's wording.
+function sendOpenAIError(res, param, message) {
+  sendJson(res, { error: { message: `mock: ${message}`, type: "invalid_request_error", param, code: null } }, 400);
+}
+
+// What gpt-6-luna rejects, or null
+function rejectedChatParam(body) {
+  if ("max_tokens" in body) return ["max_tokens", "use max_completion_tokens"];
+  const reasoningOff = body.reasoning_effort === "none";
+  if (body.tools && !reasoningOff) return ["tools", "function tools need reasoning_effort none"];
+  if ("temperature" in body && !reasoningOff) return ["temperature", "temperature needs reasoning_effort none"];
+  return null;
+}
+
 // Counts the WebM headers in an upload. Mixed recordings still start with one, so checking
 // the start isn't enough.
 function countWebmFiles(audio) {
@@ -133,16 +149,23 @@ function countWebmFiles(audio) {
   return count;
 }
 
-// Answers with the next queued transcript, or nothing, as Whisper does for silence
+// Answers with the next queued transcript, or nothing for silence, in gpt-transcribe's shape
 async function transcribe(req, res, raw) {
   const form = await new Response(raw, { headers: { "Content-Type": req.headers["content-type"] } }).formData();
   const file = form.get("file");
   const audio = Buffer.from(await file.arrayBuffer());
+  // The SDK sends arrays as repeated `name[]` fields, and the API also takes plain `name`
+  const list = (name) => [...form.getAll(`${name}[]`), ...form.getAll(name)];
+  const languages = list("languages");
+  const responseFormat = form.get("response_format") ?? "json";
   log.push({
     kind: "stt",
     auth: req.headers.authorization,
     model: form.get("model"),
     language: form.get("language"),
+    languages,
+    keywords: list("keywords"),
+    responseFormat,
     audio: {
       name: file.name,
       bytes: audio.length,
@@ -150,8 +173,17 @@ async function transcribe(req, res, raw) {
       webmFiles: countWebmFiles(audio),
     },
   });
+
+  if (form.get("language") && languages.length > 0) {
+    return sendOpenAIError(res, "language", "language and languages can't be sent together");
+  }
+  if (!["json", "text"].includes(responseFormat)) {
+    return sendOpenAIError(res, "response_format", `${responseFormat} isn't supported`);
+  }
+
   const text = transcripts.shift() ?? "";
-  setTimeout(() => sendJson(res, { text, language: form.get("language"), duration: 1 }), TRANSCRIPTION_MS);
+  const reply = { text, languages: languages.slice(0, 1).map((code) => ({ code })), usage: { type: "duration", seconds: 1 } };
+  setTimeout(() => (responseFormat === "text" ? res.end(text) : sendJson(res, reply)), TRANSCRIPTION_MS);
 }
 
 function handle(req, res, body, raw) {
@@ -177,6 +209,8 @@ function handle(req, res, body, raw) {
     case "/v1/chat/completions": {
       const kind = classifyChat(body.messages);
       log.push({ kind, auth: req.headers.authorization, body });
+      const rejected = rejectedChatParam(body);
+      if (rejected) return sendOpenAIError(res, ...rejected);
       if (kind === "extraction") return sendJson(res, extractionReply(body.messages));
       return sendJson(res, llmReply(body.messages));
     }

@@ -41,6 +41,14 @@ export interface CharacterConfig {
   };
 }
 
+// Replies are spoken, and the page shows their text as it is, so markdown would be read out
+// or shown. Added to every character's prompt.
+function spokenTextRule(isJapanese: boolean): string {
+  return isJapanese
+    ? "あなたの返答は音声で読み上げられます。話し言葉のプレーンテキストだけを書いてください。Markdown、箇条書き、絵文字は使わないでください。"
+    : "Your replies are read aloud by a speech engine. Write plain spoken text only: no markdown, no lists, no emoji.";
+}
+
 let cachedConfig: CharacterConfig | null = null;
 let cachedPrompt: string | null = null;
 let cachedLocale: Locale | null = null;
@@ -168,6 +176,8 @@ export function getSystemPrompt(): string {
 
   sections.push("");
   sections.push(c.background.trim());
+  sections.push("");
+  sections.push(spokenTextRule(isJapanese));
 
   cachedPrompt = sections.join("\n");
   return cachedPrompt;
@@ -253,6 +263,12 @@ export function getCharacterPresets(): CharacterPreset[] {
   return config.characters;
 }
 
+/** Names of the configured characters, for speech recognition to spell as configured */
+export function getCharacterNames(): string[] {
+  const names = [loadCharacterConfig().character.name, ...getCharacterPresets().map((c) => c.name)];
+  return [...new Set(names.filter(Boolean))];
+}
+
 export function getCharacterById(id: string): CharacterPreset | null {
   const config = loadCharactersConfig();
   return config.characters.find((c) => c.id === id) ?? null;
@@ -310,6 +326,8 @@ export function getSystemPromptForCharacter(characterId: string): string {
 
   sections.push("");
   sections.push(character.background.trim());
+  sections.push("");
+  sections.push(spokenTextRule(isJapanese));
 
   const prompt = sections.join("\n");
   cachedCharacterPrompts.set(cacheKey, prompt);
