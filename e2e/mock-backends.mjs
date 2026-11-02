@@ -27,6 +27,7 @@ const DEFAULT_AUDIO_MS = 50;
 // transcript arrives. Real OpenAI takes about 600 ms.
 const TRANSCRIPTION_MS = 300;
 let audioMs = DEFAULT_AUDIO_MS;
+let transcriptionMs = TRANSCRIPTION_MS;
 let log = [];
 let transcripts = [];
 let toolCallCount = 0;
@@ -176,7 +177,7 @@ async function transcribe(req, res, raw) {
 
   const text = transcripts.shift() ?? "";
   const reply = { text, languages: languages.slice(0, 1).map((code) => ({ code })), usage: { type: "duration", seconds: 1 } };
-  setTimeout(() => (responseFormat === "text" ? res.end(text) : sendJson(res, reply)), TRANSCRIPTION_MS);
+  setTimeout(() => (responseFormat === "text" ? res.end(text) : sendJson(res, reply)), transcriptionMs);
 }
 
 // ElevenLabs' error shape. 401 covers a wrong key and running out of credits alike.
@@ -237,10 +238,14 @@ function handle(req, res, body, raw) {
       log = [];
       transcripts = [];
       audioMs = DEFAULT_AUDIO_MS;
+      transcriptionMs = TRANSCRIPTION_MS;
       return sendJson(res, { ok: true });
     case "/__audio":
       audioMs = Number(url.searchParams.get("ms"));
       return sendJson(res, { audioMs });
+    case "/__transcription":
+      transcriptionMs = Number(url.searchParams.get("ms"));
+      return sendJson(res, { transcriptionMs });
     case "/__transcript":
       transcripts.push(body.text);
       return sendJson(res, { queued: transcripts.length });

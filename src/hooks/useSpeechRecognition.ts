@@ -475,7 +475,8 @@ export function useSpeechRecognition({
 
   const resume = useCallback(() => {
     if (activeProvider === "whisper") {
-      if (!isRecording && !isTranscribing) {
+      // Also while the last recording is transcribed, or what's said meanwhile is lost
+      if (!isRecording) {
         shouldRestartRef.current = true;
         startRecording();
       }
@@ -489,7 +490,7 @@ export function useSpeechRecognition({
         // Already started
       }
     }
-  }, [activeProvider, isRecording, isTranscribing, startRecording]);
+  }, [activeProvider, isRecording, startRecording]);
 
   return {
     isListening,
