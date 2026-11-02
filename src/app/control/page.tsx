@@ -158,7 +158,6 @@ export default function ControlPage() {
               role: m.role,
               content: m.content,
             })),
-            withAudio: false,
             characterId: selectedCharacter || undefined,
             image: capturedImage || undefined,
           }),

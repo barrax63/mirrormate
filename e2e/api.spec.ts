@@ -3,7 +3,7 @@ import { test, expect } from "./fixtures";
 
 async function chat(request: APIRequestContext, content: string, extra: Record<string, unknown> = {}) {
   const response = await request.post("/api/chat", {
-    data: { messages: [{ role: "user", content }], withAudio: false, ...extra },
+    data: { messages: [{ role: "user", content }], ...extra },
   });
   expect(response.status()).toBe(200);
   return response.json();
@@ -88,20 +88,50 @@ test.describe("/api/chat", () => {
 });
 
 test.describe("other APIs", () => {
-  test("/api/tts synthesizes speech with VOICEVOX", async ({ request, mock }) => {
-    const response = await request.post("/api/tts", { data: { text: "hello there" } });
+  test("/api/tts speaks with ElevenLabs, using the test key", async ({ request, mock }) => {
+    const response = await request.post("/api/tts", { data: { text: "hello there", speaker: 2 } });
 
     expect(response.status()).toBe(200);
     const { audio } = await response.json();
-    expect(Buffer.from(audio, "base64").subarray(0, 4).toString()).toBe("RIFF");
-    expect((await mock.log("tts")).map((call) => call.path)).toEqual(["/audio_query", "/synthesis"]);
+    // The start of an mp3 frame
+    expect(Buffer.from(audio, "base64").subarray(0, 2).toString("hex")).toBe("fffb");
+    const [speech] = await mock.speech();
+    expect(speech).toMatchObject({
+      path: "/v1/text-to-speech/mock-voice",
+      outputFormat: "mp3_44100_128",
+      apiKey: "e2e-dummy-key",
+      body: { text: "hello there", model_id: "eleven_v4_turbo", language_code: "en" },
+    });
+    expect(await mock.log("tts")).toEqual([]);
   });
 
-  test("/api/voicevox/speakers lists the voices", async ({ request }) => {
-    const response = await request.get("/api/voicevox/speakers");
+  test("/api/tts leaves emoji and markdown out of speech", async ({ request, mock }) => {
+    const response = await request.post("/api/tts", { data: { text: "**Great** news! 🎉\n- one\n- two" } });
 
     expect(response.status()).toBe(200);
-    expect(JSON.stringify(await response.json())).toContain("Mock");
+    const [speech] = await mock.speech();
+    expect(speech.body.text).toBe("Great news!\none\ntwo");
+  });
+
+  test("/api/tts returns no audio for a reply that's only emoji", async ({ request, mock }) => {
+    const response = await request.post("/api/tts", { data: { text: "🎉👍" } });
+
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toEqual({ audio: null });
+    expect(await mock.speech()).toEqual([]);
+  });
+
+  test("/api/tts fails when ElevenLabs is out of credits", async ({ request, mock }) => {
+    const response = await request.post("/api/tts", { data: { text: "QUOTA_EXCEEDED" } });
+
+    expect(response.status()).toBe(500);
+    expect(await mock.speech()).toHaveLength(1);
+  });
+
+  test("/api/voicevox/speakers offers no voices when replies use ElevenLabs", async ({ request }) => {
+    const response = await request.get("/api/voicevox/speakers");
+
+    expect(await response.json()).toEqual({ speakers: [], enabled: false });
   });
 
   test("/api/plugins includes the hidden vision plugin", async ({ request }) => {

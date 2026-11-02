@@ -13,7 +13,7 @@ providers:
 
   tts:
     enabled: true
-    provider: voicevox  # openai or voicevox
+    provider: voicevox  # elevenlabs or voicevox
     # ...
 
   stt:
@@ -139,32 +139,39 @@ providers:
 
 | Provider | Description | API Key Required |
 |----------|-------------|------------------|
-| OpenAI | OpenAI TTS API | Yes |
+| ElevenLabs | `eleven_v4_turbo`, one voice for every language | Yes |
 | VOICEVOX | Free, local, Japanese voices | No |
 
-### OpenAI TTS
+### ElevenLabs
+
+1. Get an API key from [ElevenLabs](https://elevenlabs.io/app/settings/api-keys). It only needs the Text to Speech permission.
+2. Add to `.env`:
+
+```bash
+ELEVENLABS_API_KEY=your-api-key
+```
+
+3. Configure in `providers.yaml`:
 
 ```yaml
 providers:
   tts:
     enabled: true
-    provider: openai
-    openai:
-      voice: shimmer  # alloy, echo, fable, onyx, nova, shimmer
-      model: tts-1    # tts-1 or tts-1-hd
-      speed: 0.95
+    provider: elevenlabs
+    elevenlabs:
+      voiceId: EXAVITQu4vr4xnSDxMaL  # Sarah, a premade voice
+      model: eleven_v4_turbo
 ```
 
-#### Voices
+| Option | Description | Default |
+|--------|-------------|---------|
+| `voiceId` | ElevenLabs voice ID | `EXAVITQu4vr4xnSDxMaL` (Sarah) |
+| `model` | ElevenLabs model ID | `eleven_v4_turbo` |
+| `baseUrl` | API address | `https://api.elevenlabs.io` |
 
-| Voice | Description |
-|-------|-------------|
-| `alloy` | Neutral, balanced |
-| `echo` | Warm, conversational |
-| `fable` | Expressive, narrative |
-| `onyx` | Deep, authoritative |
-| `nova` | Friendly, upbeat |
-| `shimmer` | Clear, gentle (default) |
+Speech follows the app's locale. Emoji and markdown are removed before speaking, though the reply on screen keeps them.
+
+The free plan includes 10,000 credits a month, and `eleven_v4_turbo` uses 0.5 credits per character, so a 100-character reply costs 50. When credits run out, ElevenLabs answers with a 401 whose `detail.status` is `quota_exceeded`, and replies appear on screen without being spoken.
 
 ### VOICEVOX
 
@@ -182,9 +189,9 @@ providers:
       baseUrl: "http://localhost:50021"
 ```
 
-> **Note**: VOICEVOX only speaks Japanese. English words outside its dictionary are spelled out letter by letter, even common ones such as "today" and "morning", so use OpenAI TTS for English replies.
+> **Note**: VOICEVOX only speaks Japanese. English words outside its dictionary are spelled out letter by letter, even common ones such as "today" and "morning", so use ElevenLabs for English replies.
 
-The voice selector on `/control` only appears with this provider, because the OpenAI voice is set in the config.
+The voice selector on `/control` only appears with this provider, because the ElevenLabs voice is set in the config.
 
 #### Speaker IDs (Common)
 

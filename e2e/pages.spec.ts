@@ -3,7 +3,7 @@ import { test, expect, AvatarPage } from "./fixtures";
 test.describe("Other pages", () => {
   test("/control/memory lists stored memories", async ({ page, request }) => {
     await request.post("/api/chat", {
-      data: { messages: [{ role: "user", content: "this is REMEMBER_listing" }], withAudio: false },
+      data: { messages: [{ role: "user", content: "this is REMEMBER_listing" }] },
     });
     await expect
       .poll(async () => JSON.stringify(await (await request.get("/api/memories")).json()))

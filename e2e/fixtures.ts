@@ -164,7 +164,12 @@ export class ControlPage extends RecordedPage {
     await input.press("Enter");
   }
 
+  /** The selector only appears with VOICEVOX, and the e2e config uses ElevenLabs */
   async selectMockVoice() {
+    await this.page.route("**/api/voicevox/speakers", (route) =>
+      route.fulfill({ json: { speakers: [{ id: 2, name: "Mock", styleName: "normal" }] } })
+    );
+    await this.open();
     await this.page.getByRole("button", { name: "Select voice" }).click();
     await this.page.getByText("Mock").first().click();
   }
@@ -187,6 +192,14 @@ interface LoggedRequest {
     reasoning_effort?: string;
     max_completion_tokens?: number;
   };
+}
+
+interface LoggedSpeech {
+  path: string;
+  voiceId: string;
+  outputFormat: string | null;
+  apiKey?: string;
+  body: { text: string; model_id: string; language_code: string };
 }
 
 interface LoggedTranscription {
@@ -230,6 +243,13 @@ export class MockBackends {
     const response = await this.request.get(`${MOCK_URL}/__log`);
     const log: (LoggedTranscription & { kind: string })[] = await response.json();
     return log.filter((entry) => entry.kind === "stt");
+  }
+
+  /** Speech requests that reached the fake ElevenLabs, oldest first */
+  async speech(): Promise<LoggedSpeech[]> {
+    const response = await this.request.get(`${MOCK_URL}/__log`);
+    const log: (LoggedSpeech & { kind: string })[] = await response.json();
+    return log.filter((entry) => entry.kind === "elevenlabs");
   }
 
   /** Makes this the text of the next recording that reaches the fake OpenAI */

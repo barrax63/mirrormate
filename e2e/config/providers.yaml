@@ -1,5 +1,5 @@
 # Points every provider at e2e/mock-backends.mjs. OpenAI gets there through OPENAI_BASE_URL
-# in playwright.config.ts.
+# in playwright.config.ts, and ElevenLabs through tts.elevenlabs.baseUrl.
 providers:
   llm:
     enabled: true
@@ -11,7 +11,11 @@ providers:
 
   tts:
     enabled: true
-    provider: voicevox
+    provider: elevenlabs
+    elevenlabs:
+      # No model, so the default is what gets tested
+      voiceId: mock-voice
+      baseUrl: "http://127.0.0.1:11555"
     voicevox:
       speaker: 2
       baseUrl: "http://127.0.0.1:11555"

@@ -30,11 +30,10 @@ const defaultConfig: ProvidersConfig = {
     },
     tts: {
       enabled: true,
-      provider: "openai",
-      openai: {
-        voice: "shimmer",
-        model: "tts-1",
-        speed: 0.95,
+      provider: "elevenlabs",
+      elevenlabs: {
+        voiceId: "EXAVITQu4vr4xnSDxMaL",
+        model: "eleven_v4_turbo",
       },
     },
   },
@@ -49,7 +48,7 @@ export function loadProvidersConfig(): ProvidersConfig {
   console.log(`[Providers] Loading config from: ${configPath}`);
 
   if (!fs.existsSync(configPath)) {
-    console.log("[Providers] Config file not found, using defaults (OpenAI)");
+    console.log("[Providers] Config file not found, using defaults (OpenAI and ElevenLabs)");
     cachedConfig = defaultConfig;
     return cachedConfig;
   }
@@ -65,7 +64,7 @@ export function loadProvidersConfig(): ProvidersConfig {
 
   // Allow environment variable override for TTS provider
   if (process.env.TTS_PROVIDER && cachedConfig.providers?.tts) {
-    cachedConfig.providers.tts.provider = process.env.TTS_PROVIDER as "openai" | "voicevox";
+    cachedConfig.providers.tts.provider = process.env.TTS_PROVIDER as "elevenlabs" | "voicevox";
     console.log(`[Providers] TTS provider overridden by env: ${process.env.TTS_PROVIDER}`);
   }
 

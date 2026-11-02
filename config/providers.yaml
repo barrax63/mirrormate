@@ -14,11 +14,10 @@ providers:
 
   tts:
     enabled: true
-    provider: openai  # openai or voicevox
-    openai:
-      voice: echo  # alloy, echo, fable, onyx, nova, shimmer
-      model: tts-1    # tts-1 or tts-1-hd
-      speed: 0.95
+    provider: elevenlabs  # elevenlabs or voicevox
+    elevenlabs:
+      voiceId: EXAVITQu4vr4xnSDxMaL  # Sarah, a premade voice
+      model: eleven_v4_turbo
     voicevox:
       speaker: 2
       baseUrl: "http://studio:50021"
