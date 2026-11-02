@@ -232,6 +232,7 @@ test.describe("Control page", () => {
     await expect.poll(() => avatar.liveRecorders()).toBe(0);
     await avatar.waitForLog("no voice detected, discarding");
     expect(await mock.transcriptions()).toEqual([]);
+    expect(await mock.localTranscriptions()).toEqual([]);
   });
 
   test("stops recording when the mic is turned off a second time", async ({ avatar, control }) => {
@@ -257,7 +258,8 @@ test.describe("Control page", () => {
 
     await avatar.hear("hello");
 
-    const [recording] = await mock.transcriptions();
+    // It's waiting for the wake word, so local Whisper gets it
+    const [recording] = await mock.localTranscriptions();
     expect(recording.audio.webmFiles).toBe(1);
   });
 

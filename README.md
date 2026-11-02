@@ -66,17 +66,19 @@ Just talk to the mirror.
 │  │  (Chrome)     │◄─┤  App       │◄─┤  (Memory, Sessions)    │  │
 │  │  + Mic/Cam    │  │  Port 3000 │  │                        │  │
 │  └───────────────┘  └─────┬──────┘  └────────────────────────┘  │
-│         ▲                 │                                     │
+│         ▲                 │         ┌────────────────────────┐  │
+│         │                 ├────────►│  Whisper (wake word)   │  │
+│         │                 │         └────────────────────────┘  │
 │         │                 │ Tailscale VPN                       │
 └─────────┼─────────────────┼─────────────────────────────────────┘
           │                 ▼
           │   ┌─────────────────────────────────────────────────┐
           │   │                  Mac Studio                     │
-          │   │  ┌────────────┐ ┌──────────────┐ ┌───────────┐  │
-          │   │  │  Ollama    │ │  PLaMo       │ │  Whisper  │  │
-          │   │  │  LLM/VLM   │ │  Embedding   │ │  STT      │  │
-          │   │  │  Port 11434│ │  Port 8000   │ │  Port 8080│  │
-          │   │  └────────────┘ └──────────────┘ └───────────┘  │
+          │   │  ┌────────────┐ ┌──────────────┐                │
+          │   │  │  Ollama    │ │  PLaMo       │                │
+          │   │  │  LLM/VLM   │ │  Embedding   │                │
+          │   │  │  Port 11434│ │  Port 8000   │                │
+          │   │  └────────────┘ └──────────────┘                │
           │   └─────────────────────────────────────────────────┘
           │
           └── Half Mirror + Monitor
@@ -109,7 +111,7 @@ Open http://localhost:3000 in Chrome.
 ## Features
 
 ### Voice-First Interaction
-Activate with a wake word. Choose from Web Speech API, OpenAI Whisper, or local Whisper for speech recognition.
+Activate with a wake word. Choose from Web Speech API, OpenAI Whisper, or local Whisper for speech recognition. With the Whisper providers, local Whisper listens for the wake word, so nothing said in the room before it leaves your machine.
 
 ### Personalized Memory
 Automatically extracts and stores information about you from conversations. Uses RAG to retrieve relevant memories and generate personalized responses.

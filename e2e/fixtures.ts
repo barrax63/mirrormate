@@ -10,18 +10,26 @@ export const JPEG_DATA_URL = /^data:image\/jpeg;base64,/;
 
 const MOCK_URL = "http://127.0.0.1:11555";
 
+/** One recording made through fake-mic.js, with the words said during it */
+export interface Recording {
+  startedAt: number;
+  stoppedAt: number | null;
+  words: string;
+}
+
 // See fake-mic.js, speech-recognition-stub.js and audio-spy.js
 declare global {
   interface Window {
     __micListening: () => boolean;
     __liveRecorders: () => number;
+    __recordings: () => Recording[];
     __liveMicStreams: () => number;
     __micRequests: () => number;
     __cameraRequests: () => number;
     __liveCameraTracks: () => number;
     __micHeld?: boolean;
     __releaseMic: () => void;
-    __speak: () => boolean;
+    __speak: (text?: string, ms?: number) => boolean;
     __recognitions: { lang: string; running: boolean }[];
     __say: (text: string) => boolean;
     __recognitionFailure?: string | null;
@@ -29,6 +37,14 @@ declare global {
     __audioContexts: AudioContext[];
     __audioLinks: number;
   }
+}
+
+/**
+ * A file for /api/stt that the fake transcription services read as this text, as they do
+ * recordings made through fake-mic.js
+ */
+export function fakeRecording(transcript: string) {
+  return Buffer.from(`not really audio\nMOCK-TRANSCRIPT:${JSON.stringify(transcript)}`);
 }
 
 /** Keeps a run independent of outside services, such as the fonts in globals.css */
@@ -80,12 +96,25 @@ export class AvatarPage extends RecordedPage {
     await this.page.mouse.click(5, 5);
   }
 
-  /** Speaks into the mic once it's listening, and waits for the mock to transcribe it as this text */
+  /** Says this into the mic once it's listening, and waits for the transcript */
   async hear(text: string) {
-    await new MockBackends(this.page.request).queueTranscript(text);
     const transcribed = this.page.waitForResponse("**/api/stt");
-    await expect.poll(() => this.page.evaluate(() => window.__speak()), { timeout: 10_000 }).toBe(true);
+    await this.say(text);
     expect((await transcribed).ok()).toBe(true);
+  }
+
+  /** Says this into the mic once it's listening, over this many milliseconds */
+  async say(text: string, ms?: number) {
+    await expect
+      .poll(() => this.page.evaluate(([said, length]) => window.__speak(said, length), [text, ms] as const), {
+        timeout: 10_000,
+      })
+      .toBe(true);
+  }
+
+  /** Every recording so far, oldest first */
+  recordings() {
+    return this.page.evaluate(() => window.__recordings());
   }
 
   /** Says the wake word and waits for the conversation to start */
@@ -217,6 +246,13 @@ interface LoggedSpeech {
   body: { text: string; model_id: string; language_code: string };
 }
 
+interface LoggedUpload {
+  name: string;
+  bytes: number;
+  header: string;
+  webmFiles: number;
+}
+
 interface LoggedTranscription {
   auth: string;
   model: string;
@@ -224,7 +260,19 @@ interface LoggedTranscription {
   languages: string[];
   keywords: string[];
   responseFormat: string;
-  audio: { name: string; bytes: number; header: string; webmFiles: number };
+  audio: LoggedUpload;
+  /** What the mock answered: the words said during the recording */
+  text: string;
+}
+
+interface LoggedLocalTranscription {
+  /** Set for the requests that came while local Whisper was down, with nothing else */
+  refused?: true;
+  auth?: string;
+  model: string;
+  language: string | null;
+  audio: LoggedUpload;
+  text: string;
 }
 
 export class MockBackends {
@@ -237,11 +285,6 @@ export class MockBackends {
   /** Sets the length of the audio that the fake ElevenLabs returns */
   async setAudioLength(ms: number) {
     await this.request.post(`${MOCK_URL}/__audio?ms=${ms}`);
-  }
-
-  /** Sets how long the fake OpenAI takes to transcribe a recording */
-  async setTranscriptionTime(ms: number) {
-    await this.request.post(`${MOCK_URL}/__transcription?ms=${ms}`);
   }
 
   async log(kind: LoggedRequest["kind"]): Promise<LoggedRequest[]> {
@@ -265,16 +308,23 @@ export class MockBackends {
     return log.filter((entry) => entry.kind === "stt");
   }
 
+  /** Recordings that reached the fake local Whisper, oldest first */
+  async localTranscriptions(): Promise<LoggedLocalTranscription[]> {
+    const response = await this.request.get(`${MOCK_URL}/__log`);
+    const log: (LoggedLocalTranscription & { kind: string })[] = await response.json();
+    return log.filter((entry) => entry.kind === "local-stt");
+  }
+
+  /** Makes the fake local Whisper drop every connection, or take this long to answer */
+  async setLocalWhisper(state: { down?: boolean; ms?: number }) {
+    await this.request.post(`${MOCK_URL}/__local-whisper`, { data: state });
+  }
+
   /** Speech requests that reached the fake ElevenLabs, oldest first */
   async speech(): Promise<LoggedSpeech[]> {
     const response = await this.request.get(`${MOCK_URL}/__log`);
     const log: (LoggedSpeech & { kind: string })[] = await response.json();
     return log.filter((entry) => entry.kind === "elevenlabs");
-  }
-
-  /** Makes this the text of the next recording that reaches the fake OpenAI */
-  async queueTranscript(text: string) {
-    await this.request.post(`${MOCK_URL}/__transcript`, { data: { text } });
   }
 }
 

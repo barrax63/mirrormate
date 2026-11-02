@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-MirrorMate is a voice-first AI avatar shown behind a half mirror. It is one Next.js 15 App Router app (`output: "standalone"`), typically on a Raspberry Pi, with heavy services (Ollama, faster-whisper, PLaMo embedding) optionally on another host, and ElevenLabs for speech. It is effectively single-user: requests fall back to `default-user`, and locale is server-wide. Chrome is required for the Web Speech API: Brave has the API, but every session fails with `network`, so use a Whisper provider there.
+MirrorMate is a voice-first AI avatar shown behind a half mirror. It is one Next.js 15 App Router app (`output: "standalone"`), typically on a Raspberry Pi, with local Whisper (`speaches`) next to it for the wake word, heavy services (Ollama, PLaMo embedding) optionally on another host, and ElevenLabs for speech. It is effectively single-user: requests fall back to `default-user`, and locale is server-wide. Chrome is required for the Web Speech API: Brave has the API, but every session fails with `network`, so use a Whisper provider there.
 
 ## Commands
 
@@ -31,15 +31,15 @@ bun audit --prod --audit-level=high             # the dependency check CI runs
 
 bun run docs:dev                                # VitePress site in docs/
 
-docker compose up -d                            # app only; set STUDIO_IP in .env
-docker compose -f compose.studio.yaml up -d     # faster-whisper, PLaMo (Ollama runs natively)
+docker compose up -d                            # app and local Whisper; set STUDIO_IP in .env
+docker compose -f compose.studio.yaml up -d     # PLaMo (Ollama runs natively)
 ```
 
 Use `bun run test`, not `bun test`: the latter starts Bun's own runner instead of Vitest.
 
 Vitest only collects `src/**/*.test.ts` and runs in the `node` environment.
 
-Playwright runs `e2e/*.spec.ts` against the production build. `playwright.config.ts` starts `e2e/mock-backends.mjs` (fake OpenAI and ElevenLabs; the Ollama providers have no e2e coverage) and `next start` twice: `en` on port 3100 and `ja` on port 3101, built in English so the `ja` server shows what `LOCALE` changes at runtime. Both use `e2e/config/*.yaml` and throwaway databases in `e2e/.tmp/`. Chromium gets a fake camera and `e2e/fake-mic.js`, a WebAudio tone in place of the microphone. So `avatar.hear(text)` runs the real recorder, silence detection and `/api/stt`, and the mock returns `text` as the transcript. `OPENAI_BASE_URL`, `tts.elevenlabs.baseUrl` and dummy keys keep every OpenAI and ElevenLabs call on the mock, even with real keys in `.env`. Tests of Web Speech itself are in `e2e/web-speech.spec.ts`, against `e2e/speech-recognition-stub.js`. Real microphones and speech recognition aren't covered.
+Playwright runs `e2e/*.spec.ts` against the production build. `playwright.config.ts` starts `e2e/mock-backends.mjs` (fake OpenAI, ElevenLabs and local Whisper, which has its own path; the Ollama providers have no e2e coverage) and `next start` twice: `en` on port 3100 and `ja` on port 3101, built in English so the `ja` server shows what `LOCALE` changes at runtime. Both use `e2e/config/*.yaml` and throwaway databases in `e2e/.tmp/`. Chromium gets a fake camera and `e2e/fake-mic.js`, a WebAudio tone in place of the microphone. It ends each recording with the words said during it, which the mock returns as the transcript. So `avatar.hear(text)` runs the real recorder, silence detection and `/api/stt`, and a word that a recording cut off is missing from its transcript. `OPENAI_BASE_URL`, `tts.elevenlabs.baseUrl` and dummy keys keep every OpenAI and ElevenLabs call on the mock, even with real keys in `.env`. Tests of Web Speech itself are in `e2e/web-speech.spec.ts`, against `e2e/speech-recognition-stub.js`. Real microphones and speech recognition aren't covered.
 
 Known bugs are covered by expected failures: `it.fails` in Vitest, and `test.fail()` in tests named `known bug: ...` in Playwright. `test.fail()` is called right before the failing assertion, so broken setup still fails the test. A fix makes its test fail with "Expected to fail, but passed", so remove the marker in the same change. Playwright's list output prints ✘ for expected failures, but counts them as passed.
 
@@ -54,6 +54,7 @@ Use `bun audit fix` to patch dependencies, and don't delete entries from `bun.lo
 - `BroadcastMessage` is defined twice, in `src/lib/animation/broadcast-adapter.ts` and `src/app/control/page.tsx`. Update both when adding a message type. `mapBroadcastToEvent` turns messages into events for the avatar's animation state machine in `src/lib/animation/`.
 - Both pages call `/api/chat` themselves. Only the avatar page plays replies: it fetches `/api/tts`, and `/control` asks it to with a `play_audio` message. `/control` calls `/api/tts` itself only for voice preview.
 - The avatar page keeps one `BroadcastChannel` and one `AudioContext` for its whole life, and its channel handler reads current state through a ref. Don't tie either to state: recognition stops during every reply, so closing the `AudioContext` on a state change cuts the reply off.
+- With a Whisper provider, everything recorded while waiting for the wake word, or before its config has loaded, goes to `/api/stt` with `purpose: wakeWord`, which only local Whisper transcribes, with no fallback. A recording counts if the page was waiting at any point during it. While waiting, `useAudioRecorder` cuts recordings `stt.wakeWord.maxRecordingDuration` after their sound starts, with the next one starting `overlap` earlier on the same mic. When the wake word is heard, recordings that started before its recording ended are dropped, and their transcripts ignored.
 - For chat, the hidden `vision-companion` plugin on the avatar page owns the camera. Pages send `camera_capture_request`, receive `camera_capture_response`, and pass the image in the `/api/chat` body. The `see_camera` tool then sends it to the VLM provider. The Vision toggle on `/control` is `user_settings.vision_enabled`, read and changed through `useVisionEnabled`, which shares changes as `vision_toggle`. While it's off, or not yet loaded, the plugin keeps the camera closed and the pages capture nothing, and `/api/chat` drops any image it's sent.
 
 ### `/api/chat` pipeline (`src/app/api/chat/route.ts`)
@@ -88,7 +89,7 @@ How the layers resolve:
 Things that are easy to miss:
 
 - User-facing and prompt text must exist in both `en` and `ja`: the locale YAML, the `messages` files, and inline `getLocale() === "ja"` branches in server code.
-- The committed `config/providers.yaml` points at `http://studio:*`, a hostname that only compose's `extra_hosts` defines. Under `bun run dev`, make `studio` resolve or use another config through `PROVIDERS_CONFIG`.
+- The committed `config/providers.yaml` points at `http://studio:*`, a hostname that only compose's `extra_hosts` defines, and at `http://whisper:8000`, compose's Whisper service. Under `bun run dev`, make both resolve or use another config through `PROVIDERS_CONFIG`.
 - `compose.yaml` passes an explicit env list that omits `LOCALE` and the `*_PROVIDER` variables, so setting them in `.env` has no effect there. A new key, like `ELEVENLABS_API_KEY`, has to be added to that list. It also needs a valid `STUDIO_IP`, or `docker compose up` fails. `.env.example` defaults to `host-gateway`, which means this machine.
 - No API route has authentication, so `compose.yaml` publishes port 3000 on localhost only, unless `BIND_ADDRESS` says otherwise. `compose.studio.yaml` still publishes on all interfaces, because an app on another machine has to reach it.
 - `next build` prerenders pages, so UI strings and `<html lang>` use the locale at build time. Changing `LOCALE` or `app.yaml` afterwards only switches the server side (wake word, prompts, database, presets). `next dev` renders per request, which hides this.

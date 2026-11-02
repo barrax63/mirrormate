@@ -1,5 +1,5 @@
 import type { APIRequestContext } from "@playwright/test";
-import { test, expect } from "./fixtures";
+import { test, expect, fakeRecording } from "./fixtures";
 
 async function chat(request: APIRequestContext, content: string, extra: Record<string, unknown> = {}) {
   const response = await request.post("/api/chat", {
@@ -227,12 +227,11 @@ test.describe("other APIs", () => {
     expect(await response.json()).toMatchObject({ enabled: true, phrase: "Hey Mira" });
   });
 
-  test("/api/stt transcribes a recording with OpenAI", async ({ request, mock }) => {
-    await mock.queueTranscript("hello from a file");
-
+  test("/api/stt transcribes speech with OpenAI", async ({ request, mock }) => {
     const response = await request.post("/api/stt", {
       multipart: {
-        audio: { name: "audio.webm", mimeType: "audio/webm", buffer: Buffer.from("not really audio") },
+        audio: { name: "audio.webm", mimeType: "audio/webm", buffer: fakeRecording("hello from a file") },
+        purpose: "speech",
         language: "en",
       },
     });
@@ -250,9 +249,13 @@ test.describe("other APIs", () => {
     expect(recording.keywords).toEqual(expect.arrayContaining(["Mira", "Luna"]));
   });
 
-  test("/api/stt/config reports OpenAI in English", async ({ request }) => {
+  test("/api/stt/config reports OpenAI in English, and where wake word recordings are cut", async ({ request }) => {
     const response = await request.get("/api/stt/config");
 
-    expect(await response.json()).toMatchObject({ provider: "openai", language: "en" });
+    expect(await response.json()).toMatchObject({
+      provider: "openai",
+      language: "en",
+      wakeWord: { maxRecordingDuration: 2000, overlap: 1000 },
+    });
   });
 });

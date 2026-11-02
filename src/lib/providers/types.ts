@@ -65,7 +65,14 @@ export interface VLMProviderConfig extends ProviderConfig {
 }
 
 export interface STTProviderConfig extends ProviderConfig {
+  /** For what's said after the wake word, or everything when the wake word is off */
   provider: "openai" | "local" | "web";
+  /** For what's heard while waiting for the wake word, which never goes to a cloud service */
+  wakeWord?: {
+    provider?: "local";
+    maxRecordingDuration?: number;
+    overlap?: number;
+  };
   openai?: {
     model?: string;
     language?: string;

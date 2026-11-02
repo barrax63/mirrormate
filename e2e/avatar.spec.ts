@@ -97,10 +97,10 @@ test.describe("Voice flow", () => {
   });
 
   test("listens again while a recording is transcribed, so nothing said meanwhile is lost", async ({ avatar, mock }) => {
-    await mock.setTranscriptionTime(2000);
-    await mock.queueTranscript("what time is it");
+    // It's waiting for the wake word, so local Whisper transcribes
+    await mock.setLocalWhisper({ ms: 2000 });
 
-    await expect.poll(() => avatar.page.evaluate(() => window.__speak())).toBe(true);
+    await avatar.say("what time is it");
     await avatar.waitForPost("/api/stt");
 
     await expect.poll(() => avatar.isListening(), { timeout: 1000 }).toBe(true);
@@ -108,7 +108,8 @@ test.describe("Voice flow", () => {
     expect(avatar.logs.filter((log) => log.includes("Whisper result"))).toEqual([]);
   });
 
-  test("sends what it recorded to OpenAI, using the test key", async ({ avatar, mock }) => {
+  test("sends what it recorded after the wake word to OpenAI, using the test key", async ({ avatar, mock }) => {
+    await avatar.wakeUp();
     await avatar.hear("hello");
 
     const [recording] = await mock.transcriptions();

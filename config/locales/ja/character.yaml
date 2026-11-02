@@ -4,6 +4,7 @@ character:
 
   # Wake word configuration
   wakeWord:
+    # With false, everything said in the room goes to stt.provider in providers.yaml
     enabled: true
     phrase: "OK ミラ"          # Wake word phrase
     timeout: 60               # Seconds before returning to waiting mode
