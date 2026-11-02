@@ -13,9 +13,9 @@ const MP3 = new Uint8Array([0xff, 0xfb, 0x90, 0xc0]);
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
-async function speak(text: string) {
+async function speak(text: string, voice?: string) {
   const response = await POST(
-    new NextRequest("http://localhost/api/tts", { method: "POST", body: JSON.stringify({ text }) })
+    new NextRequest("http://localhost/api/tts", { method: "POST", body: JSON.stringify({ text, voice }) })
   );
   return { status: response.status, body: await response.json() };
 }
@@ -68,6 +68,14 @@ describe("POST /api/tts with ElevenLabs", () => {
 
     expect(sent().url).toBe("http://127.0.0.1:9999/v1/text-to-speech/voice%2F1?output_format=mp3_44100_128");
     expect(sent().body.model_id).toBe("eleven_flash_v2_5");
+  });
+
+  it("uses the voice picked on /control over the configured one", async () => {
+    mocks.tts = { enabled: true, provider: "elevenlabs", elevenlabs: { voiceId: "configured-voice" } };
+
+    await speak("hello", "picked-voice");
+
+    expect(sent().url).toBe("https://api.elevenlabs.io/v1/text-to-speech/picked-voice?output_format=mp3_44100_128");
   });
 
   it.each([

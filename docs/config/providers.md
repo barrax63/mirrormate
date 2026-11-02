@@ -13,7 +13,7 @@ providers:
 
   tts:
     enabled: true
-    provider: voicevox  # elevenlabs or voicevox
+    provider: elevenlabs
     # ...
 
   stt:
@@ -140,11 +140,10 @@ providers:
 | Provider | Description | API Key Required |
 |----------|-------------|------------------|
 | ElevenLabs | `eleven_v4_turbo`, one voice for every language | Yes |
-| VOICEVOX | Free, local, Japanese voices | No |
 
 ### ElevenLabs
 
-1. Get an API key from [ElevenLabs](https://elevenlabs.io/app/settings/api-keys). It only needs the Text to Speech permission.
+1. Get an API key from [ElevenLabs](https://elevenlabs.io/app/settings/api-keys). It needs the Text to Speech permission, and Voices read access for the voice selector on `/control`.
 2. Add to `.env`:
 
 ```bash
@@ -159,50 +158,21 @@ providers:
     enabled: true
     provider: elevenlabs
     elevenlabs:
-      voiceId: EXAVITQu4vr4xnSDxMaL  # Sarah, a premade voice
+      voiceId: EXAVITQu4vr4xnSDxMaL  # Sarah, until a voice is picked on /control
       model: eleven_v4_turbo
 ```
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `voiceId` | ElevenLabs voice ID | `EXAVITQu4vr4xnSDxMaL` (Sarah) |
+| `voiceId` | ElevenLabs voice ID, used until one is picked on `/control` | `EXAVITQu4vr4xnSDxMaL` (Sarah) |
 | `model` | ElevenLabs model ID | `eleven_v4_turbo` |
 | `baseUrl` | API address | `https://api.elevenlabs.io` |
 
 Speech follows the app's locale. Emoji and markdown are removed before speaking, though the reply on screen keeps them.
 
-The free plan includes 10,000 credits a month, and `eleven_v4_turbo` uses 0.5 credits per character, so a 100-character reply costs 50. When credits run out, ElevenLabs answers with a 401 whose `detail.status` is `quota_exceeded`, and replies appear on screen without being spoken.
+The voice selector on `/control` lists the account's voices, the default ones and any you've added, as they were when the app started. Restart it to see voices added since. A character's `recommendedVoice` in `characters.yaml` is a voice ID from that list, and picking the character picks its voice.
 
-### VOICEVOX
-
-1. Download and install VOICEVOX from [voicevox.hiroshiba.jp](https://voicevox.hiroshiba.jp/)
-2. Start VOICEVOX (runs on port 50021 by default)
-3. Configure:
-
-```yaml
-providers:
-  tts:
-    enabled: true
-    provider: voicevox
-    voicevox:
-      speaker: 3  # Speaker ID
-      baseUrl: "http://localhost:50021"
-```
-
-> **Note**: VOICEVOX only speaks Japanese. English words outside its dictionary are spelled out letter by letter, even common ones such as "today" and "morning", so use ElevenLabs for English replies.
-
-The voice selector on `/control` only appears with this provider, because the ElevenLabs voice is set in the config.
-
-#### Speaker IDs (Common)
-
-| ID | Character |
-|----|-----------|
-| 0 | 四国めたん (あまあま) |
-| 1 | ずんだもん (あまあま) |
-| 2 | 四国めたん (ノーマル) |
-| 3 | ずんだもん (ノーマル) |
-| 8 | 春日部つむぎ |
-| 9 | 波音リツ |
+The free plan includes 10,000 credits a month. `eleven_v4_turbo` cost 0.2 to 0.5 credits per character in testing, so a 100-character reply costs 20 to 50. When credits run out, ElevenLabs answers with a 401 whose `detail.status` is `quota_exceeded`, and replies appear on screen without being spoken.
 
 ---
 
@@ -464,7 +434,7 @@ See [Memory Documentation](/guide/memory) for details.
 
 ## Remote Server Configuration
 
-Recommended setup: Run heavy services (Ollama, VOICEVOX, PLaMo) on a powerful server (e.g., Mac Studio) and connect via Tailscale:
+Recommended setup: Run heavy services (Ollama, PLaMo) on a powerful server (e.g., Mac Studio) and connect via Tailscale:
 
 ```yaml
 # config/providers.yaml
@@ -474,12 +444,6 @@ providers:
     ollama:
       model: "gpt-oss:20b"
       baseUrl: "http://studio:11434"  # Tailscale hostname
-
-  tts:
-    provider: voicevox
-    voicevox:
-      speaker: 3
-      baseUrl: "http://studio:50021"  # Tailscale hostname
 
   embedding:
     enabled: true

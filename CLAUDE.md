@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-MirrorMate is a voice-first AI avatar shown behind a half mirror. It is one Next.js 15 App Router app (`output: "standalone"`), typically on a Raspberry Pi, with heavy services (Ollama, VOICEVOX, faster-whisper, PLaMo embedding) optionally on another host. It is effectively single-user: requests fall back to `default-user`, and locale is server-wide. Chrome is required for the Web Speech API: Brave has the API, but every session fails with `network`, so use a Whisper provider there.
+MirrorMate is a voice-first AI avatar shown behind a half mirror. It is one Next.js 15 App Router app (`output: "standalone"`), typically on a Raspberry Pi, with heavy services (Ollama, faster-whisper, PLaMo embedding) optionally on another host, and ElevenLabs for speech. It is effectively single-user: requests fall back to `default-user`, and locale is server-wide. Chrome is required for the Web Speech API: Brave has the API, but every session fails with `network`, so use a Whisper provider there.
 
 ## Commands
 
@@ -32,14 +32,14 @@ bun audit --prod --audit-level=high             # the dependency check CI runs
 bun run docs:dev                                # VitePress site in docs/
 
 docker compose up -d                            # app only; set STUDIO_IP in .env
-docker compose -f compose.studio.yaml up -d     # VOICEVOX, faster-whisper, PLaMo (Ollama runs natively)
+docker compose -f compose.studio.yaml up -d     # faster-whisper, PLaMo (Ollama runs natively)
 ```
 
 Use `bun run test`, not `bun test`: the latter starts Bun's own runner instead of Vitest.
 
 Vitest only collects `src/**/*.test.ts` and runs in the `node` environment.
 
-Playwright runs `e2e/*.spec.ts` against the production build. `playwright.config.ts` starts `e2e/mock-backends.mjs` (fake OpenAI, ElevenLabs, Ollama and VOICEVOX) and `next start` twice: `en` on port 3100 and `ja` on port 3101, built in English so the `ja` server shows what `LOCALE` changes at runtime. Both use `e2e/config/*.yaml` and throwaway databases in `e2e/.tmp/`. Chromium gets a fake camera and `e2e/fake-mic.js`, a WebAudio tone in place of the microphone. So `avatar.hear(text)` runs the real recorder, silence detection and `/api/stt`, and the mock returns `text` as the transcript. `OPENAI_BASE_URL`, `tts.elevenlabs.baseUrl` and dummy keys keep every OpenAI and ElevenLabs call on the mock, even with real keys in `.env`. Tests of Web Speech itself are in `e2e/web-speech.spec.ts`, against `e2e/speech-recognition-stub.js`. Real microphones and speech recognition aren't covered.
+Playwright runs `e2e/*.spec.ts` against the production build. `playwright.config.ts` starts `e2e/mock-backends.mjs` (fake OpenAI, ElevenLabs and Ollama) and `next start` twice: `en` on port 3100 and `ja` on port 3101, built in English so the `ja` server shows what `LOCALE` changes at runtime. Both use `e2e/config/*.yaml` and throwaway databases in `e2e/.tmp/`. Chromium gets a fake camera and `e2e/fake-mic.js`, a WebAudio tone in place of the microphone. So `avatar.hear(text)` runs the real recorder, silence detection and `/api/stt`, and the mock returns `text` as the transcript. `OPENAI_BASE_URL`, `tts.elevenlabs.baseUrl` and dummy keys keep every OpenAI and ElevenLabs call on the mock, even with real keys in `.env`. Tests of Web Speech itself are in `e2e/web-speech.spec.ts`, against `e2e/speech-recognition-stub.js`. Real microphones and speech recognition aren't covered.
 
 Known bugs are covered by expected failures: `it.fails` in Vitest, and `test.fail()` in tests named `known bug: ...` in Playwright. `test.fail()` is called right before the failing assertion, so broken setup still fails the test. A fix makes its test fail with "Expected to fail, but passed", so remove the marker in the same change. Playwright's list output prints ✘ for expected failures, but counts them as passed.
 
@@ -81,7 +81,7 @@ How the layers resolve:
 - **`config/locales/{ja,en}/`:** `character`, `characters`, `memory`, `modules`, `rules`.
 - **`config/presets/{locale}.yaml`:** fills timezone, weather locations, clock and STT language where `features.yaml`, `plugins.yaml` or `providers.yaml` leave them unset.
 - **`messages/{locale}.json`:** next-intl UI strings. There is no locale routing.
-- **Env overrides:** `LLM_PROVIDER`, `TTS_PROVIDER` and `STT_PROVIDER` change the provider. `APP_CONFIG`, `PROVIDERS_CONFIG`, `FEATURES_CONFIG`, `PLUGINS_CONFIG` and `CHARACTER_CONFIG` select a different file under `config/`.
+- **Env overrides:** `LLM_PROVIDER` and `STT_PROVIDER` change the provider. `APP_CONFIG`, `PROVIDERS_CONFIG`, `FEATURES_CONFIG`, `PLUGINS_CONFIG` and `CHARACTER_CONFIG` select a different file under `config/`.
 - **Production:** `features.docker.yaml` and `plugins.docker.yaml` take priority if they exist.
 
 Things that are easy to miss:
@@ -91,7 +91,7 @@ Things that are easy to miss:
 - `compose.yaml` passes an explicit env list that omits `LOCALE` and the `*_PROVIDER` variables, so setting them in `.env` has no effect there. A new key, like `ELEVENLABS_API_KEY`, has to be added to that list. It also needs a valid `STUDIO_IP`, or `docker compose up` fails. `.env.example` defaults to `host-gateway`, which means this machine.
 - No API route has authentication, so `compose.yaml` publishes port 3000 on localhost only, unless `BIND_ADDRESS` says otherwise. `compose.studio.yaml` still publishes on all interfaces, because an app on another machine has to reach it.
 - `next build` prerenders pages, so UI strings and `<html lang>` use the locale at build time. Changing `LOCALE` or `app.yaml` afterwards only switches the server side (wake word, prompts, database, presets). `next dev` renders per request, which hides this.
-- VOICEVOX only speaks Japanese: English words outside its dictionary are spelled out, even "today" and "morning". `/control` hides its voice selector unless `tts.provider` is `voicevox`, since the ElevenLabs branch of `/api/tts` ignores `speaker`.
+- The voice selector on `/control` lists the ElevenLabs account's voices, which `src/instrumentation.ts` loads once when the server starts, so restart to see voices added in ElevenLabs. Listing them needs the key's `voices_read` permission. The voice picked is saved in `user_settings.voice` and sent to `/api/tts` as `voice`. A character's `recommendedVoice` only applies if it's in that list.
 - `/api/tts` removes emoji and markdown before speech, so what's spoken can differ from the reply on screen. ElevenLabs answers a wrong key, a missing permission and running out of credits all with a 401, and only `detail.status` tells them apart (`invalid_api_key`, `missing_permissions`, `quota_exceeded`).
 - Web Speech always starts in `en-US`: `src/app/page.tsx` passes no `lang` to `useSpeechRecognition`, and `stt.web` in the committed `providers.yaml` parses to null, so the preset never reaches it. The Whisper providers do follow the preset.
 - `plamo-server` pins `sentencepiece`, `transformers` and the model revision (`PLAMO_REVISION` in its Dockerfile), because the model's remote code breaks on newer packages. When changing any of them, test `/api/embed` as well as the build: `transformers` 5 builds fine and only fails there.
@@ -114,7 +114,7 @@ Drizzle is used for queries, not migrations. Tables are created by raw SQL when 
 - **Plugin:** add an entry in `config/plugins.yaml` and a static import plus map entry in `src/components/PluginRenderer.tsx`, keyed by the manifest `name`. Local plugins live in `plugins/<name>/` with a `manifest.yaml`. GitHub and npm plugins declare their manifest under `mirrormate` in `package.json`, and the Dockerfile needs a `COPY` for that file.
 - **LLM tool:** register in the `tools` array in `src/lib/tools/index.ts`.
 - **Feature (prompt context):** register in `initializeFeatures` in `src/lib/features/registry.ts` and configure in `config/features.yaml`.
-- **Provider:** LLM, STT, VLM and embedding each have `types.ts` and implementations under `src/lib/<kind>/`, with config types in `src/lib/providers/types.ts`. TTS has no abstraction; it is inline in `src/app/api/tts/route.ts`.
+- **Provider:** LLM, STT, VLM and embedding each have `types.ts` and implementations under `src/lib/<kind>/`, with config types in `src/lib/providers/types.ts`. TTS has no abstraction: `src/app/api/tts/route.ts` calls ElevenLabs, with shared helpers in `src/lib/tts/elevenlabs.ts`.
 
 The Dockerfile's runner stage contains only the standalone output and explicitly copied paths. Next's file tracing does include local plugin manifests, so `plugins/<name>/manifest.yaml` needs no `COPY`. Native modules and runtime files it can't trace need their own `COPY` line.
 

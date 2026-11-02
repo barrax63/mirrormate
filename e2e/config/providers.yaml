@@ -16,9 +16,6 @@ providers:
       # No model, so the default is what gets tested
       voiceId: mock-voice
       baseUrl: "http://127.0.0.1:11555"
-    voicevox:
-      speaker: 2
-      baseUrl: "http://127.0.0.1:11555"
 
   stt:
     enabled: true

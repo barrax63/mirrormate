@@ -11,7 +11,6 @@ flowchart TB
     subgraph Tailscale["Tailscale Network"]
         subgraph Studio["Mac Studio (studio)"]
             Ollama["Ollama (native)<br/>:11434"]
-            VOICEVOX["VOICEVOX (Docker)<br/>:50021"]
             Whisper["faster-whisper (Docker)<br/>:8080"]
             PLaMo["PLaMo-Embedding (Docker)<br/>:8000"]
         end
@@ -25,10 +24,11 @@ flowchart TB
         end
 
         MM -->|http://studio:11434| Ollama
-        MM -->|http://studio:50021| VOICEVOX
         MM -->|http://studio:8080| Whisper
         MM -->|http://studio:8000| PLaMo
     end
+
+    MM -->|HTTPS| ElevenLabs["ElevenLabs (cloud)<br/>speech"]
 ```
 
 ## Quick Start
@@ -51,7 +51,6 @@ docker compose -f compose.studio.yaml up -d
 
 This starts:
 - **faster-whisper** (:8080) - Speech-to-text (Whisper)
-- **VOICEVOX** (:50021) - Text-to-speech
 - **PLaMo-Embedding-1B** (:8000) - Japanese-optimized embedding
 
 3. **Verify**
@@ -59,7 +58,6 @@ This starts:
 ```bash
 curl http://localhost:11434/api/tags    # Ollama
 curl http://localhost:8080/health       # Whisper
-curl http://localhost:50021/speakers | head  # VOICEVOX
 curl http://localhost:8000/health       # PLaMo
 ```
 
@@ -84,9 +82,7 @@ providers:
       baseUrl: "http://studio:11434"  # Tailscale hostname
 
   tts:
-    provider: voicevox
-    voicevox:
-      baseUrl: "http://studio:50021"  # Tailscale hostname
+    provider: elevenlabs  # Needs ELEVENLABS_API_KEY in .env
 
   stt:
     provider: local  # Use local Whisper instead of Web Speech API
@@ -157,13 +153,6 @@ services:
       - WHISPER__INFERENCE_DEVICE=cpu
     restart: unless-stopped
 
-  # Text-to-Speech
-  voicevox:
-    image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
-    ports:
-      - "50021:50021"
-    restart: unless-stopped
-
   # Embedding
   plamo-embedding:
     build:
@@ -190,7 +179,7 @@ BIND_ADDRESS=100.x.x.x  # for example, this machine's Tailscale IP (tailscale ip
 - Browsers only allow the mic and camera on localhost or HTTPS, so the avatar page needs one of those for voice and vision.
 - `/control` must run in the same browser as the avatar page, so another device can only use it for pages that don't need the avatar, such as `/control/memory`.
 
-`compose.studio.yaml` publishes VOICEVOX, faster-whisper and PLaMo on all interfaces, also without authentication, because an app on another machine has to reach them. Ollama with `OLLAMA_HOST=0.0.0.0` is the same. Keep that machine on a trusted network, such as Tailscale, or restrict those ports with a firewall.
+`compose.studio.yaml` publishes faster-whisper and PLaMo on all interfaces, also without authentication, because an app on another machine has to reach them. Ollama with `OLLAMA_HOST=0.0.0.0` is the same. Keep that machine on a trusted network, such as Tailscale, or restrict those ports with a firewall.
 
 ## Data Persistence
 
@@ -227,7 +216,7 @@ STUDIO_IP=100.x.x.x
 # Required for the OpenAI LLM and speech recognition (if not using Ollama)
 OPENAI_API_KEY=sk-...
 
-# Required for ElevenLabs speech output (if not using VOICEVOX)
+# Required for ElevenLabs speech output
 ELEVENLABS_API_KEY=...
 
 # Optional: Google Calendar
@@ -266,19 +255,6 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-
-  # VOICEVOX with CUDA
-  voicevox:
-    image: voicevox/voicevox_engine:nvidia-ubuntu20.04-latest
-    ports:
-      - "50021:50021"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 ```
 
 ### Apple Silicon (Mac Studio)
@@ -286,7 +262,6 @@ services:
 Use CPU versions. Apple Silicon is fast enough for real-time inference:
 
 - **faster-whisper**: `large-v3` model processes 30s audio in ~15s
-- **VOICEVOX**: CPU version works well on M1/M2 Ultra
 
 Note: Metal GPU acceleration is not available in Docker containers.
 
@@ -301,15 +276,6 @@ Note: Metal GPU acceleration is not available in Docker containers.
 2. Verify Tailscale connection: `ping studio`
 3. Check Ollama is listening: `curl http://studio:11434/api/tags`
 4. Check `STUDIO_IP` in `.env`, and that Ollama listens on more than localhost (`OLLAMA_HOST=0.0.0.0`)
-
-### VOICEVOX not responding
-
-**Error**: Connection refused to port 50021
-
-**Solution**:
-1. Check VOICEVOX container: `docker compose -f compose.studio.yaml ps`
-2. Check logs: `docker compose -f compose.studio.yaml logs voicevox`
-3. Wait for startup (first launch takes time to load models)
 
 ### Config changes not applied
 
@@ -331,7 +297,7 @@ Note: Metal GPU acceleration is not available in Docker containers.
 ### Mac Studio
 
 ```bash
-# Start VOICEVOX, Whisper and PLaMo Embedding
+# Start Whisper and PLaMo Embedding
 docker compose -f compose.studio.yaml up -d
 
 # View logs

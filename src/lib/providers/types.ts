@@ -5,14 +5,10 @@ export interface ProviderConfig {
 }
 
 export interface TTSProviderConfig extends ProviderConfig {
-  provider: "elevenlabs" | "voicevox";
+  provider: "elevenlabs";
   elevenlabs?: {
     voiceId?: string;
     model?: string;
-    baseUrl?: string;
-  };
-  voicevox?: {
-    speaker: number;
     baseUrl?: string;
   };
 }

@@ -31,7 +31,7 @@ features:
     details: 8-state animation system with lip-sync and natural expressions powered by Three.js.
   - icon: 🔌
     title: Multiple Providers
-    details: Support for OpenAI, Ollama (LLM) and ElevenLabs, VOICEVOX (TTS).
+    details: Support for OpenAI, Ollama (LLM) and ElevenLabs (TTS).
   - icon: 📱
     title: Discord Integration
     details: Share search results and information directly to your phone via Discord.

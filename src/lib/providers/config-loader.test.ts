@@ -50,16 +50,21 @@ describe("loadProvidersConfig", () => {
       expect(loadProvidersConfig().providers?.stt?.web?.language).toBe("ja-JP");
     });
 
-    it("lets the environment choose the providers", () => {
+    it("lets the environment choose the LLM and STT providers", () => {
       vi.stubEnv("LLM_PROVIDER", "openai");
-      vi.stubEnv("TTS_PROVIDER", "voicevox");
       vi.stubEnv("STT_PROVIDER", "local");
 
       const { providers } = loadProvidersConfig();
 
       expect(providers?.llm?.provider).toBe("openai");
-      expect(providers?.tts?.provider).toBe("voicevox");
       expect(providers?.stt?.provider).toBe("local");
+    });
+
+    // ElevenLabs is the only TTS provider left
+    it("ignores TTS_PROVIDER", () => {
+      vi.stubEnv("TTS_PROVIDER", "openai");
+
+      expect(loadProvidersConfig().providers?.tts?.provider).toBe("elevenlabs");
     });
   });
 

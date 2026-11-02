@@ -62,12 +62,6 @@ export function loadProvidersConfig(): ProvidersConfig {
     console.log(`[Providers] LLM provider overridden by env: ${process.env.LLM_PROVIDER}`);
   }
 
-  // Allow environment variable override for TTS provider
-  if (process.env.TTS_PROVIDER && cachedConfig.providers?.tts) {
-    cachedConfig.providers.tts.provider = process.env.TTS_PROVIDER as "elevenlabs" | "voicevox";
-    console.log(`[Providers] TTS provider overridden by env: ${process.env.TTS_PROVIDER}`);
-  }
-
   // Allow environment variable override for STT provider
   if (process.env.STT_PROVIDER && cachedConfig.providers?.stt) {
     cachedConfig.providers.stt.provider = process.env.STT_PROVIDER as "openai" | "local" | "web";

@@ -164,14 +164,16 @@ export class ControlPage extends RecordedPage {
     await input.press("Enter");
   }
 
-  /** The selector only appears with VOICEVOX, and the e2e config uses ElevenLabs */
-  async selectMockVoice() {
-    await this.page.route("**/api/voicevox/speakers", (route) =>
-      route.fulfill({ json: { speakers: [{ id: 2, name: "Mock", styleName: "normal" }] } })
-    );
-    await this.open();
+  /** Picks a voice from the selector by the start of its name, with none picked yet */
+  async selectVoice(name: string) {
     await this.page.getByRole("button", { name: "Select voice" }).click();
-    await this.page.getByText("Mock").first().click();
+    await this.page.getByText(name).first().click();
+  }
+
+  /** Picks a character by name, with none picked yet */
+  async selectCharacter(name: string) {
+    await this.page.getByRole("button", { name: "Select character" }).click();
+    await this.page.getByText(name, { exact: true }).click();
   }
 
   async turnVisionOff() {
@@ -181,10 +183,9 @@ export class ControlPage extends RecordedPage {
 }
 
 interface LoggedRequest {
-  kind: "llm" | "vlm" | "extraction" | "embed" | "tts" | "unknown";
+  kind: "llm" | "vlm" | "extraction" | "embed" | "voices" | "unknown";
   auth?: string;
   path?: string;
-  query?: string;
   body: {
     model?: string;
     messages: { role: string; content: string; images?: string[] }[];
@@ -219,7 +220,7 @@ export class MockBackends {
     await this.request.post(`${MOCK_URL}/__reset`);
   }
 
-  /** Sets the length of the audio that the fake VOICEVOX returns */
+  /** Sets the length of the audio that the fake ElevenLabs returns */
   async setAudioLength(ms: number) {
     await this.request.post(`${MOCK_URL}/__audio?ms=${ms}`);
   }
@@ -287,7 +288,7 @@ export const test = base.extend<{
   resetState: [
     async ({ mock, request }, provide) => {
       await mock.reset();
-      await request.put("/api/settings", { data: { speakerId: null, characterId: null } });
+      await request.put("/api/settings", { data: { voice: null, characterId: null } });
       await provide();
     },
     { auto: true },

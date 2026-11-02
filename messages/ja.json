@@ -21,6 +21,8 @@
     "character": "キャラクター",
     "preview": "試聴",
     "selectVoice": "声を選択...",
+    "voicesUnavailable": "声を読み込めません",
+    "previewText": "こんにちは、私の声はこんな感じです。",
     "selectCharacter": "キャラクターを選択..."
   },
   "status": {

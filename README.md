@@ -46,14 +46,12 @@ Just talk to the mirror.
 ## What it is
 
 - A voice-first AI designed to live in a mirror
-- Runs entirely local with Ollama + VOICEVOX (no cloud required)
 - Buildable with Raspberry Pi + half mirror
 - Remembers you through RAG-based memory
 
 ## What it is not
 
 - Not a smart display
-- Not a cloud-dependent assistant
 - Not another chat UI in a browser
 
 ---
@@ -75,18 +73,18 @@ Just talk to the mirror.
           │   ┌─────────────────────────────────────────────────┐
           │   │                  Mac Studio                     │
           │   │  ┌────────────┐ ┌──────────────┐ ┌───────────┐  │
-          │   │  │  Ollama    │ │  VOICEVOX    │ │  Whisper  │  │
-          │   │  │  LLM/VLM   │ │  TTS         │ │  STT      │  │
-          │   │  │  Embedding │ │  Port 50021  │ │  Port 8080│  │
+          │   │  │  Ollama    │ │  PLaMo       │ │  Whisper  │  │
+          │   │  │  LLM/VLM   │ │  Embedding   │ │  STT      │  │
+          │   │  │  Port 11434│ │  Port 8000   │ │  Port 8080│  │
           │   │  └────────────┘ └──────────────┘ └───────────┘  │
           │   └─────────────────────────────────────────────────┘
           │
           └── Half Mirror + Monitor
 ```
 
-**Minimal setup**: Raspberry Pi + OpenAI API only
+**Minimal setup**: Raspberry Pi + OpenAI and ElevenLabs API keys
 
-**Full local setup**: Combine with Mac Studio (or any GPU machine) as shown above
+**With a local server**: Combine with Mac Studio (or any GPU machine) as shown above. Speech output still comes from ElevenLabs.
 
 ---
 
@@ -103,29 +101,6 @@ docker run -p 127.0.0.1:3000:3000 \
 ```
 
 Open http://localhost:3000 in Chrome.
-
-**Fully local (Ollama + VOICEVOX):**
-
-```bash
-# 1. Pull a model with Ollama
-ollama pull gpt-oss:20b
-
-# 2. Start VOICEVOX, Whisper and PLaMo Embedding
-git clone https://github.com/orangekame3/mirrormate.git
-cd mirrormate
-docker compose -f compose.studio.yaml up -d
-
-# 3. Point MirrorMate at those services
-cp .env.example .env    # STUDIO_IP=host-gateway means this machine
-                        # and set tts.provider to voicevox in config/providers.yaml
-
-# 4. Start MirrorMate
-docker compose up -d
-```
-
-Ollama must listen on an address the container can reach (`OLLAMA_HOST=0.0.0.0`). It has no authentication, so only do this on a trusted network.
-
-VOICEVOX only speaks Japanese and spells out many English words, so this setup suits Japanese replies.
 
 **Wake word**: Say "Hey Mira" to activate.
 
@@ -146,7 +121,7 @@ Lip-synced avatar speaks responses. Eight animation states (Idle, Listening, Thi
 | Component | Options                                       |
 | --------- | --------------------------------------------- |
 | LLM       | OpenAI, Ollama                                |
-| TTS       | ElevenLabs, VOICEVOX                          |
+| TTS       | ElevenLabs                                    |
 | STT       | Web Speech API, OpenAI Whisper, Local Whisper |
 | Embedding | Ollama, PLaMo-Embedding-1B                    |
 
@@ -166,7 +141,7 @@ Add your own widgets or sensor integrations. The Vision Companion plugin gives t
 
 - **Frontend**: Next.js 15 / React 19 / Three.js
 - **Backend**: Node.js / SQLite (Drizzle ORM)
-- **AI**: Ollama / OpenAI / VOICEVOX / faster-whisper
+- **AI**: Ollama / OpenAI / ElevenLabs / faster-whisper
 - **Infra**: Docker / Tailscale
 
 ---

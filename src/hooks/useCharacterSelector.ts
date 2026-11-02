@@ -6,7 +6,7 @@ export interface CharacterPreset {
   id: string;
   name: string;
   description: string;
-  recommendedVoice?: number;
+  recommendedVoice?: string;
 }
 
 interface UseCharacterSelectorReturn {

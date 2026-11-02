@@ -82,7 +82,7 @@ function initializeSchema(sqlite: Database.Database): void {
       CREATE TABLE IF NOT EXISTS user_settings (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-        speaker_id INTEGER,
+        voice TEXT,
         character_id TEXT,
         updated_at INTEGER NOT NULL
       );
@@ -116,13 +116,26 @@ function runMigrations(sqlite: Database.Database): void {
       CREATE TABLE IF NOT EXISTS user_settings (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-        speaker_id INTEGER,
+        voice TEXT,
         character_id TEXT,
         updated_at INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id);
     `);
     console.log("[DB] Migration complete: user_settings table added");
+  }
+
+  // Migration: Replace speaker_id, a speaker number from the old speech engine, with an
+  // ElevenLabs voice. The numbers mean nothing to ElevenLabs, so they're dropped.
+  const settingsColumns = sqlite.prepare("PRAGMA table_info(user_settings)").all() as { name: string }[];
+  if (settingsColumns.some((column) => column.name === "speaker_id")) {
+    console.log("[DB] Running migration: Replacing speaker_id with voice...");
+    // In one transaction, so a failure can't leave both columns behind
+    sqlite.transaction(() => {
+      sqlite.exec("ALTER TABLE user_settings ADD COLUMN voice TEXT");
+      sqlite.exec("ALTER TABLE user_settings DROP COLUMN speaker_id");
+    })();
+    console.log("[DB] Migration complete: user_settings.voice added");
   }
 }
 

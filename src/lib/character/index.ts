@@ -13,7 +13,7 @@ export interface CharacterPreset {
   id: string;
   name: string;
   description: string;
-  recommendedVoice?: number;
+  recommendedVoice?: string;
   wakeWord?: WakeWordConfig;
   appearance: string[];
   personality: string[];

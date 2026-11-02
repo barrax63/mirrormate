@@ -29,23 +29,23 @@ Open http://localhost:3000 in Chrome.
 
 Say **"Hey Mira"** (English) or **"OK ミラ"** (Japanese) to start talking!
 
-### Option 2: Ollama + VOICEVOX (No API key required)
+### Option 2: Ollama and local Whisper
 
-For a fully local setup:
+To keep the LLM, embeddings and speech recognition on your own machine. Speech output still needs an ElevenLabs key:
 
 ```bash
 # 1. Install and start Ollama
 ollama serve
 ollama pull gpt-oss:20b
 
-# 2. Clone Mirror Mate and start VOICEVOX, Whisper and PLaMo Embedding
+# 2. Clone Mirror Mate and start Whisper and PLaMo Embedding
 git clone https://github.com/orangekame3/mirrormate.git
 cd mirrormate
 docker compose -f compose.studio.yaml up -d
 
 # 3. Point Mirror Mate at those services
-cp .env.example .env    # STUDIO_IP=host-gateway means this machine
-                        # and set tts.provider to voicevox in config/providers.yaml
+cp .env.example .env    # STUDIO_IP=host-gateway means this machine,
+                        # and set ELEVENLABS_API_KEY
 
 # 4. Start Mirror Mate
 docker compose up -d

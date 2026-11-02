@@ -26,7 +26,7 @@ export const userSettings = sqliteTable("user_settings", {
     .notNull()
     .unique()
     .references(() => users.id, { onDelete: "cascade" }),
-  speakerId: integer("speaker_id"), // VOICEVOX speaker ID
+  voice: text("voice"), // ElevenLabs voice ID
   characterId: text("character_id"), // Character preset ID
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()

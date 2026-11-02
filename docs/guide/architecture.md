@@ -77,8 +77,8 @@ flowchart TB
 
     subgraph External["External Services"]
         Ollama["Ollama<br/>(LLM/Embedding/VLM)"]
-        OpenAI["OpenAI<br/>(LLM/TTS/STT)"]
-        VOICEVOX["VOICEVOX<br/>(TTS)"]
+        OpenAI["OpenAI<br/>(LLM/STT)"]
+        ElevenLabs["ElevenLabs<br/>(TTS)"]
         Whisper["faster-whisper<br/>(STT)"]
         OpenMeteo["Open-Meteo<br/>(Weather)"]
         GoogleCal["Google Calendar"]
@@ -104,11 +104,11 @@ src/
 │   │   ├── reminder/          # Reminder API and client config
 │   │   ├── memories/          # Memory CRUD API
 │   │   ├── characters/        # Character list
-│   │   ├── settings/          # User speaker and character settings
+│   │   ├── settings/          # User voice and character settings
 │   │   ├── plugins/           # Enabled plugins
 │   │   ├── wakeword/          # Wake word config
 │   │   ├── vision/analyze/    # Vision test analysis
-│   │   ├── voicevox/speakers/ # VOICEVOX speaker list
+│   │   ├── voices/            # ElevenLabs voice list
 │   │   └── discord/test/      # Discord webhook test
 │   ├── control/
 │   │   ├── page.tsx       # Control panel page
@@ -132,8 +132,8 @@ src/
 │   ├── useCharacterSelector.ts
 │   ├── useLongThinkingPulse.ts
 │   ├── useReminder.ts
-│   ├── useSpeakerSelector.ts
 │   ├── useSpeechRecognition.ts
+│   ├── useVoiceSelector.ts
 │   └── useWakeWord.ts
 ├── i18n/
 │   └── request.ts         # next-intl locale and messages
@@ -196,6 +196,8 @@ src/
     │   ├── openai-whisper.ts
     │   ├── local-whisper.ts
     │   └── types.ts
+    ├── tts/               # ElevenLabs helpers and voice list
+    │   └── elevenlabs.ts
     ├── tools/             # LLM function calling tools
     │   ├── see-camera.ts
     │   ├── web-search.ts
