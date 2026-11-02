@@ -239,6 +239,11 @@ export class MockBackends {
     await this.request.post(`${MOCK_URL}/__audio?ms=${ms}`);
   }
 
+  /** Sets how long the fake OpenAI takes to transcribe a recording */
+  async setTranscriptionTime(ms: number) {
+    await this.request.post(`${MOCK_URL}/__transcription?ms=${ms}`);
+  }
+
   async log(kind: LoggedRequest["kind"]): Promise<LoggedRequest[]> {
     const response = await this.request.get(`${MOCK_URL}/__log`);
     const log: LoggedRequest[] = await response.json();

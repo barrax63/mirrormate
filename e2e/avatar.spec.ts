@@ -96,6 +96,18 @@ test.describe("Voice flow", () => {
     await avatar.waitForPost("/api/chat", 2);
   });
 
+  test("listens again while a recording is transcribed, so nothing said meanwhile is lost", async ({ avatar, mock }) => {
+    await mock.setTranscriptionTime(2000);
+    await mock.queueTranscript("what time is it");
+
+    await expect.poll(() => avatar.page.evaluate(() => window.__speak())).toBe(true);
+    await avatar.waitForPost("/api/stt");
+
+    await expect.poll(() => avatar.isListening(), { timeout: 1000 }).toBe(true);
+    // Still before the transcript, which takes 2 s
+    expect(avatar.logs.filter((log) => log.includes("Whisper result"))).toEqual([]);
+  });
+
   test("sends what it recorded to OpenAI, using the test key", async ({ avatar, mock }) => {
     await avatar.hear("hello");
 
