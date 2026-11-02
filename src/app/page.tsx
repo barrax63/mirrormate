@@ -502,6 +502,9 @@ export default function AvatarPage() {
               }
             }
           }
+        } else {
+          console.error("Chat error:", res.status);
+          setIsThinking(false);
         }
       } catch (e) {
         console.error("Chat error:", e);

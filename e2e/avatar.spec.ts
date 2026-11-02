@@ -119,6 +119,23 @@ test.describe("Voice flow", () => {
     expect(recording.audio.bytes).toBeGreaterThan(1000);
   });
 
+  test("stops thinking when the reply fails", async ({ avatar }) => {
+    let fail = () => {};
+    const failing = new Promise<void>((resolve) => (fail = resolve));
+    await avatar.page.route("**/api/chat", async (route) => {
+      await failing;
+      await route.fulfill({ status: 500, json: { error: "Failed to generate response" } });
+    });
+    await avatar.wakeUp();
+
+    await avatar.hear("hello");
+    const thinking = avatar.page.locator(".animate-bounce");
+    await expect(thinking).toHaveCount(3);
+
+    fail();
+    await expect(thinking).toHaveCount(0);
+  });
+
   test("ignores a recording that comes back empty", async ({ avatar }) => {
     await avatar.wakeUp();
 
