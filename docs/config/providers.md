@@ -130,6 +130,9 @@ providers:
 | `maxTokens` | number | Maximum response length | 300 |
 | `temperature` | number | Creativity (0.0-1.0) | 0.7 |
 | `baseUrl` | string | API endpoint (Ollama only) | `http://localhost:11434` |
+| `historyLimit` | number | Most recent messages of the conversation sent with each request. Set directly under `llm`, for either provider | 20 |
+
+Every message sent again costs tokens on a paid LLM, so each request carries only the last `historyLimit` messages, starting at a question.
 
 > **Note**: With `gpt-oss:20b`, reasoning counts against `maxTokens`. At 300, longer prompts such as the `good night` rule use up the limit before any reply is written, so the response is empty. Raising `maxTokens` helps, though gpt-oss can still occasionally return an empty reply.
 

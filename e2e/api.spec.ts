@@ -35,6 +35,26 @@ test.describe("/api/chat", () => {
     expect(requests[0].body.messages[0].content).not.toContain("[Current Information]");
   });
 
+  test("sends the LLM only the latest messages, up to the configured limit", async ({ request, mock }) => {
+    // user 1, assistant 2, ... user 99, the latest question
+    const messages = Array.from({ length: 99 }, (_, i) => ({
+      role: i % 2 === 0 ? "user" : "assistant",
+      content: i === 98 ? "the latest question" : `message ${i + 1}`,
+    }));
+
+    const body = await chat(request, "", { messages });
+
+    // e2e/config/providers.yaml sets the limit to 4. The cut would start at a reply, which goes too.
+    expect(body.historyLimit).toBe(4);
+    const [llm] = await mock.llmRequestsFor("the latest question");
+    expect(llm.body.messages[0].role).toBe("system");
+    expect(llm.body.messages.slice(1)).toEqual([
+      { role: "user", content: "message 97" },
+      { role: "assistant", content: "message 98" },
+      { role: "user", content: "the latest question" },
+    ]);
+  });
+
   test("returns the effect from a tool call", async ({ request, mock }) => {
     const body = await chat(request, "CALL_EFFECT please");
 

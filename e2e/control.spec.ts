@@ -112,6 +112,24 @@ test.describe("Control page", () => {
     expect(control.errors).toEqual([]);
   });
 
+  test("shows the whole conversation, but sends only the latest messages", async ({ control }) => {
+    for (const question of ["question 1", "question 2", "question 3"]) {
+      await control.send(question);
+      await expect(control.page.getByText(`mock reply to: ${question}`)).toBeVisible();
+    }
+
+    await control.send("question 4");
+
+    await expect(control.page.getByText("mock reply to: question 4")).toBeVisible();
+    await expect(control.page.getByText("question 1", { exact: true })).toBeVisible();
+    // e2e/config/providers.yaml sets the limit to 4
+    expect(control.postsTo("/api/chat")[3].messages).toEqual([
+      { role: "user", content: "question 3" },
+      { role: "assistant", content: "mock reply to: question 3" },
+      { role: "user", content: "question 4" },
+    ]);
+  });
+
   test("doesn't send the LLM its own error notice as a reply", async ({ control }) => {
     await control.page.route("**/api/chat", (route) => route.abort(), { times: 1 });
     await control.send("first try");
