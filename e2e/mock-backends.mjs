@@ -124,6 +124,15 @@ function sendJson(res, value, status = 200) {
   res.end(JSON.stringify(value));
 }
 
+// Counts the WebM headers in an upload. Mixed recordings still start with one, so checking
+// the start isn't enough.
+function countWebmFiles(audio) {
+  const header = Buffer.from("1a45dfa3", "hex");
+  let count = 0;
+  for (let at = audio.indexOf(header); at !== -1; at = audio.indexOf(header, at + 1)) count++;
+  return count;
+}
+
 // Answers with the next queued transcript, or nothing, as Whisper does for silence
 async function transcribe(req, res, raw) {
   const form = await new Response(raw, { headers: { "Content-Type": req.headers["content-type"] } }).formData();
@@ -134,7 +143,12 @@ async function transcribe(req, res, raw) {
     auth: req.headers.authorization,
     model: form.get("model"),
     language: form.get("language"),
-    audio: { name: file.name, bytes: audio.length, header: audio.subarray(0, 4).toString("hex") },
+    audio: {
+      name: file.name,
+      bytes: audio.length,
+      header: audio.subarray(0, 4).toString("hex"),
+      webmFiles: countWebmFiles(audio),
+    },
   });
   const text = transcripts.shift() ?? "";
   setTimeout(() => sendJson(res, { text, language: form.get("language"), duration: 1 }), TRANSCRIPTION_MS);

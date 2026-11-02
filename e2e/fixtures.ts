@@ -15,6 +15,10 @@ declare global {
   interface Window {
     __micListening: () => boolean;
     __liveRecorders: () => number;
+    __liveMicStreams: () => number;
+    __micRequests: () => number;
+    __micHeld?: boolean;
+    __releaseMic: () => void;
     __speak: () => boolean;
     __recognitions: { lang: string; running: boolean }[];
     __say: (text: string) => boolean;
@@ -96,6 +100,21 @@ export class AvatarPage extends RecordedPage {
     return this.page.evaluate(() => window.__liveRecorders());
   }
 
+  liveMicStreams() {
+    return this.page.evaluate(() => window.__liveMicStreams());
+  }
+
+  micRequests() {
+    return this.page.evaluate(() => window.__micRequests());
+  }
+
+  /** Lets the mic finish opening, with the micHeld option */
+  async releaseMic() {
+    await this.page.evaluate(() => window.__releaseMic());
+    // Gives the page time to act on the open mic, which is what the tests check
+    await this.page.waitForTimeout(500);
+  }
+
   liveVideoTracks() {
     return this.page.evaluate(() => {
       const stream = document.querySelector("video")?.srcObject as MediaStream | null | undefined;
@@ -171,7 +190,7 @@ interface LoggedTranscription {
   auth: string;
   model: string;
   language: string;
-  audio: { name: string; bytes: number; header: string };
+  audio: { name: string; bytes: number; header: string; webmFiles: number };
 }
 
 export class MockBackends {
@@ -214,14 +233,23 @@ export class MockBackends {
 }
 
 export const test = base.extend<{
+  micHeld: boolean;
   mock: MockBackends;
   resetState: void;
   avatar: AvatarPage;
   control: ControlPage;
 }>({
-  context: async ({ context }, provide) => {
+  // Keeps the mic opening until the test calls avatar.releaseMic()
+  micHeld: [false, { option: true }],
+
+  context: async ({ context, micHeld }, provide) => {
     await blockOutsideRequests(context);
     await context.addInitScript({ path: path.join(__dirname, "fake-mic.js") });
+    if (micHeld) {
+      await context.addInitScript(() => {
+        window.__micHeld = true;
+      });
+    }
     await provide(context);
   },
 
