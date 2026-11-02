@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import { getAllContexts, initializeFeatures } from "@/lib/features/registry";
 import { getLLMProvider, ChatMessage } from "@/lib/llm";
 import { getSystemPrompt, getSystemPromptForCharacter } from "@/lib/character";
@@ -50,7 +49,7 @@ function getMemoryService(): MemoryService | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, withAudio = true, userId, characterId, image } = await request.json();
+    const { messages, userId, characterId, image } = await request.json();
 
     console.log("[Chat] Request received:", {
       messageCount: messages?.length,
@@ -244,33 +243,6 @@ export async function POST(request: NextRequest) {
 
       memService.processConversation(currentUserId, conversationMessages, usedMemoryIds).catch((err) => {
         console.error("[Chat] Memory extraction failed:", err);
-      });
-    }
-
-    // Generate audio if requested
-    if (withAudio && assistantMessage && process.env.OPENAI_API_KEY) {
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
-
-      const audioResponse = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: "shimmer",
-        input: assistantMessage,
-        response_format: "mp3",
-        speed: 0.95,
-      });
-
-      const audioBuffer = await audioResponse.arrayBuffer();
-      const audioBase64 = Buffer.from(audioBuffer).toString("base64");
-
-      return NextResponse.json({
-        message: assistantMessage,
-        audio: audioBase64,
-        effect,
-        discordShared,
-        toolsUsed,
-        infoCards,
       });
     }
 

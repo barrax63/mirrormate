@@ -1,5 +1,6 @@
 // Stands in for every external backend during e2e runs: OpenAI (LLM, transcription),
-// Ollama (VLM, embeddings) and VOICEVOX. It records each request so tests can inspect it.
+// ElevenLabs (speech), Ollama (VLM, embeddings) and VOICEVOX. It records each request so
+// tests can inspect it.
 // Like the real API, the fake OpenAI rejects parameters that gpt-6-luna and gpt-transcribe
 // don't accept.
 //
@@ -8,6 +9,9 @@
 //   CALL_EFFECT   calls show_effect once, then replies
 //   CALL_CAMERA   calls see_camera once, then replies
 //   REMEMBER_xyz  memory extraction stores a memory about xyz
+//
+// And in text for speech, QUOTA_EXCEEDED makes the fake ElevenLabs answer as it does when the
+// account is out of credits.
 import fs from "node:fs";
 import http from "node:http";
 
@@ -26,6 +30,15 @@ let audioMs = DEFAULT_AUDIO_MS;
 let log = [];
 let transcripts = [];
 let toolCallCount = 0;
+
+// Silent MPEG-1 Layer III frames at 128 kbps, 44.1 kHz and mono, the format the app asks
+// ElevenLabs for. Each frame is 417 bytes (144 * 128000 / 44100) and 1152 samples long.
+function mp3(ms) {
+  const frames = Math.max(1, Math.ceil((ms / 1000) * (44100 / 1152)));
+  const frame = Buffer.alloc(417);
+  frame.set([0xff, 0xfb, 0x90, 0xc0]);
+  return Buffer.concat(Array.from({ length: frames }, () => frame));
+}
 
 // 16-bit mono WAV of a sine tone
 function wav(ms) {
@@ -186,8 +199,39 @@ async function transcribe(req, res, raw) {
   setTimeout(() => (responseFormat === "text" ? res.end(text) : sendJson(res, reply)), TRANSCRIPTION_MS);
 }
 
+// ElevenLabs' error shape. 401 covers a wrong key and running out of credits alike.
+function sendElevenLabsError(res, httpStatus, status, message) {
+  sendJson(res, { detail: { status, message: `mock: ${message}` } }, httpStatus);
+}
+
+// Answers like ElevenLabs' text to speech, with silence as long as /__audio says
+function speak(req, res, body, url, voiceId) {
+  const apiKey = req.headers["xi-api-key"];
+  log.push({
+    kind: "elevenlabs",
+    path: url.pathname,
+    voiceId,
+    outputFormat: url.searchParams.get("output_format"),
+    apiKey,
+    body,
+  });
+
+  if (!apiKey) return sendElevenLabsError(res, 401, "invalid_api_key", "Invalid API key");
+  if (body.text?.includes("QUOTA_EXCEEDED")) return sendElevenLabsError(res, 401, "quota_exceeded", "out of credits");
+  if ((body.text?.length ?? 0) > 10000) {
+    return sendElevenLabsError(res, 400, "max_character_limit_exceeded", "text over 10000 characters");
+  }
+
+  res.writeHead(200, { "Content-Type": "audio/mpeg" });
+  res.end(mp3(audioMs));
+}
+
 function handle(req, res, body, raw) {
   const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
+
+  // ElevenLabs
+  const speech = url.pathname.match(/^\/v1\/text-to-speech\/([^/]+)$/);
+  if (speech && req.method === "POST") return speak(req, res, body, url, decodeURIComponent(speech[1]));
 
   switch (url.pathname) {
     // Test controls

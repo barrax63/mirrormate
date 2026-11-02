@@ -30,20 +30,21 @@ test.describe("Voice flow", () => {
     await expect(avatar.page.getByText("In Conversation")).toBeVisible();
   });
 
-  test("sends what it hears after the wake word and speaks the reply", async ({ avatar }) => {
+  test("sends what it hears after the wake word and speaks the reply", async ({ avatar, mock }) => {
     await avatar.wakeUp();
     await avatar.hear("tell me a joke");
 
     await avatar.waitForPost("/api/tts");
     const [chat] = avatar.postsTo("/api/chat");
     expect(chat).toMatchObject({
-      withAudio: false,
       messages: [{ role: "user", content: "tell me a joke" }],
     });
     expect(chat.image).toMatch(JPEG_DATA_URL);
     expect(avatar.postsTo("/api/tts")[0].text).toBe("mock reply to: tell me a joke");
 
     await avatar.waitForLog("Audio playback ended");
+    const [speech] = await mock.speech();
+    expect(speech.body.text).toBe("mock reply to: tell me a joke");
     await expect(avatar.page.getByText("mock reply to: tell me a joke")).toBeVisible();
     expect(avatar.errors).toEqual([]);
   });

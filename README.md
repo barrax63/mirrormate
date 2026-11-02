@@ -146,7 +146,7 @@ Lip-synced avatar speaks responses. Eight animation states (Idle, Listening, Thi
 | Component | Options                                       |
 | --------- | --------------------------------------------- |
 | LLM       | OpenAI, Ollama                                |
-| TTS       | OpenAI, VOICEVOX                              |
+| TTS       | ElevenLabs, VOICEVOX                          |
 | STT       | Web Speech API, OpenAI Whisper, Local Whisper |
 | Embedding | Ollama, PLaMo-Embedding-1B                    |
 

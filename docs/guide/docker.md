@@ -224,8 +224,11 @@ Create a `.env` file:
 # or host-gateway if they run on this machine
 STUDIO_IP=100.x.x.x
 
-# Required for OpenAI LLM/TTS (if not using Ollama/VOICEVOX)
+# Required for the OpenAI LLM and speech recognition (if not using Ollama)
 OPENAI_API_KEY=sk-...
+
+# Required for ElevenLabs speech output (if not using VOICEVOX)
+ELEVENLABS_API_KEY=...
 
 # Optional: Google Calendar
 GOOGLE_SERVICE_ACCOUNT_EMAIL=...

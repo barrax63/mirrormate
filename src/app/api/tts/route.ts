@@ -1,6 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import { loadProvidersConfig } from "@/lib/providers/config-loader";
+import type { TTSProviderConfig } from "@/lib/providers/types";
+import { getLocale } from "@/lib/app";
+
+const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io";
+// Sarah, a premade voice that every account has
+const ELEVENLABS_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
+const ELEVENLABS_MODEL = "eleven_v4_turbo";
+// The longest of 98 test replies took 5.1 s
+const ELEVENLABS_TIMEOUT_MS = 20_000;
+
+// Emoji, including the parts of sequences such as flags, skin tones and keycaps
+const EMOJI = /[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Regional_Indicator}\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu;
+
+/**
+ * Removes emoji, list bullets, headings and the asterisks of bold and italics, which speech
+ * engines may read out or pause on. The prompt asks for plain text, but replies still carry the
+ * odd emoji. The page shows the reply as it is.
+ */
+function toSpokenText(text: string): string {
+  return text
+    .replace(EMOJI, "")
+    .replace(/^[ \t]*(?:[-*+]|#{1,6})[ \t]+/gm, "")
+    // Japanese bullets often have no space after them
+    .replace(/^[ \t]*[•・][ \t]*/gm, "")
+    .replace(/\*+/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/[ \t]+([.,!?;:。、！？])/g, "$1")
+    .replace(/^[ \t]+|[ \t]+$/gm, "")
+    .trim();
+}
 
 // Word replacements for natural Japanese TTS pronunciation
 const PRONUNCIATION_MAP: Record<string, string> = {
@@ -49,29 +78,39 @@ function normalizeForTTS(text: string): string {
   return normalized;
 }
 
-async function generateOpenAITTS(
+async function generateElevenLabsTTS(
   text: string,
-  voice: string,
-  model: string,
-  speed: number
+  config: TTSProviderConfig["elevenlabs"]
 ): Promise<string> {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OpenAI API key not configured");
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) {
+    throw new Error("ELEVENLABS_API_KEY is not configured");
   }
 
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+  const baseUrl = (config?.baseUrl || ELEVENLABS_BASE_URL).replace(/\/+$/, "");
+  const voiceId = encodeURIComponent(config?.voiceId || ELEVENLABS_VOICE_ID);
+
+  const response = await fetch(`${baseUrl}/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
+    method: "POST",
+    headers: { "xi-api-key": apiKey, "Content-Type": "application/json", Accept: "audio/mpeg" },
+    body: JSON.stringify({
+      text,
+      model_id: config?.model || ELEVENLABS_MODEL,
+      // Sets the language for the voice and for how numbers and dates are read
+      language_code: getLocale(),
+    }),
+    signal: AbortSignal.timeout(ELEVENLABS_TIMEOUT_MS),
   });
 
-  const audioResponse = await openai.audio.speech.create({
-    model: model as "tts-1" | "tts-1-hd",
-    voice: voice as "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer",
-    input: text,
-    response_format: "mp3",
-    speed,
-  });
+  if (!response.ok) {
+    // A wrong key, a missing permission and running out of credits are all 401s, and only
+    // detail.status tells them apart: invalid_api_key, missing_permissions, quota_exceeded
+    const body = await response.json().catch(() => null);
+    const status = body?.detail?.status;
+    throw new Error(`ElevenLabs returned ${response.status}${status ? ` (${status})` : ""}`);
+  }
 
-  const audioBuffer = await audioResponse.arrayBuffer();
+  const audioBuffer = await response.arrayBuffer();
   return Buffer.from(audioBuffer).toString("base64");
 }
 
@@ -121,11 +160,14 @@ export async function POST(request: NextRequest) {
     const config = loadProvidersConfig();
     const ttsConfig = config.providers.tts;
 
-    // Default to OpenAI if TTS config is not set
-    const provider = ttsConfig?.provider || "openai";
+    // Default to ElevenLabs if TTS config is not set
+    const provider = ttsConfig?.provider || "elevenlabs";
 
-    // Normalize text for better pronunciation (mainly for Japanese TTS)
-    const normalizedText = provider === "voicevox" ? normalizeForTTS(text) : text;
+    const spokenText = toSpokenText(text);
+    if (!spokenText) {
+      console.log("[TTS] Nothing to say once emoji and markdown are removed");
+      return NextResponse.json({ audio: null });
+    }
 
     let audioBase64: string;
 
@@ -135,14 +177,15 @@ export async function POST(request: NextRequest) {
       const baseUrl = ttsConfig?.voicevox?.baseUrl || "http://localhost:50021";
 
       console.log(`[TTS] Using VOICEVOX (speaker: ${speaker}${speakerOverride !== undefined ? " [override]" : ""})`);
-      audioBase64 = await generateVoicevoxTTS(normalizedText, speaker, baseUrl);
+      // Normalize text for better Japanese pronunciation
+      audioBase64 = await generateVoicevoxTTS(normalizeForTTS(spokenText), speaker, baseUrl);
     } else {
-      const voice = ttsConfig?.openai?.voice || "shimmer";
-      const model = ttsConfig?.openai?.model || "tts-1";
-      const speed = ttsConfig?.openai?.speed ?? 0.95;
-
-      console.log(`[TTS] Using OpenAI (voice: ${voice})`);
-      audioBase64 = await generateOpenAITTS(text, voice, model, speed);
+      if (provider !== "elevenlabs") {
+        console.warn(`[TTS] Unknown tts.provider "${provider}", using ElevenLabs`);
+      }
+      // The speaker is a VOICEVOX ID, so it doesn't apply here
+      console.log(`[TTS] Using ElevenLabs (voice: ${ttsConfig?.elevenlabs?.voiceId || ELEVENLABS_VOICE_ID})`);
+      audioBase64 = await generateElevenLabsTTS(spokenText, ttsConfig?.elevenlabs);
     }
 
     return NextResponse.json({ audio: audioBase64 });

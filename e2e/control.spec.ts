@@ -39,7 +39,6 @@ test.describe("Control page", () => {
     await avatar.waitForPost("/api/tts");
     const [chat] = control.postsTo("/api/chat");
     expect(chat).toMatchObject({
-      withAudio: false,
       messages: [{ role: "user", content: "hello from control" }],
     });
     expect(chat.image).toMatch(JPEG_DATA_URL);

@@ -11,7 +11,7 @@ test.describe("English server", () => {
   test("known bug: sends no Japanese to the LLM", async ({ request, mock }) => {
     const message = "hello in English";
     await request.post("/api/chat", {
-      data: { messages: [{ role: "user", content: message }], withAudio: false },
+      data: { messages: [{ role: "user", content: message }] },
     });
     const [llm] = await mock.llmRequestsFor(message);
     expect(llm.body.messages[0].content).toContain("Current time:");
@@ -46,7 +46,7 @@ test.describe("Japanese server", () => {
   test("gives the LLM a Japanese system prompt and rules", async ({ request, mock }) => {
     const message = "ただいま";
     const response = await request.post("/api/chat", {
-      data: { messages: [{ role: "user", content: message }], withAudio: false },
+      data: { messages: [{ role: "user", content: message }] },
     });
     expect(response.status()).toBe(200);
 
@@ -87,6 +87,14 @@ test.describe("Japanese server", () => {
     await expect(page.locator("form input")).toHaveAttribute("placeholder", "メッセージを入力...", {
       timeout: 2000,
     });
+  });
+
+  test("/api/tts asks ElevenLabs for Japanese", async ({ request, mock }) => {
+    const response = await request.post("/api/tts", { data: { text: "こんにちは" } });
+
+    expect(response.status()).toBe(200);
+    const [speech] = await mock.speech();
+    expect(speech.body).toMatchObject({ text: "こんにちは", language_code: "ja" });
   });
 
   test("/api/stt/config reports ja-JP", async ({ request }) => {

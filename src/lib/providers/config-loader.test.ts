@@ -77,12 +77,15 @@ describe("loadProvidersConfig", () => {
     expect(loadProvidersConfig().providers?.stt?.web?.language).toBe("ja-JP");
   });
 
-  it("falls back to OpenAI when the file is missing", () => {
+  it("falls back to OpenAI and ElevenLabs when the file is missing", () => {
     useProvidersYaml();
 
     const { providers } = loadProvidersConfig();
 
     expect(providers?.llm?.provider).toBe("openai");
-    expect(providers?.tts?.provider).toBe("openai");
+    expect(providers?.tts).toMatchObject({
+      provider: "elevenlabs",
+      elevenlabs: { voiceId: "EXAVITQu4vr4xnSDxMaL", model: "eleven_v4_turbo" },
+    });
   });
 });

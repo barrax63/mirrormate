@@ -76,7 +76,7 @@ async function post(body: Record<string, unknown>) {
   const response = await POST(
     new NextRequest("http://localhost/api/chat", {
       method: "POST",
-      body: JSON.stringify({ withAudio: false, ...body }),
+      body: JSON.stringify(body),
     })
   );
   return { status: response.status, body: await response.json() };

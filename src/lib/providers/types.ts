@@ -5,11 +5,11 @@ export interface ProviderConfig {
 }
 
 export interface TTSProviderConfig extends ProviderConfig {
-  provider: "openai" | "voicevox";
-  openai?: {
-    voice: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
-    model?: "tts-1" | "tts-1-hd";
-    speed?: number;
+  provider: "elevenlabs" | "voicevox";
+  elevenlabs?: {
+    voiceId?: string;
+    model?: string;
+    baseUrl?: string;
   };
   voicevox?: {
     speaker: number;

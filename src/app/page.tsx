@@ -252,7 +252,10 @@ export default function AvatarPage() {
       sum += dataArray[i];
     }
     const average = sum / voiceRange;
-    const normalized = Math.min(1, (average / 128) * 1.5);
+    // ElevenLabs voices fill these bins about twice as strongly as the old OpenAI voice did, so
+    // the old formula, average / 128 * 1.5, held the mouth fully open 3 frames in 4. Shut below
+    // 60 and fully open from 140, it moves about as it did with that voice.
+    const normalized = Math.min(1, Math.max(0, (average - 60) / 80));
     setMouthOpenness(normalized);
 
     animationRef.current = requestAnimationFrame(analyzeAudio);
@@ -436,7 +439,6 @@ export default function AvatarPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: messagesRef.current,
-            withAudio: false,
             characterId: currentCharacter ?? undefined,
             image: capturedImage ?? undefined,
           }),
