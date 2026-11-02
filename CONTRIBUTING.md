@@ -35,7 +35,7 @@ For questions about usage or development, create an issue using the **Question**
 
 - Node.js 22+
 - bun
-- Docker (optional, for VOICEVOX)
+- Docker (optional, for the services in `compose.studio.yaml`)
 
 ### Local Development
 

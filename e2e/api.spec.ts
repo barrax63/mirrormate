@@ -88,8 +88,8 @@ test.describe("/api/chat", () => {
 });
 
 test.describe("other APIs", () => {
-  test("/api/tts speaks with ElevenLabs, using the test key", async ({ request, mock }) => {
-    const response = await request.post("/api/tts", { data: { text: "hello there", speaker: 2 } });
+  test("/api/tts speaks with ElevenLabs in the configured voice, using the test key", async ({ request, mock }) => {
+    const response = await request.post("/api/tts", { data: { text: "hello there" } });
 
     expect(response.status()).toBe(200);
     const { audio } = await response.json();
@@ -102,7 +102,13 @@ test.describe("other APIs", () => {
       apiKey: "e2e-dummy-key",
       body: { text: "hello there", model_id: "eleven_v4_turbo", language_code: "en" },
     });
-    expect(await mock.log("tts")).toEqual([]);
+  });
+
+  test("/api/tts speaks in the voice it's given", async ({ request, mock }) => {
+    await request.post("/api/tts", { data: { text: "hello there", voice: "pFZP5JQG7iQjIQuC4Bku" } });
+
+    const [speech] = await mock.speech();
+    expect(speech.path).toBe("/v1/text-to-speech/pFZP5JQG7iQjIQuC4Bku");
   });
 
   test("/api/tts leaves emoji and markdown out of speech", async ({ request, mock }) => {
@@ -128,22 +134,32 @@ test.describe("other APIs", () => {
     expect(await mock.speech()).toHaveLength(1);
   });
 
-  test("/api/voicevox/speakers offers no voices when replies use ElevenLabs", async ({ request }) => {
-    const response = await request.get("/api/voicevox/speakers");
+  test("/api/voices lists the account's voices by name, loaded once", async ({ request, mock }) => {
+    await request.get("/api/voices");
+    const loads = (await mock.log("voices")).length;
 
-    expect(await response.json()).toEqual({ speakers: [], enabled: false });
+    const response = await request.get("/api/voices");
+
+    expect(response.status()).toBe(200);
+    expect((await response.json()).voices).toEqual([
+      { id: "cgSgspJ2msm6clMCkdW9", name: "Jessica - Playful, Bright, Warm" },
+      { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily - Velvety Actress" },
+      { id: "mock-voice", name: "Mock - The configured voice" },
+      { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah - Mature, Reassuring, Confident" },
+    ]);
+    expect(await mock.log("voices")).toHaveLength(loads);
   });
 
   test("/api/settings keeps the character when the voice is saved, and the other way round", async ({ request }) => {
     await request.put("/api/settings", { data: { characterId: "luna" } });
-    await request.put("/api/settings", { data: { speakerId: 2 } });
-    expect(await (await request.get("/api/settings")).json()).toEqual({ speakerId: 2, characterId: "luna" });
+    await request.put("/api/settings", { data: { voice: "pFZP5JQG7iQjIQuC4Bku" } });
+    expect(await (await request.get("/api/settings")).json()).toEqual({ voice: "pFZP5JQG7iQjIQuC4Bku", characterId: "luna" });
 
     await request.put("/api/settings", { data: { characterId: "sora" } });
-    expect(await (await request.get("/api/settings")).json()).toEqual({ speakerId: 2, characterId: "sora" });
+    expect(await (await request.get("/api/settings")).json()).toEqual({ voice: "pFZP5JQG7iQjIQuC4Bku", characterId: "sora" });
 
-    await request.put("/api/settings", { data: { speakerId: null } });
-    expect(await (await request.get("/api/settings")).json()).toEqual({ speakerId: null, characterId: "sora" });
+    await request.put("/api/settings", { data: { voice: null } });
+    expect(await (await request.get("/api/settings")).json()).toEqual({ voice: null, characterId: "sora" });
   });
 
   test("/api/plugins includes the hidden vision plugin", async ({ request }) => {

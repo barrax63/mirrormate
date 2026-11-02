@@ -10,7 +10,6 @@ flowchart TB
         subgraph Studio["Mac Studio (studio)"]
             Ollama["Ollama (native)<br/>LLM<br/>:11434"]
             PLaMo["PLaMo (Docker)<br/>Embedding<br/>:8000"]
-            VOICEVOX["VOICEVOX (Docker)<br/>TTS<br/>:50021"]
         end
 
         subgraph RPi["Raspberry Pi"]
@@ -28,13 +27,15 @@ flowchart TB
 
         App -->|LLM| Ollama
         App -->|Embedding| PLaMo
-        App -->|TTS| VOICEVOX
         Dev -->|LLM| Ollama
         Dev -->|Embedding| PLaMo
-        Dev -->|TTS| VOICEVOX
         App --> Mirror
         App -->|Audio| Speaker
     end
+
+    ElevenLabs["ElevenLabs (cloud)<br/>TTS"]
+    App -->|TTS| ElevenLabs
+    Dev -->|TTS| ElevenLabs
 ```
 
 ## Why This Setup?
@@ -43,7 +44,7 @@ flowchart TB
 |-----------|----------|--------|
 | **Ollama** | Mac Studio (native) | Metal GPU acceleration for fast LLM inference |
 | **PLaMo-Embedding-1B** | Mac Studio (Docker) | Japanese-optimized embedding, top JMTEB scores |
-| **VOICEVOX** | Mac Studio (Docker) | CPU-intensive, containerized for easy management |
+| **ElevenLabs** | Cloud | Speech output, one voice for every language |
 | **UI** | Raspberry Pi | Low power, silent, dedicated display |
 | **Development** | MacBook | Same config as production, no local services needed |
 
@@ -99,7 +100,7 @@ brew services start ollama
 ollama pull gpt-oss:20b
 ```
 
-### Start Docker Services (VOICEVOX, Whisper + PLaMo)
+### Start Docker Services (Whisper + PLaMo)
 
 First, install Docker via [OrbStack](https://orbstack.dev/) (recommended for Apple Silicon):
 
@@ -116,7 +117,6 @@ docker compose -f compose.studio.yaml up -d
 ```
 
 This starts:
-- **VOICEVOX** (:50021) - Text-to-speech
 - **faster-whisper** (:8080) - Speech-to-text, used when `stt.provider` is `local`
 - **PLaMo-Embedding-1B** (:8000) - Japanese-optimized text embedding
 
@@ -125,9 +125,6 @@ This starts:
 ```bash
 # Ollama (LLM)
 curl http://localhost:11434/api/tags
-
-# VOICEVOX (TTS)
-curl http://localhost:50021/speakers | head
 
 # PLaMo (Embedding)
 curl http://localhost:8000/health
@@ -150,10 +147,7 @@ providers:
 
   tts:
     enabled: true
-    provider: voicevox
-    voicevox:
-      speaker: 2
-      baseUrl: "http://studio:50021"  # Tailscale hostname
+    provider: elevenlabs  # Needs ELEVENLABS_API_KEY in .env
 
   embedding:
     enabled: true
@@ -198,8 +192,8 @@ cd mirrormate
 
 ```bash
 cp .env.example .env
-# Set STUDIO_IP to the Mac Studio's Tailscale IP (tailscale ip -4)
-# and add API keys for optional services
+# Set STUDIO_IP to the Mac Studio's Tailscale IP (tailscale ip -4),
+# ELEVENLABS_API_KEY for speech, and API keys for optional services
 ```
 
 ### Start Application
@@ -239,19 +233,17 @@ The app connects to Mac Studio for all heavy processing via Tailscale.
 sequenceDiagram
     participant Browser as Browser (RPi)
     participant API as Next.js API
-    participant VV as VOICEVOX (studio)
+    participant EL as ElevenLabs (cloud)
     participant Speaker as Speaker (RPi)
 
     Browser->>API: Text to speak
-    API->>VV: POST /audio_query
-    VV-->>API: Query result
-    API->>VV: POST /synthesis
-    VV-->>API: WAV audio data
+    API->>EL: POST /v1/text-to-speech/{voice_id}
+    EL-->>API: MP3 audio
     API-->>Browser: Audio response
     Browser->>Speaker: Play audio
 ```
 
-The audio plays from the device running the browser (RPi), not from Mac Studio.
+The audio plays from the device running the browser (RPi).
 
 Ensure your RPi has speakers connected and audio output configured:
 
@@ -281,7 +273,7 @@ graph LR
 ### Mac Studio
 
 ```bash
-# Start services (VOICEVOX, Whisper + PLaMo)
+# Start services (Whisper + PLaMo)
 docker compose -f compose.studio.yaml up -d
 
 # Stop services
@@ -342,14 +334,13 @@ bun run test
 2. Check hostname: `ping studio`
 3. Ensure Ollama is running: `brew services list | grep ollama`
 
-### VOICEVOX timeout
+### No speech
 
-**Error**: TTS request timeout
+**Error**: `ElevenLabs returned 401` in the app's log
 
 **Solution**:
-1. Check container: `docker compose -f compose.studio.yaml ps`
-2. First request is slow (model loading), wait ~30 seconds
-3. Check logs: `docker compose -f compose.studio.yaml logs voicevox`
+1. Check `ELEVENLABS_API_KEY` in `.env`, and that the key has the Text to Speech permission
+2. The status in brackets says why: `invalid_api_key`, `missing_permissions`, or `quota_exceeded` when the account is out of credits
 
 ### No audio on RPi
 

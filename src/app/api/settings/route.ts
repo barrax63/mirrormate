@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const settings = await settingsRepo.findOrCreate(userId);
 
     return NextResponse.json({
-      speakerId: settings.speakerId,
+      voice: settings.voice,
       characterId: settings.characterId,
     });
   } catch (error) {
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { userId, speakerId, characterId } = await request.json();
+    const { userId, voice, characterId } = await request.json();
     const currentUserId = userId || DEFAULT_USER_ID;
 
     // Ensure user exists
@@ -41,12 +41,12 @@ export async function PUT(request: NextRequest) {
     // separately, and each would otherwise clear the other. null clears a field.
     const settingsRepo = getUserSettingsRepository();
     const updated = await settingsRepo.update(currentUserId, {
-      ...(speakerId !== undefined && { speakerId }),
+      ...(voice !== undefined && { voice }),
       ...(characterId !== undefined && { characterId }),
     });
 
     return NextResponse.json({
-      speakerId: updated.speakerId,
+      voice: updated.voice,
       characterId: updated.characterId,
     });
   } catch (error) {

@@ -1,5 +1,5 @@
 # Mac Studio deployment
-# Run heavy services: VOICEVOX, PLaMo Embedding, Whisper (Ollama runs natively)
+# Run heavy services: PLaMo Embedding, Whisper (Ollama runs natively)
 # Usage: docker compose -f compose.studio.yaml up -d
 
 name: mirrormate-studio
@@ -15,12 +15,6 @@ services:
     environment:
       - WHISPER__MODEL=large-v3 # tiny, base, small, medium, large-v3
       - WHISPER__INFERENCE_DEVICE=cpu
-    restart: unless-stopped
-
-  voicevox:
-    image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
-    ports:
-      - "50021:50021"
     restart: unless-stopped
 
   plamo-embedding:

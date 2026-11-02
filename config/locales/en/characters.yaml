@@ -2,7 +2,7 @@ characters:
   - id: mira
     name: Mira
     description: A tiny spirit of light living in the mirror
-    recommendedVoice: 2
+    recommendedVoice: EXAVITQu4vr4xnSDxMaL  # Sarah
     wakeWord:
       enabled: true
       phrase: "Hey Mira"
@@ -40,7 +40,7 @@ characters:
   - id: luna
     name: Luna
     description: A mysterious moon spirit descended from the night sky
-    recommendedVoice: 14
+    recommendedVoice: pFZP5JQG7iQjIQuC4Bku  # Lily
     wakeWord:
       enabled: true
       phrase: "OK Luna"
@@ -77,7 +77,7 @@ characters:
   - id: sora
     name: Sora
     description: An energetic wind spirit racing through the blue sky
-    recommendedVoice: 3
+    recommendedVoice: cgSgspJ2msm6clMCkdW9  # Jessica
     wakeWord:
       enabled: true
       phrase: "OK Sora"

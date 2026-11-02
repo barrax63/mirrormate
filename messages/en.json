@@ -21,6 +21,8 @@
     "character": "Character",
     "preview": "Preview",
     "selectVoice": "Select voice...",
+    "voicesUnavailable": "Voices unavailable",
+    "previewText": "Hello, this is what my voice sounds like.",
     "selectCharacter": "Select character..."
   },
   "status": {

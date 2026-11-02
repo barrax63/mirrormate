@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useSpeakerSelector, type Speaker } from "@/hooks/useSpeakerSelector";
+import { useVoiceSelector, type Voice } from "@/hooks/useVoiceSelector";
 import { useCharacterSelector, type CharacterPreset } from "@/hooks/useCharacterSelector";
 import { SettingsDropdown } from "@/components/SettingsDropdown";
 import { VoicePreviewButton } from "@/components/VoicePreviewButton";
@@ -37,17 +37,16 @@ export default function ControlPage() {
     timeout: NodeJS.Timeout;
   } | null>(null);
 
-  // Speaker and Character selectors
+  // Voice and Character selectors
   const {
-    speakers,
-    selectedSpeaker,
-    setSelectedSpeaker,
-    isLoading: speakersLoading,
-    error: speakersError,
-    isEnabled: voicesEnabled,
+    voices,
+    selectedVoice,
+    setSelectedVoice,
+    isLoading: voicesLoading,
+    error: voicesError,
     previewVoice,
     isPreviewPlaying,
-  } = useSpeakerSelector();
+  } = useVoiceSelector();
 
   const {
     characters,
@@ -182,13 +181,13 @@ export default function ControlPage() {
         broadcast({ type: "thinking_end" });
         broadcast({ type: "response", payload: data.message });
 
-        // Request audio playback (avatar will fetch TTS with speaker)
+        // Request audio playback (avatar will fetch TTS with the voice)
         if (data.message) {
           broadcast({
             type: "play_audio",
             payload: JSON.stringify({
               text: data.message,
-              speaker: selectedSpeaker,
+              voice: selectedVoice,
             }),
           });
         }
@@ -208,7 +207,7 @@ export default function ControlPage() {
         setIsLoading(false);
       }
     },
-    [messages, isLoading, broadcast, selectedSpeaker, selectedCharacter, visionEnabled, requestCameraCapture]
+    [messages, isLoading, broadcast, selectedVoice, selectedCharacter, visionEnabled, requestCameraCapture]
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -296,8 +295,8 @@ export default function ControlPage() {
             onSelect={(id) => {
               setSelectedCharacter(id as string);
               const char = characters.find((c) => c.id === id);
-              if (char?.recommendedVoice && speakers.some((s) => s.id === char.recommendedVoice)) {
-                setSelectedSpeaker(char.recommendedVoice);
+              if (char?.recommendedVoice && voices.some((v) => v.id === char.recommendedVoice)) {
+                setSelectedVoice(char.recommendedVoice);
               }
             }}
             getId={(c) => c.id}
@@ -312,32 +311,26 @@ export default function ControlPage() {
             placeholder={t("selectCharacter") || "Select character..."}
           />
 
-          {voicesEnabled && (
-            <>
-              {/* Voice Selector */}
-              <SettingsDropdown<Speaker>
-                label={t("voice") || "Voice"}
-                items={speakers}
-                selectedId={selectedSpeaker}
-                onSelect={(id) => setSelectedSpeaker(id as number)}
-                getId={(s) => s.id}
-                renderItem={(s) => (
-                  <span>{s.name} ({s.styleName})</span>
-                )}
-                renderSelected={(s) => s ? `${s.name} (${s.styleName})` : null}
-                disabled={speakersLoading || !!speakersError}
-                placeholder={speakersError || (t("selectVoice") || "Select voice...")}
-              />
+          {/* Voice Selector */}
+          <SettingsDropdown<Voice>
+            label={t("voice") || "Voice"}
+            items={voices}
+            selectedId={selectedVoice}
+            onSelect={(id) => setSelectedVoice(id as string)}
+            getId={(v) => v.id}
+            renderItem={(v) => <span>{v.name}</span>}
+            renderSelected={(v) => (v ? v.name : null)}
+            disabled={voicesLoading || voicesError}
+            placeholder={voicesError ? t("voicesUnavailable") : t("selectVoice") || "Select voice..."}
+          />
 
-              {/* Preview Button */}
-              <VoicePreviewButton
-                onClick={() => selectedSpeaker && previewVoice(selectedSpeaker)}
-                isPlaying={isPreviewPlaying}
-                disabled={!selectedSpeaker || speakersLoading}
-                label={t("preview") || "Preview"}
-              />
-            </>
-          )}
+          {/* Preview Button */}
+          <VoicePreviewButton
+            onClick={() => selectedVoice && previewVoice(selectedVoice, t("previewText"))}
+            isPlaying={isPreviewPlaying}
+            disabled={!selectedVoice || voicesLoading}
+            label={t("preview") || "Preview"}
+          />
 
           {/* Vision Toggle */}
           <div className="flex items-center gap-2">

@@ -2,76 +2,68 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 
-export interface Speaker {
-  id: number;
+export interface Voice {
+  id: string;
   name: string;
-  styleName: string;
 }
 
-interface UseSpeakerSelectorReturn {
-  speakers: Speaker[];
-  selectedSpeaker: number | null;
-  setSelectedSpeaker: (id: number) => void;
+interface UseVoiceSelectorReturn {
+  voices: Voice[];
+  selectedVoice: string | null;
+  setSelectedVoice: (id: string) => void;
   isLoading: boolean;
-  error: string | null;
-  isEnabled: boolean;
-  previewVoice: (speakerId: number, text?: string) => Promise<void>;
+  /** True when the voices couldn't be loaded */
+  error: boolean;
+  previewVoice: (voiceId: string, text: string) => Promise<void>;
   isPreviewPlaying: boolean;
 }
 
-const STORAGE_KEY = "mirrormate:speaker";
-const DEFAULT_PREVIEW_TEXT = "こんにちは、私の声はこんな感じです。";
+const STORAGE_KEY = "mirrormate:voice";
+// Held a speaker number from the old speech engine, which means nothing to ElevenLabs
+const OLD_STORAGE_KEY = "mirrormate:speaker";
 
-export function useSpeakerSelector(): UseSpeakerSelectorReturn {
-  const [speakers, setSpeakers] = useState<Speaker[]>([]);
-  const [selectedSpeaker, setSelectedSpeakerState] = useState<number | null>(null);
+export function useVoiceSelector(): UseVoiceSelectorReturn {
+  const [voices, setVoices] = useState<Voice[]>([]);
+  const [selectedVoice, setSelectedVoiceState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isEnabled, setIsEnabled] = useState(true);
+  const [error, setError] = useState(false);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const settingsLoadedRef = useRef(false);
 
-  // Load speakers from API
+  // Load voices from API
   useEffect(() => {
-    async function fetchSpeakers() {
+    async function fetchVoices() {
       try {
-        const response = await fetch("/api/voicevox/speakers");
+        const response = await fetch("/api/voices");
         const data = await response.json();
-
-        setIsEnabled(data.enabled !== false);
-
-        if (data.error) {
-          setError(data.error);
-          setSpeakers([]);
-        } else {
-          setSpeakers(data.speakers || []);
-          setError(null);
-        }
+        setVoices(data.voices || []);
+        setError(!response.ok);
       } catch {
-        setError("Failed to fetch speakers");
-        setSpeakers([]);
+        setVoices([]);
+        setError(true);
       } finally {
         setIsLoading(false);
       }
     }
 
-    fetchSpeakers();
+    fetchVoices();
   }, []);
 
-  // Load selected speaker from DB (with localStorage fallback)
+  // Load selected voice from DB (with localStorage fallback)
   useEffect(() => {
     if (settingsLoadedRef.current) return;
     settingsLoadedRef.current = true;
+    localStorage.removeItem(OLD_STORAGE_KEY);
 
     async function loadSettings() {
       try {
         const response = await fetch("/api/settings");
         if (response.ok) {
           const data = await response.json();
-          if (data.speakerId !== null && data.speakerId !== undefined) {
-            setSelectedSpeakerState(data.speakerId);
-            localStorage.setItem(STORAGE_KEY, data.speakerId.toString());
+          if (data.voice) {
+            setSelectedVoiceState(data.voice);
+            localStorage.setItem(STORAGE_KEY, data.voice);
             return;
           }
         }
@@ -82,25 +74,22 @@ export function useSpeakerSelector(): UseSpeakerSelectorReturn {
       // Fallback to localStorage
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = parseInt(stored, 10);
-        if (!isNaN(parsed)) {
-          setSelectedSpeakerState(parsed);
-        }
+        setSelectedVoiceState(stored);
       }
     }
 
     loadSettings();
   }, []);
 
-  const setSelectedSpeaker = useCallback((id: number) => {
-    setSelectedSpeakerState(id);
-    localStorage.setItem(STORAGE_KEY, id.toString());
+  const setSelectedVoice = useCallback((id: string) => {
+    setSelectedVoiceState(id);
+    localStorage.setItem(STORAGE_KEY, id);
 
     // Save to DB
     fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ speakerId: id }),
+      body: JSON.stringify({ voice: id }),
     }).catch(() => {
       // Ignore DB errors, localStorage is the backup
     });
@@ -110,7 +99,7 @@ export function useSpeakerSelector(): UseSpeakerSelectorReturn {
       const channel = new BroadcastChannel("mirror-channel");
       channel.postMessage({
         type: "settings_changed",
-        payload: JSON.stringify({ speaker: id }),
+        payload: JSON.stringify({ voice: id }),
       });
       channel.close();
     } catch {
@@ -118,7 +107,7 @@ export function useSpeakerSelector(): UseSpeakerSelectorReturn {
     }
   }, []);
 
-  const previewVoice = useCallback(async (speakerId: number, text?: string) => {
+  const previewVoice = useCallback(async (voiceId: string, text: string) => {
     if (isPreviewPlaying) return;
 
     setIsPreviewPlaying(true);
@@ -127,10 +116,7 @@ export function useSpeakerSelector(): UseSpeakerSelectorReturn {
       const response = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: text || DEFAULT_PREVIEW_TEXT,
-          speaker: speakerId,
-        }),
+        body: JSON.stringify({ text, voice: voiceId }),
       });
 
       if (!response.ok) {
@@ -146,7 +132,7 @@ export function useSpeakerSelector(): UseSpeakerSelectorReturn {
           audioRef.current = null;
         }
 
-        const audio = new Audio(`data:audio/wav;base64,${data.audio}`);
+        const audio = new Audio(`data:audio/mpeg;base64,${data.audio}`);
         audioRef.current = audio;
 
         audio.onended = () => {
@@ -160,6 +146,8 @@ export function useSpeakerSelector(): UseSpeakerSelectorReturn {
         };
 
         await audio.play();
+      } else {
+        setIsPreviewPlaying(false);
       }
     } catch {
       console.error("Preview failed");
@@ -168,12 +156,11 @@ export function useSpeakerSelector(): UseSpeakerSelectorReturn {
   }, [isPreviewPlaying]);
 
   return {
-    speakers,
-    selectedSpeaker,
-    setSelectedSpeaker,
+    voices,
+    selectedVoice,
+    setSelectedVoice,
     isLoading,
     error,
-    isEnabled,
     previewVoice,
     isPreviewPlaying,
   };

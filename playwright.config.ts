@@ -11,7 +11,6 @@ function appServer(locale: "en" | "ja", port: number) {
       FEATURES_CONFIG: "../e2e/config/features.yaml",
       // These would otherwise be read from .env
       LLM_PROVIDER: "openai",
-      TTS_PROVIDER: "elevenlabs",
       STT_PROVIDER: "openai",
       // Next never overrides a variable that is already set, so real keys in .env stay unused
       OPENAI_API_KEY: "e2e-dummy-key",

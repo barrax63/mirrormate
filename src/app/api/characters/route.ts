@@ -5,7 +5,7 @@ export interface CharacterPresetResponse {
   id: string;
   name: string;
   description: string;
-  recommendedVoice?: number;
+  recommendedVoice?: string;
 }
 
 export async function GET() {

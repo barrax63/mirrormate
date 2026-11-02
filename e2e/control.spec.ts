@@ -1,34 +1,95 @@
 import type { Page, Route } from "@playwright/test";
 import { test, expect, blockOutsideRequests, AvatarPage, ControlPage, JAPANESE, JPEG_DATA_URL } from "./fixtures";
 
+// Lily is in the fake ElevenLabs' voice list, and the characters give her to Luna
+const LILY = "pFZP5JQG7iQjIQuC4Bku";
+
 test.describe("Voice selector", () => {
   async function openWithVoices(page: Page, answer: (route: Route) => Promise<void>) {
-    await page.route("**/api/voicevox/speakers", answer);
+    await page.route("**/api/voices", answer);
     const control = new ControlPage(page);
     await control.open();
   }
 
-  // The speaker only reaches VOICEVOX, so a selector would change nothing with OpenAI
-  test("is hidden when replies don't use VOICEVOX", async ({ page }) => {
-    await openWithVoices(page, (route) => route.fulfill({ json: { speakers: [], enabled: false } }));
+  test("lists the ElevenLabs voices by name", async ({ control }) => {
+    await control.page.getByRole("button", { name: "Select voice" }).click();
 
-    await expect(page.getByRole("button", { name: "Vision ON" })).toBeVisible();
-    await expect(page.getByText("Voice", { exact: true })).toBeHidden();
-    await expect(page.getByTitle("Preview")).toBeHidden();
+    for (const name of ["Jessica", "Lily", "Mock", "Sarah"]) {
+      await expect(control.page.getByText(name).first()).toBeVisible();
+    }
   });
 
-  test("says VOICEVOX is unavailable when replies use it and it's down", async ({ page }) => {
+  test("says the voices are unavailable when ElevenLabs can't list them", async ({ page }) => {
     await openWithVoices(page, (route) =>
-      route.fulfill({ status: 503, json: { speakers: [], error: "VOICEVOX unavailable" } })
+      route.fulfill({ status: 502, json: { voices: [], error: "ElevenLabs voices unavailable" } })
     );
 
-    await expect(page.getByRole("button", { name: "VOICEVOX unavailable" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Voices unavailable" })).toBeDisabled();
   });
 
-  test("stays visible when the voice request fails", async ({ page }) => {
+  test("says the voices are unavailable when the request fails", async ({ page }) => {
     await openWithVoices(page, (route) => route.abort());
 
-    await expect(page.getByRole("button", { name: "Failed to fetch speakers" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Voices unavailable" })).toBeDisabled();
+  });
+
+  test("speaks replies in the voice picked", async ({ avatar, control, mock }) => {
+    await control.selectVoice("Lily");
+
+    await control.send("in another voice");
+
+    await avatar.waitForLog("Audio playback ended");
+    const [speech] = await mock.speech();
+    expect(speech.path).toBe(`/v1/text-to-speech/${LILY}`);
+  });
+
+  test("keeps the voice picked after the avatar page reloads", async ({ avatar, control, mock }) => {
+    await control.selectVoice("Lily");
+    await expect.poll(async () => (await (await control.page.request.get("/api/settings")).json()).voice).toBe(LILY);
+
+    await avatar.open();
+    await avatar.wakeUp();
+    await avatar.hear("which voice is this");
+
+    await avatar.waitForLog("Audio playback ended");
+    const [speech] = await mock.speech();
+    expect(speech.path).toBe(`/v1/text-to-speech/${LILY}`);
+  });
+
+  test("switches to the voice of the character picked, and saves both", async ({ avatar, control, mock }) => {
+    await control.selectCharacter("Luna");
+
+    await control.send("hello Luna");
+
+    await avatar.waitForLog("Audio playback ended");
+    const [speech] = await mock.speech();
+    expect(speech.path).toBe(`/v1/text-to-speech/${LILY}`);
+    await expect
+      .poll(async () => (await control.page.request.get("/api/settings")).json())
+      .toEqual({ voice: LILY, characterId: "luna" });
+  });
+
+  test("previews a voice with its own /api/tts call", async ({ avatar, control }) => {
+    await control.selectVoice("Lily");
+    await control.page.getByTitle("Preview").click();
+
+    await control.waitForPost("/api/tts");
+    expect(control.postsTo("/api/tts")[0].voice).toBe(LILY);
+    expect(avatar.postsTo("/api/tts")).toEqual([]);
+  });
+
+  test("previews a voice with English text in English mode", async ({ control }) => {
+    await control.selectVoice("Lily");
+    await control.page.getByTitle("Preview").click();
+    await control.waitForPost("/api/tts");
+
+    expect(control.postsTo("/api/tts")[0].text).toBe("Hello, this is what my voice sounds like.");
+  });
+
+  test("shows no Japanese in English mode", async ({ control }) => {
+    await control.selectVoice("Lily");
+
+    expect(await control.page.locator("body").innerText()).not.toMatch(JAPANESE);
   });
 });
 
@@ -239,29 +300,6 @@ test.describe("Control page", () => {
     await expect(later.getByText("Mic Off", { exact: true })).toBeVisible();
   });
 
-  test("previews a voice with its own /api/tts call", async ({ avatar, control }) => {
-    await control.selectMockVoice();
-    await control.page.getByTitle("Preview").click();
-
-    await control.waitForPost("/api/tts");
-    expect(control.postsTo("/api/tts")[0].speaker).toBe(2);
-    expect(avatar.postsTo("/api/tts")).toEqual([]);
-  });
-
-  test("known bug: previews a voice with English text in English mode", async ({ control }) => {
-    await control.selectMockVoice();
-    await control.page.getByTitle("Preview").click();
-    await control.waitForPost("/api/tts");
-
-    test.fail(true, "The preview text is always Japanese");
-    expect(control.postsTo("/api/tts")[0].text).not.toMatch(JAPANESE);
-  });
-
-  test("shows no Japanese in English mode", async ({ control }) => {
-    await control.selectMockVoice();
-
-    expect(await control.page.locator("body").innerText()).not.toMatch(JAPANESE);
-  });
 });
 
 test.describe("Vision toggle", () => {

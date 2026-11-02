@@ -30,7 +30,7 @@ export default function AvatarPage() {
   const [showEffect, setShowEffect] = useState(false);
   const [effectType, setEffectType] = useState<EffectType>("confetti");
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [currentSpeaker, setCurrentSpeaker] = useState<number | null>(null);
+  const [currentVoice, setCurrentVoice] = useState<string | null>(null);
   const [currentCharacter, setCurrentCharacter] = useState<string | null>(null);
   const [showMicOffNotice, setShowMicOffNotice] = useState(false);
   const [isFirstRun, setIsFirstRun] = useState(false);
@@ -78,8 +78,8 @@ export default function AvatarPage() {
         const response = await fetch("/api/settings");
         if (response.ok) {
           const data = await response.json();
-          if (data.speakerId !== null && data.speakerId !== undefined) {
-            setCurrentSpeaker(data.speakerId);
+          if (data.voice) {
+            setCurrentVoice(data.voice);
           }
           if (data.characterId) {
             setCurrentCharacter(data.characterId);
@@ -91,10 +91,10 @@ export default function AvatarPage() {
       }
 
       // Fallback to localStorage
-      const savedSpeaker = localStorage.getItem("mirrormate:speaker");
+      const savedVoice = localStorage.getItem("mirrormate:voice");
       const savedCharacter = localStorage.getItem("mirrormate:character");
-      if (savedSpeaker) {
-        setCurrentSpeaker(parseInt(savedSpeaker, 10));
+      if (savedVoice) {
+        setCurrentVoice(savedVoice);
       }
       if (savedCharacter) {
         setCurrentCharacter(savedCharacter);
@@ -373,7 +373,7 @@ export default function AvatarPage() {
           const res = await fetch("/api/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: message, speaker: currentSpeaker ?? undefined }),
+            body: JSON.stringify({ text: message, voice: currentVoice ?? undefined }),
           });
           if (res.ok) {
             const data = await res.json();
@@ -386,7 +386,7 @@ export default function AvatarPage() {
         }
       }
     },
-    [isSpeaking, isProcessing, playAudio, currentSpeaker, tReminder]
+    [isSpeaking, isProcessing, playAudio, currentVoice, tReminder]
   );
 
   // Reminder hook (config loaded from YAML)
@@ -474,7 +474,7 @@ export default function AvatarPage() {
             const ttsRes = await fetch("/api/tts", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text: data.message, speaker: currentSpeaker ?? undefined }),
+              body: JSON.stringify({ text: data.message, voice: currentVoice ?? undefined }),
             });
 
             if (ttsRes.ok) {
@@ -492,7 +492,7 @@ export default function AvatarPage() {
         setIsProcessing(false);
       }
     },
-    [isProcessing, isSpeaking, playAudio, isWakeWordEnabled, wakeWordMode, checkForWakeWord, resetWakeWordTimeout, currentSpeaker, currentCharacter, requestCameraCapture]
+    [isProcessing, isSpeaking, playAudio, isWakeWordEnabled, wakeWordMode, checkForWakeWord, resetWakeWordTimeout, currentVoice, currentCharacter, requestCameraCapture]
   );
 
   // Speech recognition hook
@@ -565,27 +565,27 @@ export default function AvatarPage() {
           if (payload) {
             // Call TTS API and play audio
             try {
-              // Parse payload - can be JSON object with text and speaker, or plain text string
+              // Parse payload - can be JSON object with text and voice, or plain text string
               let text = payload;
-              let speaker: number | undefined;
+              let voice: string | undefined;
 
               try {
                 const parsed = JSON.parse(payload);
                 if (typeof parsed === "object" && parsed.text) {
                   text = parsed.text;
-                  speaker = parsed.speaker ?? currentSpeaker ?? undefined;
+                  voice = parsed.voice ?? currentVoice ?? undefined;
                 }
               } catch {
                 // Not JSON, use as plain text
-                speaker = currentSpeaker ?? undefined;
+                voice = currentVoice ?? undefined;
               }
 
-              console.log("[Avatar] play_audio: requesting TTS", { text: text.substring(0, 50), speaker });
+              console.log("[Avatar] play_audio: requesting TTS", { text: text.substring(0, 50), voice });
 
               const res = await fetch("/api/tts", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text, speaker }),
+                body: JSON.stringify({ text, voice }),
               });
               if (res.ok) {
                 const data = await res.json();
@@ -608,8 +608,8 @@ export default function AvatarPage() {
           if (payload) {
             try {
               const settings = JSON.parse(payload);
-              if (settings.speaker !== undefined) {
-                setCurrentSpeaker(settings.speaker);
+              if (settings.voice !== undefined) {
+                setCurrentVoice(settings.voice);
               }
               if (settings.characterId !== undefined) {
                 setCurrentCharacter(settings.characterId);
@@ -654,7 +654,7 @@ export default function AvatarPage() {
           break;
       }
     },
-    [playAudio, start, stop, broadcastMicStatus, speechEnabled, isListening, currentSpeaker]
+    [playAudio, start, stop, broadcastMicStatus, speechEnabled, isListening, currentVoice]
   );
 
   // Callback ref, so the channel below can stay open while the handler changes

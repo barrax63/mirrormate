@@ -6,7 +6,7 @@ import { getDb, userSettings, type UserSettings } from "../db";
 // ============================================
 
 export interface UpdateSettingsInput {
-  speakerId?: number | null;
+  voice?: string | null;
   characterId?: string | null;
 }
 
@@ -32,7 +32,7 @@ export class UserSettingsRepository {
       .values({
         id: crypto.randomUUID(),
         userId,
-        speakerId: null,
+        voice: null,
         characterId: null,
         updatedAt: new Date(),
       })

@@ -14,13 +14,10 @@ providers:
 
   tts:
     enabled: true
-    provider: elevenlabs  # elevenlabs or voicevox
+    provider: elevenlabs
     elevenlabs:
-      voiceId: EXAVITQu4vr4xnSDxMaL  # Sarah, a premade voice
+      voiceId: EXAVITQu4vr4xnSDxMaL  # Sarah, until a voice is picked on /control
       model: eleven_v4_turbo
-    voicevox:
-      speaker: 2
-      baseUrl: "http://studio:50021"
 
   stt:
     enabled: true

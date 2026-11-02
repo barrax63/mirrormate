@@ -1,6 +1,6 @@
 // Stands in for every external backend during e2e runs: OpenAI (LLM, transcription),
-// ElevenLabs (speech), Ollama (VLM, embeddings) and VOICEVOX. It records each request so
-// tests can inspect it.
+// ElevenLabs (speech, voices) and Ollama (VLM, embeddings). It records each request so tests
+// can inspect it.
 // Like the real API, the fake OpenAI rejects parameters that gpt-6-luna and gpt-transcribe
 // don't accept.
 //
@@ -38,29 +38,6 @@ function mp3(ms) {
   const frame = Buffer.alloc(417);
   frame.set([0xff, 0xfb, 0x90, 0xc0]);
   return Buffer.concat(Array.from({ length: frames }, () => frame));
-}
-
-// 16-bit mono WAV of a sine tone
-function wav(ms) {
-  const sampleRate = 8000;
-  const samples = Math.round((ms / 1000) * sampleRate);
-  const buffer = Buffer.alloc(44 + samples * 2);
-  buffer.write("RIFF", 0);
-  buffer.writeUInt32LE(36 + samples * 2, 4);
-  buffer.write("WAVEfmt ", 8);
-  buffer.writeUInt32LE(16, 16);
-  buffer.writeUInt16LE(1, 20);
-  buffer.writeUInt16LE(1, 22);
-  buffer.writeUInt32LE(sampleRate, 24);
-  buffer.writeUInt32LE(sampleRate * 2, 28);
-  buffer.writeUInt16LE(2, 32);
-  buffer.writeUInt16LE(16, 34);
-  buffer.write("data", 36);
-  buffer.writeUInt32LE(samples * 2, 40);
-  for (let i = 0; i < samples; i++) {
-    buffer.writeInt16LE(Math.round(8000 * Math.sin(i / 8)), 44 + i * 2);
-  }
-  return buffer;
 }
 
 // Texts with similar characters get similar vectors, so RAG finds them
@@ -204,6 +181,22 @@ function sendElevenLabsError(res, httpStatus, status, message) {
   sendJson(res, { detail: { status, message: `mock: ${message}` } }, httpStatus);
 }
 
+// The account's voices, unsorted as the real API returns them. They include the ones the
+// characters in config/locales recommend.
+const VOICES = [
+  { voice_id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah - Mature, Reassuring, Confident" },
+  { voice_id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily - Velvety Actress" },
+  { voice_id: "mock-voice", name: "Mock - The configured voice" },
+  { voice_id: "cgSgspJ2msm6clMCkdW9", name: "Jessica - Playful, Bright, Warm" },
+];
+
+function listVoices(req, res) {
+  const apiKey = req.headers["xi-api-key"];
+  log.push({ kind: "voices", apiKey });
+  if (!apiKey) return sendElevenLabsError(res, 401, "invalid_api_key", "Invalid API key");
+  return sendJson(res, { voices: VOICES, has_more: false, total_count: VOICES.length, next_page_token: null });
+}
+
 // Answers like ElevenLabs' text to speech, with silence as long as /__audio says
 function speak(req, res, body, url, voiceId) {
   const apiKey = req.headers["xi-api-key"];
@@ -273,16 +266,9 @@ function handle(req, res, body, raw) {
     case "/api/tags":
       return sendJson(res, { models: [] });
 
-    // VOICEVOX
-    case "/audio_query":
-      log.push({ kind: "tts", path: url.pathname, query: url.searchParams.get("text") });
-      return sendJson(res, { accent_phrases: [], speedScale: 1 });
-    case "/synthesis":
-      log.push({ kind: "tts", path: url.pathname });
-      res.writeHead(200, { "Content-Type": "audio/wav" });
-      return res.end(wav(audioMs));
-    case "/speakers":
-      return sendJson(res, [{ name: "Mock", speaker_uuid: "mock", styles: [{ name: "normal", id: 2 }] }]);
+    // ElevenLabs
+    case "/v2/voices":
+      return listVoices(req, res);
 
     case "/health":
       return sendJson(res, { status: "ok" });
