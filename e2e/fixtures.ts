@@ -182,16 +182,26 @@ export class ControlPage extends RecordedPage {
   }
 }
 
+/** A part of a chat message, as vision requests send text and image together */
+interface ContentPart {
+  type: string;
+  text?: string;
+  image_url?: { url: string };
+}
+
 interface LoggedRequest {
   kind: "llm" | "vlm" | "extraction" | "embed" | "voices" | "unknown";
   auth?: string;
   path?: string;
   body: {
     model?: string;
-    messages: { role: string; content: string; images?: string[] }[];
+    messages: { role: string; content: string | ContentPart[] }[];
     tools?: { function: { name: string } }[];
     reasoning_effort?: string;
     max_completion_tokens?: number;
+    // Embedding requests
+    input?: string | string[];
+    encoding_format?: string;
   };
 }
 

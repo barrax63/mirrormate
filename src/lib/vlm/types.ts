@@ -15,8 +15,13 @@ export interface OllamaVLMConfig {
   baseUrl?: string;
 }
 
+export interface OpenAIVLMConfig {
+  model?: string;
+}
+
 export interface VLMConfig {
   enabled: boolean;
-  provider: "ollama";
+  provider: "ollama" | "openai";
   ollama?: OllamaVLMConfig;
+  openai?: OpenAIVLMConfig;
 }

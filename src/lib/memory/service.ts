@@ -107,7 +107,9 @@ export class MemoryService {
   async searchSimilarMemories(
     userId: string,
     queryVector: number[],
-    options?: {
+    options: {
+      /** The embedding model the query vector came from */
+      model: string;
       topK?: number;
       threshold?: number;
       kind?: "profile" | "episode" | "knowledge";

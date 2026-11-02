@@ -39,7 +39,7 @@ Use `bun run test`, not `bun test`: the latter starts Bun's own runner instead o
 
 Vitest only collects `src/**/*.test.ts` and runs in the `node` environment.
 
-Playwright runs `e2e/*.spec.ts` against the production build. `playwright.config.ts` starts `e2e/mock-backends.mjs` (fake OpenAI, ElevenLabs and Ollama) and `next start` twice: `en` on port 3100 and `ja` on port 3101, built in English so the `ja` server shows what `LOCALE` changes at runtime. Both use `e2e/config/*.yaml` and throwaway databases in `e2e/.tmp/`. Chromium gets a fake camera and `e2e/fake-mic.js`, a WebAudio tone in place of the microphone. So `avatar.hear(text)` runs the real recorder, silence detection and `/api/stt`, and the mock returns `text` as the transcript. `OPENAI_BASE_URL`, `tts.elevenlabs.baseUrl` and dummy keys keep every OpenAI and ElevenLabs call on the mock, even with real keys in `.env`. Tests of Web Speech itself are in `e2e/web-speech.spec.ts`, against `e2e/speech-recognition-stub.js`. Real microphones and speech recognition aren't covered.
+Playwright runs `e2e/*.spec.ts` against the production build. `playwright.config.ts` starts `e2e/mock-backends.mjs` (fake OpenAI and ElevenLabs; the Ollama providers have no e2e coverage) and `next start` twice: `en` on port 3100 and `ja` on port 3101, built in English so the `ja` server shows what `LOCALE` changes at runtime. Both use `e2e/config/*.yaml` and throwaway databases in `e2e/.tmp/`. Chromium gets a fake camera and `e2e/fake-mic.js`, a WebAudio tone in place of the microphone. So `avatar.hear(text)` runs the real recorder, silence detection and `/api/stt`, and the mock returns `text` as the transcript. `OPENAI_BASE_URL`, `tts.elevenlabs.baseUrl` and dummy keys keep every OpenAI and ElevenLabs call on the mock, even with real keys in `.env`. Tests of Web Speech itself are in `e2e/web-speech.spec.ts`, against `e2e/speech-recognition-stub.js`. Real microphones and speech recognition aren't covered.
 
 Known bugs are covered by expected failures: `it.fails` in Vitest, and `test.fail()` in tests named `known bug: ...` in Playwright. `test.fail()` is called right before the failing assertion, so broken setup still fails the test. A fix makes its test fail with "Expected to fail, but passed", so remove the marker in the same change. Playwright's list output prints ✘ for expected failures, but counts them as passed.
 
@@ -67,7 +67,7 @@ Tool effects (confetti and similar) return through module-level pending state in
 
 ### Memory
 
-Embeddings are BLOBs in SQLite, searched by brute-force cosine similarity in JS (`searchSimilar` in `src/lib/repositories/memory.ts`). RAG needs both `providers.embedding.enabled` and `providers.memory.enabled`. The only embedding provider is `ollama`; `plamo-server/` works with it by implementing Ollama's `/api/embed`.
+Embeddings are BLOBs in SQLite, searched by brute-force cosine similarity in JS (`searchSimilar` in `src/lib/repositories/memory.ts`). RAG needs both `providers.embedding.enabled` and `providers.memory.enabled`. The embedding providers are `openai` and `ollama`; `plamo-server/` works with the latter by implementing Ollama's `/api/embed`. Each vector is stored with its model's name, `searchSimilar` only compares vectors from the query's model, and `RAGService` first embeds any memory that has no vector from the current model, so changing the embedding model re-embeds everything on the next chat request.
 
 ### Configuration
 

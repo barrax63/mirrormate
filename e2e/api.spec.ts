@@ -65,7 +65,9 @@ test.describe("/api/chat", () => {
 
     expect(body.message).toBe("mock reply after tool: person holding a mug");
     const [vlm] = await mock.log("vlm");
-    expect(vlm.body.messages.at(-1)?.images).toEqual(["QUJD"]);
+    expect(vlm.auth).toBe("Bearer e2e-dummy-key");
+    expect(vlm.body).toMatchObject({ model: "gpt-6-luna", reasoning_effort: "none" });
+    expect(vlm.body.messages[0].content).toContainEqual({ type: "image_url", image_url: { url: image } });
   });
 
   test("extracts memories after replying and finds them in later requests", async ({ request, mock }) => {
@@ -83,7 +85,12 @@ test.describe("/api/chat", () => {
 
     const [llm] = await mock.llmRequestsFor("what is REMEMBER_canary");
     expect(llm.body.messages[0].content).toContain("The user mentioned REMEMBER_canary");
-    expect((await mock.log("embed")).length).toBeGreaterThan(0);
+    const embeds = await mock.log("embed");
+    expect(embeds.length).toBeGreaterThan(0);
+    for (const embed of embeds) {
+      expect(embed.auth).toBe("Bearer e2e-dummy-key");
+      expect(embed.body).toMatchObject({ model: "text-embedding-3-small", encoding_format: "float" });
+    }
   });
 });
 

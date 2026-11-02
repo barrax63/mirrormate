@@ -25,12 +25,10 @@ providers:
     silenceDetection:
       silenceThreshold: 0.1
 
+  # No model, so the default is what gets tested
   embedding:
     enabled: true
-    provider: ollama
-    ollama:
-      model: mock-embedding
-      baseUrl: "http://127.0.0.1:11555"
+    provider: openai
 
   memory:
     enabled: true
@@ -41,9 +39,7 @@ providers:
       autoExtract: true
       minConfidence: 0.5
 
+  # No model, so the default is what gets tested
   vlm:
     enabled: true
-    provider: ollama
-    ollama:
-      model: mock-vlm
-      baseUrl: "http://127.0.0.1:11555"
+    provider: openai

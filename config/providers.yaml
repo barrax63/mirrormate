@@ -40,10 +40,12 @@ providers:
 
   embedding:
     enabled: true
-    provider: ollama  # PLaMo server provides Ollama-compatible API
+    provider: ollama  # ollama or openai. PLaMo server provides Ollama-compatible API
     ollama:
       model: plamo-embedding-1b
       baseUrl: "http://studio:8000"
+    openai:
+      model: text-embedding-3-small
 
   memory:
     enabled: true
@@ -58,7 +60,9 @@ providers:
 
   vlm:
     enabled: true
-    provider: ollama
+    provider: ollama  # ollama or openai
     ollama:
       model: llava:7b
       baseUrl: "http://studio:11434"
+    openai:
+      model: gpt-6-luna
