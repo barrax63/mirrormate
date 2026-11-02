@@ -134,6 +134,18 @@ test.describe("other APIs", () => {
     expect(await response.json()).toEqual({ speakers: [], enabled: false });
   });
 
+  test("/api/settings keeps the character when the voice is saved, and the other way round", async ({ request }) => {
+    await request.put("/api/settings", { data: { characterId: "luna" } });
+    await request.put("/api/settings", { data: { speakerId: 2 } });
+    expect(await (await request.get("/api/settings")).json()).toEqual({ speakerId: 2, characterId: "luna" });
+
+    await request.put("/api/settings", { data: { characterId: "sora" } });
+    expect(await (await request.get("/api/settings")).json()).toEqual({ speakerId: 2, characterId: "sora" });
+
+    await request.put("/api/settings", { data: { speakerId: null } });
+    expect(await (await request.get("/api/settings")).json()).toEqual({ speakerId: null, characterId: "sora" });
+  });
+
   test("/api/plugins includes the hidden vision plugin", async ({ request }) => {
     const response = await request.get("/api/plugins");
 

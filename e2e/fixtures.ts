@@ -287,7 +287,7 @@ export const test = base.extend<{
   resetState: [
     async ({ mock, request }, provide) => {
       await mock.reset();
-      await request.put("/api/settings", { data: { speakerId: null } });
+      await request.put("/api/settings", { data: { speakerId: null, characterId: null } });
       await provide();
     },
     { auto: true },
