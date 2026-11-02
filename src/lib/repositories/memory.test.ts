@@ -258,6 +258,48 @@ describe("MemoryRepository", () => {
   });
 });
 
+describe("MemoryRepository embeddings from different models", () => {
+  async function memoryWithVector(title: string, vector: number[] | null, model: string) {
+    const memory = await repo.create({ userId: TEST_USER_ID, kind: "knowledge", title, content: "content" });
+    if (vector) await repo.saveEmbedding(memory.id, vector, model, vector.length);
+    return memory;
+  }
+
+  it("searches only vectors from the query's model, whatever their length", async () => {
+    const current = await memoryWithVector("current", [1, 0, 0], "new-model");
+    await memoryWithVector("old, same length", [1, 0, 0], "old-model");
+    await memoryWithVector("old, longer", [1, 0, 0, 0, 0], "old-model");
+
+    const results = await repo.searchSimilar(TEST_USER_ID, [1, 0, 0], { model: "new-model", threshold: 0 });
+
+    expect(results.map((r) => r.memory.id)).toEqual([current.id]);
+  });
+
+  it("keeps one embedding per memory when two are saved at once", async () => {
+    const memory = await memoryWithVector("raced", null, "");
+
+    await Promise.all([
+      repo.saveEmbedding(memory.id, [1, 0, 0], "new-model", 3),
+      repo.saveEmbedding(memory.id, [0, 1, 0], "new-model", 3),
+    ]);
+
+    const rows = sqlite.prepare("SELECT COUNT(*) AS n FROM memory_embeddings WHERE memory_id = ?").get(memory.id) as { n: number };
+    expect(rows.n).toBe(1);
+  });
+
+  it("finds the memories that need a vector from the current model", async () => {
+    await memoryWithVector("current", [1, 0, 0], "new-model");
+    const old = await memoryWithVector("old", [1, 0, 0, 0, 0], "old-model");
+    const none = await memoryWithVector("none", null, "");
+    const deleted = await memoryWithVector("deleted", null, "");
+    await repo.softDelete(deleted.id);
+
+    const stale = await repo.findNeedingEmbedding(TEST_USER_ID, "new-model");
+
+    expect(stale.map((m) => m.id).sort()).toEqual([old.id, none.id].sort());
+  });
+});
+
 describe("Vector utilities", () => {
   describe("cosineSimilarity", () => {
     it("returns 1 for identical vectors", () => {

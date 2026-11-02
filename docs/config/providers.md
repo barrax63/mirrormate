@@ -300,7 +300,21 @@ VLM providers enable visual understanding through the `see_camera` tool.
 
 | Provider | Description | API Key Required |
 |----------|-------------|------------------|
+| OpenAI | `gpt-6-luna`, which accepts images | Yes |
 | Ollama | Local vision models (llava, moondream) | No |
+
+### OpenAI VLM
+
+```yaml
+providers:
+  vlm:
+    enabled: true
+    provider: openai
+    openai:
+      model: gpt-6-luna
+```
+
+Camera frames go to OpenAI when the LLM calls `see_camera`. Like the LLM provider, it turns reasoning off with `reasoning_effort: "none"`.
 
 ### Ollama VLM
 
@@ -340,7 +354,21 @@ Embedding providers generate vector representations of text for semantic search.
 
 | Provider | Description | API Key Required |
 |----------|-------------|------------------|
+| OpenAI | `text-embedding-3-small` | Yes |
 | Ollama | Local embedding models | No |
+
+Each memory's vector is stored with the name of the model that made it, and search only compares vectors from the current model, since vectors from different models can't be compared. After a change of provider or model, the next chat request embeds the other memories with the new model before it searches, so that reply takes longer.
+
+### OpenAI Embedding
+
+```yaml
+providers:
+  embedding:
+    enabled: true
+    provider: openai
+    openai:
+      model: text-embedding-3-small
+```
 
 ### Ollama Embedding
 

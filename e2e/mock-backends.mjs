@@ -1,6 +1,6 @@
-// Stands in for every external backend during e2e runs: OpenAI (LLM, transcription),
-// ElevenLabs (speech, voices) and Ollama (VLM, embeddings). It records each request so tests
-// can inspect it.
+// Stands in for every external backend during e2e runs: OpenAI (LLM, transcription,
+// embeddings, vision) and ElevenLabs (speech, voices). It records each request so tests can
+// inspect it.
 // Like the real API, the fake OpenAI rejects parameters that gpt-6-luna and gpt-transcribe
 // don't accept.
 //
@@ -71,6 +71,9 @@ const toolCall = (name, args) => ({
 });
 
 function classifyChat(messages) {
+  // Vision requests carry the image as a content part
+  const hasImage = (message) => Array.isArray(message.content) && message.content.some((part) => part.type === "image_url");
+  if (messages.some(hasImage)) return "vlm";
   // Only the extraction prompts open by talking about extracting
   if (/extract|抽出/i.test(messages[0]?.content?.slice(0, 200) ?? "")) return "extraction";
   return "llm";
@@ -248,23 +251,26 @@ function handle(req, res, body, raw) {
       log.push({ kind, auth: req.headers.authorization, body });
       const rejected = rejectedChatParam(body);
       if (rejected) return sendOpenAIError(res, ...rejected);
+      if (kind === "vlm") return sendJson(res, reply("person holding a mug"));
       if (kind === "extraction") return sendJson(res, extractionReply(body.messages));
       return sendJson(res, llmReply(body.messages));
     }
     case "/v1/audio/transcriptions":
       return transcribe(req, res, raw);
-
-    // Ollama
-    case "/api/chat":
-      log.push({ kind: "vlm", body });
-      return sendJson(res, { message: { role: "assistant", content: "person holding a mug" }, done: true });
-    case "/api/embed": {
-      log.push({ kind: "embed", body });
+    case "/v1/embeddings": {
+      log.push({ kind: "embed", auth: req.headers.authorization, body });
+      // The real API also answers base64, which the SDK asks for unless told otherwise
+      if (body.encoding_format !== "float") {
+        return sendOpenAIError(res, "encoding_format", "this mock only answers float");
+      }
       const input = Array.isArray(body.input) ? body.input : [body.input];
-      return sendJson(res, { model: body.model, embeddings: input.map((text) => embed(String(text))) });
+      return sendJson(res, {
+        object: "list",
+        data: input.map((text, index) => ({ object: "embedding", index, embedding: embed(String(text)) })),
+        model: body.model,
+        usage: { prompt_tokens: 0, total_tokens: 0 },
+      });
     }
-    case "/api/tags":
-      return sendJson(res, { models: [] });
 
     // ElevenLabs
     case "/v2/voices":

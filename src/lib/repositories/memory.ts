@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, ne, or, isNull, and, desc, sql, inArray } from "drizzle-orm";
 import { getDb, memories, memoryEmbeddings, type Memory, type NewMemory } from "../db";
 import { bufferToVector, vectorToBuffer, cosineSimilarity } from "../embedding";
 
@@ -243,39 +243,50 @@ export class MemoryRepository {
     const db = getDb();
     const id = crypto.randomUUID();
 
-    // Delete existing embedding if present
-    await db.delete(memoryEmbeddings).where(eq(memoryEmbeddings.memoryId, memoryId));
-
-    // Save new embedding
-    await db.insert(memoryEmbeddings).values({
-      id,
-      memoryId,
-      model,
-      dims,
-      vector: vectorToBuffer(vector),
-      createdAt: new Date(),
+    // Replace any existing embedding in one transaction: the memory handler and RAG's catch-up
+    // can save one for the same memory at once, and would otherwise leave two
+    db.transaction((tx) => {
+      tx.delete(memoryEmbeddings).where(eq(memoryEmbeddings.memoryId, memoryId)).run();
+      tx.insert(memoryEmbeddings)
+        .values({
+          id,
+          memoryId,
+          model,
+          dims,
+          vector: vectorToBuffer(vector),
+          createdAt: new Date(),
+        })
+        .run();
     });
   }
 
   /**
-   * Search for similar memories
+   * Search for similar memories. Only vectors from the query's model are compared: another
+   * model's vectors mean something else, and usually have another length.
    */
   async searchSimilar(
     userId: string,
     queryVector: number[],
     options: {
+      /** The embedding model the query vector came from */
+      model: string;
       topK?: number;
       threshold?: number;
       kind?: "profile" | "episode" | "knowledge";
       excludeIds?: string[];
-    } = {}
+    }
   ): Promise<MemorySearchResult[]> {
-    const { topK = 10, threshold = 0.3, kind, excludeIds = [] } = options;
+    const { model, topK = 10, threshold = 0.3, kind, excludeIds = [] } = options;
 
     const db = getDb();
 
     // First, get target memories
-    const conditions = [eq(memories.userId, userId), eq(memories.status, "active")];
+    const conditions = [
+      eq(memories.userId, userId),
+      eq(memories.status, "active"),
+      eq(memoryEmbeddings.model, model),
+      eq(memoryEmbeddings.dims, queryVector.length),
+    ];
 
     if (kind) {
       conditions.push(eq(memories.kind, kind));
@@ -306,6 +317,29 @@ export class MemoryRepository {
       .slice(0, topK);
 
     return results;
+  }
+
+  /**
+   * Find active memories that searchSimilar can't compare with this model's vectors: those with
+   * no embedding, and those embedded by another model, such as before a change of provider
+   */
+  async findNeedingEmbedding(userId: string, model: string, limit: number = 100): Promise<Memory[]> {
+    const db = getDb();
+
+    const result = await db
+      .select({ memory: memories })
+      .from(memories)
+      .leftJoin(memoryEmbeddings, eq(memories.id, memoryEmbeddings.memoryId))
+      .where(
+        and(
+          eq(memories.userId, userId),
+          eq(memories.status, "active"),
+          or(isNull(memoryEmbeddings.id), ne(memoryEmbeddings.model, model))
+        )
+      )
+      .limit(limit);
+
+    return result.map((r) => r.memory);
   }
 
   /**

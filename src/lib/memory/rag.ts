@@ -24,6 +24,11 @@ export interface RAGConfig {
   includeKnowledge?: boolean;
 }
 
+// Memories embedded per request when catching up after a change of embedding model
+const REEMBED_BATCH = 100;
+// Enough rounds for 5,000 memories, and a stop if saved vectors never count as current
+const MAX_REEMBED_ROUNDS = 50;
+
 const DEFAULT_CONFIG: Required<RAGConfig> = {
   topK: 8,
   threshold: 0.3,
@@ -37,8 +42,46 @@ const DEFAULT_CONFIG: Required<RAGConfig> = {
  */
 export class RAGService {
   private memoryRepo = getMemoryRepository();
+  // One catch-up at a time per user, so two requests don't embed the same memories twice
+  private reembedding = new Map<string, Promise<void>>();
 
   constructor(private embeddingProvider: EmbeddingProvider) {}
+
+  /**
+   * Embeds the memories that have no vector from the current model: those stored while
+   * embeddings were off, and those embedded by another model, such as before a change of
+   * provider. Search skips them until then, since vectors from different models can't be
+   * compared.
+   */
+  private reembedStale(userId: string): Promise<void> {
+    let running = this.reembedding.get(userId);
+    if (!running) {
+      running = this.embedStale(userId).finally(() => this.reembedding.delete(userId));
+      this.reembedding.set(userId, running);
+    }
+    return running;
+  }
+
+  private async embedStale(userId: string): Promise<void> {
+    const model = this.embeddingProvider.getModelName();
+
+    for (let round = 0; round < MAX_REEMBED_ROUNDS; round++) {
+      const stale = await this.memoryRepo.findNeedingEmbedding(userId, model, REEMBED_BATCH);
+      if (stale.length === 0) return;
+
+      // The same text the memory handler and the memories API embed
+      const results = await this.embeddingProvider.embedBatch(
+        stale.map((memory) => `${memory.title}: ${memory.content}`)
+      );
+      for (const [i, memory] of stale.entries()) {
+        await this.memoryRepo.saveEmbedding(memory.id, results[i].vector, results[i].model, results[i].dims);
+      }
+      console.log(`[RAG] Embedded ${stale.length} ${stale.length === 1 ? "memory" : "memories"} with ${model}`);
+
+      if (stale.length < REEMBED_BATCH) return;
+    }
+    console.warn(`[RAG] Stopped embedding memories with ${model} after ${MAX_REEMBED_ROUNDS} rounds`);
+  }
 
   /**
    * Retrieve memories related to user input
@@ -62,7 +105,8 @@ export class RAGService {
       context.usedMemoryIds.push(...context.profiles.map((p) => p.id));
     }
 
-    // 2. Embed user input
+    // 2. Embed user input, after any memories that have no vector from this model
+    await this.reembedStale(userId);
     const queryEmbedding = await this.embeddingProvider.embed(userInput);
 
     // 3. Search similar memories
@@ -70,6 +114,7 @@ export class RAGService {
 
     if (cfg.includeEpisodes) {
       const episodes = await this.memoryRepo.searchSimilar(userId, queryEmbedding.vector, {
+        model: queryEmbedding.model,
         topK: cfg.topK,
         threshold: cfg.threshold,
         kind: "episode",
@@ -79,6 +124,7 @@ export class RAGService {
 
     if (cfg.includeKnowledge) {
       const knowledge = await this.memoryRepo.searchSimilar(userId, queryEmbedding.vector, {
+        model: queryEmbedding.model,
         topK: cfg.topK,
         threshold: cfg.threshold,
         kind: "knowledge",

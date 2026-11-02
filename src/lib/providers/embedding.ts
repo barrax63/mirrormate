@@ -1,5 +1,5 @@
 import { loadProvidersConfig } from "./config-loader";
-import { EmbeddingProvider, OllamaEmbeddingProvider } from "../embedding";
+import { EmbeddingProvider, OllamaEmbeddingProvider, OpenAIEmbeddingProvider } from "../embedding";
 
 let cachedProvider: EmbeddingProvider | null = null;
 
@@ -27,6 +27,14 @@ export function getEmbeddingProvider(): EmbeddingProvider | null {
       baseUrl: ollamaConfig.baseUrl,
     });
     console.log(`[Providers] Using Ollama embedding: ${ollamaConfig.model || "bge-m3"}`);
+  } else if (embeddingConfig.provider === "openai") {
+    try {
+      cachedProvider = new OpenAIEmbeddingProvider(embeddingConfig.openai);
+    } catch (error) {
+      console.error("[Providers] Failed to initialize OpenAI embedding:", error);
+      return null;
+    }
+    console.log(`[Providers] Using OpenAI embedding: ${cachedProvider.getModelName()}`);
   } else {
     console.log(`[Providers] Unknown embedding provider: ${embeddingConfig.provider}`);
     return null;

@@ -29,10 +29,13 @@ export interface LLMProviderConfig extends ProviderConfig {
 }
 
 export interface EmbeddingProviderConfig extends ProviderConfig {
-  provider: "ollama";
+  provider: "ollama" | "openai";
   ollama?: {
     model?: string;
     baseUrl?: string;
+  };
+  openai?: {
+    model?: string;
   };
 }
 
@@ -49,10 +52,13 @@ export interface MemoryConfig {
 }
 
 export interface VLMProviderConfig extends ProviderConfig {
-  provider: "ollama";
+  provider: "ollama" | "openai";
   ollama?: {
     model?: string;
     baseUrl?: string;
+  };
+  openai?: {
+    model?: string;
   };
 }
 

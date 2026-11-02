@@ -39,11 +39,16 @@ export interface EmbeddingResult {
  * Embedding configuration
  */
 export interface EmbeddingConfig {
-  provider: "ollama";
+  provider: "ollama" | "openai";
   ollama?: OllamaEmbeddingConfig;
+  openai?: OpenAIEmbeddingConfig;
 }
 
 export interface OllamaEmbeddingConfig {
   model?: string;
   baseUrl?: string;
+}
+
+export interface OpenAIEmbeddingConfig {
+  model?: string;
 }
