@@ -8,6 +8,7 @@ import { loadProvidersConfig, getEmbeddingProvider } from "@/lib/providers";
 import { RAGService, getSimpleContext, MemoryService } from "@/lib/memory";
 import { getUserRepository, getUserSettingsRepository } from "@/lib/repositories";
 import { getLocale } from "@/lib/app";
+import { historyLimitFrom, trimHistory } from "@/lib/chat/history";
 
 const MAX_TOOL_ITERATIONS = 3;
 const DEFAULT_USER_ID = "default-user";
@@ -49,14 +50,21 @@ function getMemoryService(): MemoryService | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, userId, characterId, image: requestImage } = await request.json();
+    const { messages: requestMessages, userId, characterId, image: requestImage } = await request.json();
 
     console.log("[Chat] Request received:", {
-      messageCount: messages?.length,
+      messageCount: requestMessages?.length,
       hasImage: !!requestImage,
       imageLength: requestImage ? requestImage.length : 0,
       characterId,
     });
+
+    // Only the most recent part of the conversation goes to the LLM, since each message costs
+    const historyLimit = historyLimitFrom(loadProvidersConfig().providers?.llm?.historyLimit);
+    const messages = trimHistory<ChatMessage>(requestMessages, historyLimit);
+    if (messages.length < requestMessages.length) {
+      console.log(`[Chat] Sending the last ${messages.length} of ${requestMessages.length} messages`);
+    }
 
     // Ensure features are initialized (needed for vision)
     initializeFeatures();
@@ -259,6 +267,8 @@ export async function POST(request: NextRequest) {
       discordShared,
       toolsUsed,
       infoCards,
+      // So the pages trim what they keep the same way
+      historyLimit,
     });
   } catch (error) {
     console.error("Chat API error:", error);

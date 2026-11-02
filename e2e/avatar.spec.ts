@@ -64,6 +64,25 @@ test.describe("Voice flow", () => {
     ]);
   });
 
+  test("stops resending older turns once the history reaches the limit", async ({ avatar }) => {
+    await avatar.wakeUp();
+    for (const [i, question] of ["question 1", "question 2", "question 3"].entries()) {
+      await avatar.hear(question);
+      await expect.poll(() => avatar.logs.filter((log) => log.includes("Audio playback ended")).length).toBe(i + 1);
+    }
+
+    await avatar.hear("question 4");
+
+    // e2e/config/providers.yaml sets the limit to 4. The last 4 would start at the reply to
+    // question 2, which goes without its question.
+    await avatar.waitForPost("/api/chat", 4);
+    expect(avatar.postsTo("/api/chat")[3].messages).toEqual([
+      { role: "user", content: "question 3" },
+      { role: "assistant", content: "mock reply to: question 3" },
+      { role: "user", content: "question 4" },
+    ]);
+  });
+
   test("pauses recognition while replying and restarts it afterwards", async ({ avatar, mock }) => {
     await mock.setAudioLength(1000);
     await avatar.wakeUp();

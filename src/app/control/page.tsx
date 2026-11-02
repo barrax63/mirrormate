@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useVoiceSelector, type Voice } from "@/hooks/useVoiceSelector";
 import { useCharacterSelector, type CharacterPreset } from "@/hooks/useCharacterSelector";
 import { useVisionEnabled } from "@/hooks/useVisionEnabled";
+import { DEFAULT_HISTORY_LIMIT, historyLimitFrom, trimHistory } from "@/lib/chat/history";
 import { SettingsDropdown } from "@/components/SettingsDropdown";
 import { VoicePreviewButton } from "@/components/VoicePreviewButton";
 
@@ -34,6 +35,8 @@ export default function ControlPage() {
   const { visionEnabled, setVisionEnabled } = useVisionEnabled();
   const [isCapturingImage, setIsCapturingImage] = useState(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
+  // The server's limit, from its last reply. The page shows the whole conversation, but sends only this much.
+  const historyLimitRef = useRef(DEFAULT_HISTORY_LIMIT);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pendingCaptureRef = useRef<{
     resolve: (image: string | null) => void;
@@ -156,12 +159,13 @@ export default function ControlPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            messages: [...messages, userMessage]
-              .filter((m) => !m.isError)
-              .map((m) => ({
-                role: m.role,
-                content: m.content,
-              })),
+            messages: trimHistory(
+              [...messages, userMessage].filter((m) => !m.isError),
+              historyLimitRef.current
+            ).map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
             characterId: selectedCharacter || undefined,
             image: capturedImage || undefined,
           }),
@@ -172,6 +176,7 @@ export default function ControlPage() {
         }
 
         const data = await response.json();
+        historyLimitRef.current = historyLimitFrom(data.historyLimit);
 
         const assistantMessage: Message = {
           id: crypto.randomUUID(),

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   touchMemories: vi.fn(),
   processConversation: vi.fn(),
   analyzeImage: vi.fn(),
+  llmConfig: {} as { historyLimit?: number },
 }));
 
 vi.mock("@/lib/llm", () => ({
@@ -33,7 +34,7 @@ vi.mock("@/lib/repositories", () => ({
 }));
 
 vi.mock("@/lib/providers", () => ({
-  loadProvidersConfig: () => ({ providers: { memory: { enabled: true } } }),
+  loadProvidersConfig: () => ({ providers: { llm: mocks.llmConfig, memory: { enabled: true } } }),
   getEmbeddingProvider: () => ({}),
 }));
 
@@ -105,6 +106,7 @@ describe("POST /api/chat", () => {
     mocks.touchMemories.mockResolvedValue(undefined);
     mocks.processConversation.mockResolvedValue(undefined);
     mocks.findSettings.mockResolvedValue({ visionEnabled: true });
+    mocks.llmConfig = {};
   });
 
   afterEach(() => {
@@ -310,6 +312,52 @@ describe("POST /api/chat", () => {
     });
   });
 
+  describe("history", () => {
+    // user 1, assistant 2, ... user n
+    const conversation = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({ role: i % 2 === 0 ? "user" : "assistant", content: String(i + 1) }));
+
+    it("sends the LLM the last 20 messages by default, and says so", async () => {
+      scriptLLM(text("Hi"));
+
+      const { body } = await post({ messages: conversation(99) });
+
+      const sent = llmRequests[0].messages.slice(1);
+      expect(sent).toHaveLength(19);
+      expect(sent[0]).toEqual({ role: "user", content: "81" });
+      expect(sent.at(-1)).toEqual({ role: "user", content: "99" });
+      expect(body.historyLimit).toBe(20);
+    });
+
+    it("sends the system prompt plus at most 20 history messages to the LLM", async () => {
+      scriptLLM(text("Hi"));
+
+      await post({ messages: conversation(100) });
+
+      expect(llmRequests[0].messages.length).toBeLessThanOrEqual(21);
+    });
+
+    it("uses the configured limit", async () => {
+      mocks.llmConfig = { historyLimit: 5 };
+      scriptLLM(text("Hi"));
+
+      const { body } = await post({ messages: conversation(99) });
+
+      expect(llmRequests[0].messages.slice(1).map((m) => m.content)).toEqual(["95", "96", "97", "98", "99"]);
+      expect(body.historyLimit).toBe(5);
+    });
+
+    it("extracts memories from the trimmed conversation", async () => {
+      mocks.llmConfig = { historyLimit: 3 };
+      scriptLLM(text("Hi"));
+
+      await post({ messages: conversation(9) });
+
+      const [, extracted] = mocks.processConversation.mock.calls[0];
+      expect(extracted.map((m: { content: string }) => m.content)).toEqual(["7", "8", "9", "Hi"]);
+    });
+  });
+
   describe("memory", () => {
     it("adds RAG context and marks the memories as used", async () => {
       scriptLLM(text("Hi"));
@@ -400,20 +448,6 @@ describe("POST /api/chat", () => {
   });
 
   describe("known bugs", () => {
-    // The avatar's message array is never trimmed, so every voice turn resends the
-    // whole conversation. Remove .fails when the route trims history.
-    it.fails("sends the system prompt plus at most 20 history messages to the LLM", async () => {
-      scriptLLM(text("Hi"));
-      const messages = Array.from({ length: 100 }, (_, i) => ({
-        role: i % 2 === 0 ? "user" : "assistant",
-        content: `message ${i}`,
-      }));
-
-      await post({ messages });
-
-      expect(llmRequests[0].messages.length).toBeLessThanOrEqual(21);
-    });
-
     // The show_effect and web_search tool descriptions are always Japanese. Remove
     // .fails when they follow the locale.
     it.fails("sends no Japanese to the LLM in English mode", async () => {

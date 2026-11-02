@@ -4,6 +4,8 @@ providers:
   llm:
     enabled: true
     provider: openai
+    # Small, so tests reach it in a few turns
+    historyLimit: 4
     openai:
       model: mock-llm
       maxTokens: 300

@@ -2,6 +2,7 @@ providers:
   llm:
     enabled: true
     provider: ollama  # openai or ollama
+    historyLimit: 20  # most recent messages of the conversation sent with each request
     openai:
       model: gpt-6-luna
       maxTokens: 300

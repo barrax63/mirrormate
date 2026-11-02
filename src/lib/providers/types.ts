@@ -15,6 +15,8 @@ export interface TTSProviderConfig extends ProviderConfig {
 
 export interface LLMProviderConfig extends ProviderConfig {
   provider: "openai" | "ollama";
+  /** Most recent messages of the conversation sent with each request, 20 by default */
+  historyLimit?: number;
   openai?: {
     model?: string;
     maxTokens?: number;

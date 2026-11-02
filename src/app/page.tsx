@@ -11,6 +11,7 @@ import { useAvatarState } from "@/hooks/useAvatarState";
 import { useAnimationController } from "@/hooks/useAnimationController";
 import { useLongThinkingPulse } from "@/hooks/useLongThinkingPulse";
 import { useVisionEnabled } from "@/hooks/useVisionEnabled";
+import { DEFAULT_HISTORY_LIMIT, historyLimitFrom, trimHistory } from "@/lib/chat/history";
 import { FloatingInfo, InfoCard, detectInfoFromResponse } from "@/components/FloatingInfo";
 import PluginRenderer from "@/components/PluginRenderer";
 import { mapBroadcastToEvent, type BroadcastMessage } from "@/lib/animation/broadcast-adapter";
@@ -43,6 +44,8 @@ export default function AvatarPage() {
   const animationRef = useRef<number>(0);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const messagesRef = useRef<Array<{ role: string; content: string }>>([]);
+  // The server's limit on history, from its last reply
+  const historyLimitRef = useRef(DEFAULT_HISTORY_LIMIT);
   const pendingCaptureRef = useRef<{
     resolve: (image: string | null) => void;
     timeout: NodeJS.Timeout;
@@ -432,8 +435,9 @@ export default function AvatarPage() {
       setDisplayText("");
       setIsThinking(true);
 
-      // Add to message history
+      // Add to message history, keeping only what the server will use, so it stops growing
       messagesRef.current.push({ role: "user", content: transcript });
+      messagesRef.current = trimHistory(messagesRef.current, historyLimitRef.current);
 
       try {
         // Capture a camera frame while Vision is on (LLM will decide if it needs to use see_camera tool)
@@ -459,7 +463,9 @@ export default function AvatarPage() {
           setDisplayText(data.message);
 
           // Add to message history
+          historyLimitRef.current = historyLimitFrom(data.historyLimit);
           messagesRef.current.push({ role: "assistant", content: data.message });
+          messagesRef.current = trimHistory(messagesRef.current, historyLimitRef.current);
 
           // Show info cards from tools
           if (data.infoCards && data.infoCards.length > 0) {
