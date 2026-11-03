@@ -106,6 +106,12 @@ test.describe("Reply failures", () => {
       backsOff: true,
     },
     {
+      name: "the project's spending limit",
+      failure: { status: 429, code: "project_spend_limit_exceeded" },
+      reason: "Replies: OpenAI reached the monthly spending limit set for it.",
+      backsOff: true,
+    },
+    {
       name: "a server error",
       failure: { status: 500 },
       reason: "Replies: OpenAI returned an error. The server log has details.",

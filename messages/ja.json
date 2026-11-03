@@ -59,6 +59,7 @@
       "invalid_key": "{service}がAPIキーを拒否しました。",
       "missing_permissions": "{service}のAPIキーに必要な権限がありません。",
       "quota_exceeded": "{service}のクレジットが残っていません。",
+      "spend_limit_reached": "{service}に設定した月間の利用上限に達しました。",
       "rate_limited": "{service}がリクエストを制限しています。しばらくしてから再試行します。",
       "unavailable": "{service}に接続できません。",
       "failed": "{service}でエラーが発生しました。詳細はサーバーのログを確認してください。"

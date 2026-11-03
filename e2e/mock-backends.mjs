@@ -173,16 +173,18 @@ async function readUpload(req, raw) {
   return { form, audio, description };
 }
 
-// OpenAI's error shapes. A 429 is a rate limit, or no credit with code insufficient_quota.
+// OpenAI's error shapes. A 429 is a rate limit, or no credit with code insufficient_quota, or a
+// spending limit with project_spend_limit_exceeded or organization_spend_limit_exceeded.
 function sendOpenAIFailure(res, { status, code, retryAfter }) {
-  const outOfCredit = code === "insufficient_quota";
   const [type, message] =
     status === 401
       ? ["invalid_request_error", "Incorrect API key provided"]
       : status === 429
-        ? outOfCredit
+        ? code === "insufficient_quota"
           ? ["insufficient_quota", "You exceeded your current quota"]
-          : ["requests", "Rate limit reached"]
+          : code?.endsWith("_spend_limit_exceeded")
+            ? ["requests", "Spend limit reached"]
+            : ["requests", "Rate limit reached"]
         : ["server_error", "The server had an error while processing your request"];
   res.writeHead(status, { "Content-Type": "application/json", ...(retryAfter && { "retry-after": String(retryAfter) }) });
   res.end(

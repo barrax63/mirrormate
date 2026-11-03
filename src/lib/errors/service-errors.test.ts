@@ -27,7 +27,7 @@ describe("ServiceErrors", () => {
     expect(MAX_BACKOFF_MS).toBe(600_000);
   });
 
-  it.each(["missing_key", "invalid_key", "missing_permissions", "quota_exceeded", "rate_limited"] as const)(
+  it.each(["missing_key", "invalid_key", "missing_permissions", "quota_exceeded", "spend_limit_reached", "rate_limited"] as const)(
     "waits after %s",
     (code) => {
       const { errors } = tracker();

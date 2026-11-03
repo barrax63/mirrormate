@@ -16,6 +16,8 @@ describe("toServiceError", () => {
     ],
     [403, { message: "Project does not have access to model" }, "missing_permissions"],
     [429, { message: "You exceeded your current quota", code: "insufficient_quota" }, "quota_exceeded"],
+    [429, { message: "Project spend limit reached", code: "project_spend_limit_exceeded" }, "spend_limit_reached"],
+    [429, { message: "Organization spend limit reached", code: "organization_spend_limit_exceeded" }, "spend_limit_reached"],
     [429, { message: "Rate limit reached", code: "rate_limit_exceeded" }, "rate_limited"],
     [500, { message: "The server had an error" }, "failed"],
     [503, { message: "Service unavailable" }, "unavailable"],
