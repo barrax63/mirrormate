@@ -498,11 +498,12 @@ When a request to a provider fails, the avatar page shows why under the mic stat
 | rejected the API key | A wrong or revoked key |
 | lacks a permission this needs | A restricted key without the permission, such as ElevenLabs Text to Speech |
 | is out of credit | OpenAI's `insufficient_quota`, or ElevenLabs' `quota_exceeded` |
+| reached the monthly spending limit set for it | A hard spend limit on the OpenAI project or organization |
 | is limiting requests | A rate limit |
 | can't be reached | The service is down, or the network is |
 | returned an error | Any other error, which the server log has |
 
-After a missing or rejected key, a missing permission, no credit or a rate limit, the avatar page stops asking for that kind of request for 30 seconds, then twice as long each time it fails again, up to 10 minutes. A rate limit that says how long to wait is waited out instead. Asking again on every utterance wouldn't help, so what's said meanwhile is dropped. `/control` still sends what you type each time.
+After a missing or rejected key, a missing permission, no credit, a spending limit or a rate limit, the avatar page stops asking for that kind of request for 30 seconds, then twice as long each time it fails again, up to 10 minutes. A rate limit that says how long to wait is waited out instead. Asking again on every utterance wouldn't help, so what's said meanwhile is dropped. `/control` still sends what you type each time.
 
 The app asks OpenAI once per request, without the SDK's own retries, which would also retry a 429 for an account out of credit.
 

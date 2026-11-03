@@ -23,10 +23,15 @@ function fromOpenAI(error: InstanceType<typeof OpenAI.APIError>): ServiceError {
     case 403:
       return new ServiceError("missing_permissions", "openai", error.message);
     case 429:
-      // Out of credit is a 429 as well, and waiting won't help it
-      return error.code === "insufficient_quota"
-        ? new ServiceError("quota_exceeded", "openai", error.message)
-        : new ServiceError("rate_limited", "openai", error.message, retryAfterSeconds(error.headers));
+      // Out of credit and a spending limit set on the project or organization are 429s as
+      // well, and waiting a moment won't help either
+      if (error.code === "insufficient_quota") {
+        return new ServiceError("quota_exceeded", "openai", error.message);
+      }
+      if (error.code === "project_spend_limit_exceeded" || error.code === "organization_spend_limit_exceeded") {
+        return new ServiceError("spend_limit_reached", "openai", error.message);
+      }
+      return new ServiceError("rate_limited", "openai", error.message, retryAfterSeconds(error.headers));
     case 502:
     case 503:
     case 504:

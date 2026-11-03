@@ -38,13 +38,14 @@ export interface ServiceErrorReporter {
   succeeded(route: VoiceRoute): void;
 }
 
-// A missing or rejected key, no credit and rate limits don't go away within seconds, so asking
-// again on every utterance would only repeat them
+// A missing or rejected key, no credit, a spending limit and rate limits don't go away within
+// seconds, so asking again on every utterance would only repeat them
 const BACKOFF_CODES: ReadonlySet<ServiceErrorCode> = new Set([
   "missing_key",
   "invalid_key",
   "missing_permissions",
   "quota_exceeded",
+  "spend_limit_reached",
   "rate_limited",
 ]);
 export const FIRST_BACKOFF_MS = 30_000;

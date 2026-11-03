@@ -7,6 +7,7 @@ export const SERVICE_ERROR_CODES = [
   "invalid_key",
   "missing_permissions",
   "quota_exceeded",
+  "spend_limit_reached",
   "rate_limited",
   "unavailable",
   "failed",
@@ -48,6 +49,7 @@ export function httpStatusFor(code: ServiceErrorCode, service?: Service): number
     case "invalid_key":
     case "missing_permissions":
     case "quota_exceeded":
+    case "spend_limit_reached":
       return 502;
     case "rate_limited":
       return 429;

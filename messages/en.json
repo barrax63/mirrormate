@@ -59,6 +59,7 @@
       "invalid_key": "{service} rejected the API key.",
       "missing_permissions": "The {service} API key lacks a permission this needs.",
       "quota_exceeded": "{service} is out of credit.",
+      "spend_limit_reached": "{service} reached the monthly spending limit set for it.",
       "rate_limited": "{service} is limiting requests. Trying again later.",
       "unavailable": "{service} can't be reached.",
       "failed": "{service} returned an error. The server log has details."
