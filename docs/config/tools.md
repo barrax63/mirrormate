@@ -17,7 +17,17 @@ Allows the AI to look at what the user's camera is showing. The LLM decides when
 
 ### Setup
 
-1. Configure VLM provider in `config/providers.yaml`:
+1. Configure VLM provider in `config/providers.yaml`. The committed config uses OpenAI:
+
+```yaml
+vlm:
+  enabled: true
+  provider: openai
+  openai:
+    model: gpt-6-luna
+```
+
+Or Ollama:
 
 ```yaml
 vlm:

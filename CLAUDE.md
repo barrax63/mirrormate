@@ -31,7 +31,7 @@ bun audit --prod --audit-level=high             # the dependency check CI runs
 
 bun run docs:dev                                # VitePress site in docs/
 
-docker compose up -d                            # app and local Whisper; set STUDIO_IP in .env
+docker compose up -d                            # app and local Whisper; needs both keys in .env
 docker compose -f compose.studio.yaml up -d     # PLaMo (Ollama runs natively)
 ```
 
@@ -89,8 +89,8 @@ How the layers resolve:
 Things that are easy to miss:
 
 - User-facing and prompt text must exist in both `en` and `ja`: the locale YAML, the `messages` files, and inline `getLocale() === "ja"` branches in server code.
-- The committed `config/providers.yaml` points at `http://studio:*`, a hostname that only compose's `extra_hosts` defines, and at `http://whisper:8000`, compose's Whisper service. Under `bun run dev`, make both resolve or use another config through `PROVIDERS_CONFIG`.
-- `compose.yaml` passes an explicit env list that omits `LOCALE` and the `*_PROVIDER` variables, so setting them in `.env` has no effect there. A new key, like `ELEVENLABS_API_KEY`, has to be added to that list. It also needs a valid `STUDIO_IP`, or `docker compose up` fails. `.env.example` defaults to `host-gateway`, which means this machine.
+- The committed `config/providers.yaml` uses OpenAI and ElevenLabs, with local Whisper at `http://whisper:8000`, compose's Whisper service. Under `bun run dev`, make `whisper` resolve or use another config through `PROVIDERS_CONFIG`. Ollama and PLaMo reach another machine as `http://studio:*`, a hostname that only compose's `extra_hosts` defines, as `STUDIO_IP` or this machine.
+- `compose.yaml` passes an explicit env list that omits `LOCALE` and the `*_PROVIDER` variables, so setting them in `.env` has no effect there. A new key, like `ELEVENLABS_API_KEY`, has to be added to that list.
 - No API route has authentication, so `compose.yaml` publishes port 3000 on localhost only, unless `BIND_ADDRESS` says otherwise. `compose.studio.yaml` still publishes on all interfaces, because an app on another machine has to reach it.
 - `next build` prerenders pages, so UI strings and `<html lang>` use the locale at build time. Changing `LOCALE` or `app.yaml` afterwards only switches the server side (wake word, prompts, database, presets). `next dev` renders per request, which hides this.
 - The voice selector on `/control` lists the ElevenLabs account's voices, which `src/instrumentation.ts` loads once when the server starts, so restart to see voices added in ElevenLabs. Listing them needs the key's `voices_read` permission. The voice picked is saved in `user_settings.voice` and sent to `/api/tts` as `voice`. A character's `recommendedVoice` only applies if it's in that list.

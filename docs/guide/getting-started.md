@@ -4,30 +4,30 @@ Mirror Mate is a self-hosted AI companion designed for smart mirror displays. Th
 
 ## Prerequisites
 
-- **Google Chrome** - Required for Web Speech API (voice recognition). Brave doesn't work with it, so use a [Whisper provider](../config/providers.md) there
+- **A Chromium browser** - Chrome or Brave. Only the Web Speech provider (`stt.provider: web`) needs Chrome, since Brave's fails
 - **Docker** - Recommended for easy deployment
+- **An OpenAI API key and an ElevenLabs API key** - For the default setup
 - **Bun** - For local development (optional)
 
 ## Quick Start
 
-### Option 1: OpenAI (Simplest)
-
-Run with a single Docker command:
+### Option 1: OpenAI and ElevenLabs (default)
 
 ```bash
-docker run -p 127.0.0.1:3000:3000 \
-  -e OPENAI_API_KEY=sk-your-key \
-  -e LLM_PROVIDER=openai \
-  -e TTS_PROVIDER=openai \
-  -e LOCALE=en \
-  ghcr.io/orangekame3/mirrormate:latest
+git clone https://github.com/barrax63/mirrormate.git
+cd mirrormate
+cp .env.example .env    # set OPENAI_API_KEY and ELEVENLABS_API_KEY
+docker compose up -d
 ```
 
-Open http://localhost:3000 in Chrome.
+This starts the app and local Whisper, which listens for the wake word, so nothing said in the room before it leaves your machine. The first start downloads the Whisper model, about half a gigabyte. Open http://localhost:3000 and say **"Hey Mira"** to start talking.
 
-> Set `LOCALE=en` for English (default) or `LOCALE=ja` for Japanese. `LOCALE` switches the wake word, prompts and database, but UI text stays in the language the image was built with.
+Before you use it, `.env.example` recommends two settings in your accounts:
 
-Say **"Hey Mira"** (English) or **"OK ミラ"** (Japanese) to start talking!
+- **A hard spend limit on the OpenAI project** the key belongs to, so a bug or a busy room can't run up a bill. Requests past it fail, and the pages say so.
+- **Turning off "Improve the models for everyone"** in ElevenLabs, under your profile icon, Terms and privacy, Data use. Otherwise ElevenLabs may use what you send it to train its models.
+
+To use Japanese, see [Language Support](#language-support).
 
 ### Option 2: Ollama and local Whisper
 
@@ -39,23 +39,24 @@ ollama serve
 ollama pull gpt-oss:20b
 
 # 2. Clone Mirror Mate and start PLaMo Embedding
-git clone https://github.com/orangekame3/mirrormate.git
+git clone https://github.com/barrax63/mirrormate.git
 cd mirrormate
 docker compose -f compose.studio.yaml up -d
 
-# 3. Point Mirror Mate at those services
-cp .env.example .env    # STUDIO_IP=host-gateway means this machine,
-                        # and set ELEVENLABS_API_KEY
+# 3. Set ELEVENLABS_API_KEY, and point Mirror Mate at those services (see below)
+cp .env.example .env
 
 # 4. Start Mirror Mate and local Whisper
 docker compose up -d
 ```
 
+In `config/providers.yaml`, set `provider: ollama` for `llm`, `embedding` and `vlm`, with `baseUrl: "http://studio:11434"` under `ollama` for the LLM and VLM, and `"http://studio:8000"` for embedding. Inside the container, `studio` is this machine, or the one `STUDIO_IP` in `.env` names.
+
 Ollama must listen on an address the container can reach (`OLLAMA_HOST=0.0.0.0`). It has no authentication, so only do this on a trusted network.
 
 Local Whisper only hears the room until the wake word. To keep what's said after it local too, set `stt.provider: local` in `config/providers.yaml`.
 
-Open http://localhost:3000 in Chrome. Say **"Hey Mira"** (English) or **"OK ミラ"** (Japanese) to start talking!
+Open http://localhost:3000 in Chrome or Brave. Say **"Hey Mira"** (English) or **"OK ミラ"** (Japanese) to start talking!
 
 ## Pages
 

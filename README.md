@@ -92,17 +92,16 @@ Just talk to the mirror.
 
 ## Quick Start
 
-**With OpenAI API (easiest):**
+**With OpenAI and ElevenLabs (the default):**
 
 ```bash
-docker run -p 127.0.0.1:3000:3000 \
-  -e OPENAI_API_KEY=sk-xxx \
-  -e LLM_PROVIDER=openai \
-  -e TTS_PROVIDER=openai \
-  ghcr.io/orangekame3/mirrormate:latest
+git clone https://github.com/barrax63/mirrormate.git
+cd mirrormate
+cp .env.example .env    # set OPENAI_API_KEY and ELEVENLABS_API_KEY
+docker compose up -d
 ```
 
-Open http://localhost:3000 in Chrome.
+This starts the app and local Whisper, which listens for the wake word. Open http://localhost:3000 in Chrome or Brave. `.env.example` also recommends a spend limit on the OpenAI project and opting out of model training in ElevenLabs.
 
 **Wake word**: Say "Hey Mira" to activate.
 

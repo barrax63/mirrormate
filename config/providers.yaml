@@ -1,7 +1,7 @@
 providers:
   llm:
     enabled: true
-    provider: ollama  # openai or ollama
+    provider: openai  # openai or ollama
     historyLimit: 20  # most recent messages of the conversation sent with each request
     openai:
       model: gpt-6-luna
@@ -9,7 +9,8 @@ providers:
       temperature: 0.7
     ollama:
       model: gpt-oss:20b
-      baseUrl: "http://studio:11434"
+      # baseUrl defaults to http://localhost:11434, which is the app's own container in
+      # compose.yaml. Ollama on the machine STUDIO_IP names is http://studio:11434.
       maxTokens: 300
       temperature: 0.7
 
@@ -51,12 +52,12 @@ providers:
 
   embedding:
     enabled: true
-    provider: ollama  # ollama or openai. PLaMo server provides Ollama-compatible API
-    ollama:
-      model: plamo-embedding-1b
-      baseUrl: "http://studio:8000"
+    provider: openai  # openai or ollama. PLaMo server provides Ollama-compatible API
     openai:
       model: text-embedding-3-small
+    ollama:
+      model: plamo-embedding-1b
+      # PLaMo from compose.studio.yaml, on the machine STUDIO_IP names, is http://studio:8000
 
   memory:
     enabled: true
@@ -71,9 +72,9 @@ providers:
 
   vlm:
     enabled: true
-    provider: ollama  # ollama or openai
-    ollama:
-      model: llava:7b
-      baseUrl: "http://studio:11434"
+    provider: openai  # openai or ollama
     openai:
       model: gpt-6-luna
+    ollama:
+      model: llava:7b
+      # baseUrl as for the LLM

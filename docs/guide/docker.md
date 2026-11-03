@@ -132,7 +132,7 @@ services:
       - OLLAMA_API_KEY=${OLLAMA_API_KEY}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
     extra_hosts:
-      - "studio:${STUDIO_IP}"
+      - "studio:${STUDIO_IP:-host-gateway}"
     volumes:
       - ./config:/app/config:ro
       - mirrormate-data:/app/data
@@ -222,15 +222,17 @@ docker compose start mirrormate
 Create a `.env` file:
 
 ```bash
-# Required by compose.yaml: Tailscale IP of the machine running the heavy services,
-# or host-gateway if they run on this machine
-STUDIO_IP=100.x.x.x
-
-# Required for the OpenAI LLM and speech recognition (if not using Ollama)
+# Required: OpenAI, for replies, speech after the wake word, memory and the camera.
+# Set a hard spend limit on its project, as .env.example describes.
 OPENAI_API_KEY=sk-...
 
-# Required for ElevenLabs speech output
+# Required: ElevenLabs, for speech output. .env.example describes opting out of
+# model training.
 ELEVENLABS_API_KEY=...
+
+# Optional: Tailscale IP of the machine running Ollama or PLaMo, if you use them.
+# Defaults to host-gateway, this machine.
+STUDIO_IP=100.x.x.x
 
 # Optional: Google Calendar
 GOOGLE_SERVICE_ACCOUNT_EMAIL=...
