@@ -42,14 +42,6 @@ describe("loadProvidersConfig", () => {
       expect(loadProvidersConfig().providers?.stt?.local?.language).toBe("en");
     });
 
-    // Known bug: `web:` parses to null, so the preset is skipped. Remove .fails when
-    // the loader defaults stt.web to an object.
-    it.fails("applies the locale preset to Web Speech", () => {
-      vi.stubEnv("LOCALE", "ja");
-
-      expect(loadProvidersConfig().providers?.stt?.web?.language).toBe("ja-JP");
-    });
-
     it("lets the environment choose the LLM and STT providers", () => {
       vi.stubEnv("LLM_PROVIDER", "openai");
       vi.stubEnv("STT_PROVIDER", "local");
@@ -68,18 +60,18 @@ describe("loadProvidersConfig", () => {
     });
   });
 
-  it("keeps an explicit Web Speech language", () => {
+  it("keeps an explicit Whisper language", () => {
     vi.stubEnv("LOCALE", "ja");
-    useProvidersYaml("providers:\n  stt:\n    provider: web\n    web:\n      language: de-DE\n");
+    useProvidersYaml("providers:\n  stt:\n    provider: local\n    local:\n      language: de\n");
 
-    expect(loadProvidersConfig().providers?.stt?.web?.language).toBe("de-DE");
+    expect(loadProvidersConfig().providers?.stt?.local?.language).toBe("de");
   });
 
-  it("fills an empty Web Speech language from the preset", () => {
+  it("fills an empty Whisper language from the preset", () => {
     vi.stubEnv("LOCALE", "ja");
-    useProvidersYaml("providers:\n  stt:\n    provider: web\n    web:\n      language: ''\n");
+    useProvidersYaml("providers:\n  stt:\n    provider: local\n    local:\n      language: ''\n");
 
-    expect(loadProvidersConfig().providers?.stt?.web?.language).toBe("ja-JP");
+    expect(loadProvidersConfig().providers?.stt?.local?.language).toBe("ja");
   });
 
   it("falls back to OpenAI and ElevenLabs when the file is missing", () => {

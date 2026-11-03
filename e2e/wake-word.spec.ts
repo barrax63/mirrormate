@@ -190,6 +190,27 @@ test.describe("Wake word audio", () => {
     expect(await mock.transcriptions()).toEqual([]);
     expect(avatar.postsTo("/api/chat")).toEqual([]);
   });
+
+  // The STT config says where to cut recordings while waiting
+  test("opens the mic only once the STT config has loaded", async ({ page }) => {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route("**/api/stt/config", async (route) => {
+      await held;
+      await route.continue();
+    });
+    const avatar = new AvatarPage(page);
+    const opened = avatar.open();
+    await avatar.waitForLog("[VisionCompanion] Camera started");
+
+    await page.waitForTimeout(1000);
+    expect(await avatar.micRequests()).toBe(0);
+
+    release();
+    await opened;
+    await avatar.waitForLog("[AudioRecorder] Started recording");
+    expect(await avatar.micRequests()).toBe(1);
+  });
 });
 
 test.describe("/api/stt", () => {

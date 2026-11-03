@@ -25,4 +25,3 @@ clock:
 # Speech-to-Text settings
 stt:
   language: "ja"
-  webLanguage: "ja-JP"

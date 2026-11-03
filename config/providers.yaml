@@ -23,7 +23,7 @@ providers:
 
   stt:
     enabled: true
-    # openai, local, or web. Hears what's said after the wake word. With the wake word off
+    # openai or local. Hears what's said after the wake word. With the wake word off
     # (wakeWord.enabled: false in config/locales/*/character.yaml), it hears everything said
     # in the room.
     provider: openai
@@ -41,8 +41,6 @@ providers:
     local:
       baseUrl: "http://whisper:8000"  # speaches, in compose.yaml
       model: Systran/faster-whisper-small  # the full ID: speaches answers "small" with a 404
-      # language is loaded from locale preset
-    web:
       # language is loaded from locale preset
     silenceDetection:
       silenceThreshold: 1.5      # seconds of silence before stopping

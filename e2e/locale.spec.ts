@@ -101,9 +101,9 @@ test.describe("Japanese server", () => {
     expect(speech.body).toMatchObject({ text: "こんにちは", language_code: "ja" });
   });
 
-  test("/api/stt/config reports ja-JP", async ({ request }) => {
+  test("/api/stt/config reports Japanese", async ({ request }) => {
     const response = await request.get("/api/stt/config");
 
-    expect(await response.json()).toMatchObject({ provider: "openai", language: "ja-JP" });
+    expect(await response.json()).toMatchObject({ provider: "openai", language: "ja" });
   });
 });

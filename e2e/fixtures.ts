@@ -24,7 +24,7 @@ export interface Recording {
   words: string;
 }
 
-// See fake-mic.js, speech-recognition-stub.js and audio-spy.js
+// See fake-mic.js and audio-spy.js
 declare global {
   interface Window {
     __micListening: () => boolean;
@@ -37,10 +37,6 @@ declare global {
     __micHeld?: boolean;
     __releaseMic: () => void;
     __speak: (text?: string, ms?: number) => boolean;
-    __recognitions: { lang: string; running: boolean }[];
-    __say: (text: string) => boolean;
-    __recognitionFailure?: string | null;
-    __endRecognition: () => void;
     __audioContexts: AudioContext[];
     __audioLinks: number;
   }
@@ -160,36 +156,6 @@ export class AvatarPage extends RecordedPage {
 
   cameraRequests() {
     return this.page.evaluate(() => window.__cameraRequests());
-  }
-}
-
-/** The avatar page listening through the stub in speech-recognition-stub.js */
-export class WebSpeechAvatarPage extends AvatarPage {
-  /** Passes speech to the recognizer, waiting until one is listening */
-  async hear(text: string) {
-    await expect
-      .poll(() => this.page.evaluate((said) => window.__say(said), text), { timeout: 10_000 })
-      .toBe(true);
-  }
-
-  isListening() {
-    return this.page.evaluate(() => window.__recognitions.some((r) => r.running));
-  }
-
-  /** Delays of the recognition restarts so far, oldest first */
-  restartDelays() {
-    return this.logs.flatMap((log) => {
-      const delay = log.match(/Restarting in (\d+)ms/)?.[1];
-      return delay ? [Number(delay)] : [];
-    });
-  }
-
-  recognitionStarts() {
-    return this.logs.filter((log) => log.includes("Web Speech started")).length;
-  }
-
-  recognitionLanguage() {
-    return this.page.evaluate(() => window.__recognitions.at(-1)?.lang);
   }
 }
 
@@ -389,23 +355,5 @@ export const test = base.extend<{
     const control = new ControlPage(await context.newPage());
     await control.open();
     await provide(control);
-  },
-});
-
-/** For the tests of Web Speech itself: pages get the stub, and the config asks for Web Speech */
-export const webSpeechTest = test.extend<{ avatar: WebSpeechAvatarPage }>({
-  context: async ({ context }, provide) => {
-    await context.addInitScript({ path: path.join(__dirname, "speech-recognition-stub.js") });
-    await context.route("**/api/stt/config", async (route) => {
-      const response = await route.fetch();
-      await route.fulfill({ response, json: { ...(await response.json()), provider: "web" } });
-    });
-    await provide(context);
-  },
-
-  avatar: async ({ context }, provide) => {
-    const avatar = new WebSpeechAvatarPage(await context.newPage());
-    await avatar.open();
-    await provide(avatar);
   },
 });

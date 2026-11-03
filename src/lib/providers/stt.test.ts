@@ -76,6 +76,23 @@ describe("STT providers", () => {
       expect(getSTTProvider("speech")).not.toBe(wakeWord);
     });
 
+    it("uses OpenAI for speech when stt.provider is missing", () => {
+      useSttConfig(`    enabled: true
+`);
+
+      expect(getSTTProvider("speech")?.getProviderName()).toBe("openai-whisper");
+    });
+
+    // Such as web, which older configs may still name
+    it("has no speech provider for an stt.provider it doesn't know", () => {
+      useSttConfig(`    enabled: true
+    provider: web
+`);
+
+      expect(getSTTProvider("speech")).toBeNull();
+      expect(getSTTProvider("wakeWord")?.getProviderName()).toBe("local-whisper");
+    });
+
     it("has neither while STT is disabled", () => {
       useSttConfig(`    enabled: false
     provider: openai
@@ -87,6 +104,38 @@ describe("STT providers", () => {
   });
 
   describe("getSTTClientConfig", () => {
+    it("passes on the language that stt.provider is set to", () => {
+      useSttConfig(`    enabled: true
+    provider: local
+    openai:
+      language: en
+    local:
+      language: de
+`);
+
+      expect(getSTTClientConfig().language).toBe("de");
+    });
+
+    it("passes on the locale preset's language when none is set", () => {
+      vi.stubEnv("LOCALE", "ja");
+      useSttConfig(`    enabled: true
+    provider: openai
+    openai:
+      model: gpt-transcribe
+`);
+
+      expect(getSTTClientConfig().language).toBe("ja");
+    });
+
+    it("reports OpenAI and its language when stt.provider is missing", () => {
+      useSttConfig(`    enabled: true
+    openai:
+      language: de
+`);
+
+      expect(getSTTClientConfig()).toMatchObject({ provider: "openai", language: "de" });
+    });
+
     it("passes on how wake word recordings are cut", () => {
       useSttConfig(`    enabled: true
     provider: openai

@@ -81,14 +81,6 @@ export interface LocalWhisperConfig {
 }
 
 /**
- * Web Speech API configuration (client-side only)
- */
-export interface WebSpeechConfig {
-  /** Language code (BCP 47, e.g., "ja-JP", "en-US") */
-  language?: string;
-}
-
-/**
  * Silence detection configuration
  */
 export interface SilenceDetectionConfig {
@@ -138,13 +130,11 @@ export interface STTConfig {
   /** Whether STT is enabled */
   enabled: boolean;
   /** Which provider to use */
-  provider: "openai" | "local" | "web";
+  provider: "openai" | "local";
   /** OpenAI Whisper settings */
   openai?: OpenAIWhisperConfig;
   /** Local Whisper settings */
   local?: LocalWhisperConfig;
-  /** Web Speech API settings */
-  web?: WebSpeechConfig;
   /** Silence detection settings */
   silenceDetection?: Partial<SilenceDetectionConfig>;
 }
