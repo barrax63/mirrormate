@@ -1,10 +1,11 @@
 # Production deployment (Raspberry Pi / any host)
-# Runs the app and local Whisper, and connects to Mac Studio via Tailscale for the other
-# heavy services
+# Runs the app and local Whisper. Everything else is OpenAI and ElevenLabs, so .env needs
+# OPENAI_API_KEY and ELEVENLABS_API_KEY.
 # Usage: docker compose up -d
 #
-# Set STUDIO_IP in .env to the machine running them:
-#   STUDIO_IP=host-gateway   this machine
+# Optional: to use Ollama or PLaMo instead, as http://studio:... in config/providers.yaml, set
+# STUDIO_IP in .env to the machine running them:
+#   STUDIO_IP=host-gateway   this machine, the default
 #   STUDIO_IP=100.x.x.x      another machine, such as its Tailscale IP (tailscale ip -4)
 
 services:
@@ -24,7 +25,7 @@ services:
       - OLLAMA_API_KEY=${OLLAMA_API_KEY}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
     extra_hosts:
-      - "studio:${STUDIO_IP}"
+      - "studio:${STUDIO_IP:-host-gateway}"
     volumes:
       - ./config:/app/config:ro
       - mirrormate-data:/app/data

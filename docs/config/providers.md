@@ -8,7 +8,7 @@ Mirror Mate uses external providers for LLM (language model), TTS (text-to-speec
 providers:
   llm:
     enabled: true
-    provider: ollama  # openai or ollama
+    provider: openai  # openai or ollama
     # ...
 
   tts:
@@ -25,12 +25,12 @@ providers:
 
   vlm:
     enabled: true
-    provider: ollama
+    provider: openai  # openai or ollama
     # ...
 
   embedding:
     enabled: true
-    provider: ollama
+    provider: openai  # openai or ollama
     # ...
 
   memory:
@@ -55,6 +55,10 @@ providers:
 ```bash
 OPENAI_API_KEY=sk-your-api-key-here
 ```
+
+::: tip Set a spend limit
+The default setup uses this key for replies, speech after the wake word, memory and the camera, so set a hard spend limit on its project. In the project's settings, select **Limits**, then under **Spend** select **Edit spend limit**, enter a monthly limit, turn on **Enforce a hard limit** and save. Requests past it fail with a 429, and the pages say the limit was reached. Enforcement isn't instant, so spend can go slightly past it. See [OpenAI's spend limits](https://developers.openai.com/api/docs/guides/spend-limits).
+:::
 
 3. Configure in `providers.yaml`:
 
@@ -155,6 +159,10 @@ Every message sent again costs tokens on a paid LLM, so each request carries onl
 ELEVENLABS_API_KEY=your-api-key
 ```
 
+::: tip Opt out of model training
+ElevenLabs uses some of the data you send it to improve its models, unless you opt out. Click your profile icon, go to **Terms and privacy** > **Data use**, turn off **Improve the models for everyone** and click **Update your choice**. It applies to what you send from then on. See [ElevenLabs' help page](https://elevenlabs.io/docs/help-center/legal/is-my-data-used-to-improve-eleven-labs-ai-models).
+:::
+
 3. Configure in `providers.yaml`:
 
 ```yaml
@@ -220,9 +228,9 @@ providers:
 With the wake word off (`wakeWord.enabled: false` in the [character config](character.md)), there's nothing to wait for, so everything said in the room goes to `stt.provider`. With `provider: openai`, that means OpenAI hears and bills it all.
 :::
 
-### Web Speech API (Default)
+### Web Speech API
 
-Uses the browser's built-in speech recognition. Best for quick setup with no additional configuration.
+Uses the browser's built-in speech recognition, in Chrome. It's what an `stt` section without `provider` uses, though the committed config uses `openai`.
 
 ```yaml
 providers:
