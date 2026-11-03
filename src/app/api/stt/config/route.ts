@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSTTClientConfig } from "@/lib/providers/stt";
-import { DEFAULT_WAKE_WORD_RECORDING } from "@/lib/stt";
+import { serviceErrorResponse } from "@/lib/errors/classify";
 
 /**
  * GET /api/stt/config
@@ -8,10 +8,12 @@ import { DEFAULT_WAKE_WORD_RECORDING } from "@/lib/stt";
  *
  * Response:
  * - enabled: boolean - Whether STT is enabled
- * - provider: string - Current provider (openai, local, web)
+ * - provider: string - Current provider (openai or local)
  * - silenceDetection: object - Silence detection settings
  * - wakeWord: object - How recordings are cut while waiting for the wake word
  * - language: string - Language code for transcription
+ *
+ * On failure: error and code. The page then records nothing, and says why.
  */
 export async function GET() {
   try {
@@ -19,20 +21,6 @@ export async function GET() {
 
     return NextResponse.json(config);
   } catch (error) {
-    console.error("[STT Config API] Error:", error);
-
-    // Return default config on error
-    return NextResponse.json({
-      enabled: false,
-      provider: "web",
-      silenceDetection: {
-        silenceThreshold: 1.5,
-        volumeThreshold: 0.02,
-        minRecordingDuration: 500,
-        maxRecordingDuration: 60000,
-      },
-      wakeWord: DEFAULT_WAKE_WORD_RECORDING,
-      language: "en-US",
-    });
+    return serviceErrorResponse(error, "STT Config API");
   }
 }

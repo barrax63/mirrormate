@@ -16,7 +16,7 @@ const cachedProviders = new Map<STTPurpose, STTProvider>();
 
 /**
  * Get the STT provider for one purpose, based on configuration.
- * Returns null if it's disabled, or for speech if the provider is "web" (handled client-side).
+ * Returns null if it's disabled, or for speech if stt.provider is neither openai nor local.
  *
  * Wake word audio only ever goes to local Whisper, so what's said in the room before the wake
  * word stays on this machine. If that fails, so does the request: it never falls back to
@@ -47,19 +47,12 @@ export function getSTTProvider(purpose: STTPurpose): STTProvider | null {
     return createProvider("local", sttConfig, purpose);
   }
 
-  const provider = sttConfig.provider || "web";
-
-  // "web" provider is handled client-side via Web Speech API
-  if (provider === "web") {
-    console.log("[STT] Using Web Speech API (client-side)");
-    return null;
-  }
-
+  const provider: string = sttConfig.provider || "openai";
   if (provider === "openai" || provider === "local") {
     return createProvider(provider, sttConfig, purpose);
   }
 
-  console.warn(`[STT] Unknown provider: ${provider}, falling back to web`);
+  console.error(`[STT] Unknown stt.provider: ${provider}. Use openai or local.`);
   return null;
 }
 
@@ -98,7 +91,7 @@ export function getSTTConfig(): STTProviderConfig {
   return (
     config.providers?.stt || {
       enabled: false,
-      provider: "web",
+      provider: "openai",
     }
   );
 }
@@ -122,21 +115,19 @@ function getWakeWordRecordingConfig(config: STTProviderConfig): WakeWordRecordin
  */
 export function getSTTClientConfig(): STTClientConfig {
   const config = getSTTConfig();
+  const provider = config.provider || "openai";
 
-  // Determine language based on provider
-  let language = "en-US";
-  if (config.provider === "openai" && config.openai?.language) {
-    // Convert ISO 639-1 to BCP 47 for client
-    language = config.openai.language === "ja" ? "ja-JP" : config.openai.language;
-  } else if (config.provider === "local" && config.local?.language) {
-    language = config.local.language === "ja" ? "ja-JP" : config.local.language;
-  } else if (config.provider === "web" && config.web?.language) {
-    language = config.web.language;
+  // The language the provider transcribes in, which the page sends with each recording
+  let language = "en";
+  if (provider === "openai" && config.openai?.language) {
+    language = config.openai.language;
+  } else if (provider === "local" && config.local?.language) {
+    language = config.local.language;
   }
 
   return {
     enabled: config.enabled ?? false,
-    provider: config.provider || "web",
+    provider,
     silenceDetection: {
       ...DEFAULT_SILENCE_CONFIG,
       ...config.silenceDetection,

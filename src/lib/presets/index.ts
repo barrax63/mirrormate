@@ -22,7 +22,6 @@ export interface LocalePreset {
   };
   stt: {
     language: string;
-    webLanguage: string;
   };
 }
 
@@ -44,7 +43,7 @@ const defaultPresets: Record<Locale, LocalePreset> = {
       defaultLocation: "東京",
     },
     clock: { timezone: "Asia/Tokyo", format24h: true, locale: "ja-JP" },
-    stt: { language: "ja", webLanguage: "ja-JP" },
+    stt: { language: "ja" },
   },
   en: {
     time: { timezone: "America/Los_Angeles" },
@@ -55,7 +54,7 @@ const defaultPresets: Record<Locale, LocalePreset> = {
       defaultLocation: "San Francisco",
     },
     clock: { timezone: "America/Los_Angeles", format24h: false, locale: "en-US" },
-    stt: { language: "en", webLanguage: "en-US" },
+    stt: { language: "en" },
   },
 };
 

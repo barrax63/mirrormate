@@ -63,7 +63,7 @@ Just talk to the mirror.
 │                        Raspberry Pi                             │
 │  ┌───────────────┐  ┌────────────┐  ┌────────────────────────┐  │
 │  │  Browser      │  │  Next.js   │  │  SQLite                │  │
-│  │  (Chrome)     │◄─┤  App       │◄─┤  (Memory, Sessions)    │  │
+│  │  (Chromium)   │◄─┤  App       │◄─┤  (Memory, Sessions)    │  │
 │  │  + Mic/Cam    │  │  Port 3000 │  │                        │  │
 │  └───────────────┘  └─────┬──────┘  └────────────────────────┘  │
 │         ▲                 │         ┌────────────────────────┐  │
@@ -110,7 +110,7 @@ This starts the app and local Whisper, which listens for the wake word. Open htt
 ## Features
 
 ### Voice-First Interaction
-Activate with a wake word. Choose from Web Speech API, OpenAI Whisper, or local Whisper for speech recognition. With the Whisper providers, local Whisper listens for the wake word, so nothing said in the room before it leaves your machine.
+Activate with a wake word. Local Whisper listens for it, so nothing said in the room before it leaves your machine. What's said after it goes to OpenAI, or to local Whisper too.
 
 ### Personalized Memory
 Automatically extracts and stores information about you from conversations. Uses RAG to retrieve relevant memories and generate personalized responses.
@@ -123,7 +123,7 @@ Lip-synced avatar speaks responses. Eight animation states (Idle, Listening, Thi
 | --------- | --------------------------------------------- |
 | LLM       | OpenAI, Ollama                                |
 | TTS       | ElevenLabs                                    |
-| STT       | Web Speech API, OpenAI Whisper, Local Whisper |
+| STT       | OpenAI, Local Whisper                         |
 | Embedding | Ollama, PLaMo-Embedding-1B                    |
 
 ### Built-in Integrations

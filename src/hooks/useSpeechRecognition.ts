@@ -5,78 +5,32 @@ import { useAudioRecorder, type Take } from "./useAudioRecorder";
 import { STTClientConfig, STTPurpose, SilenceDetectionConfig } from "@/lib/stt";
 import { routeErrorFrom, type ServiceErrorReporter } from "@/lib/errors/service-errors";
 
-// Web Speech API types
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
-  resultIndex: number;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-  message?: string;
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start(): void;
-  stop(): void;
-  abort(): void;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
-  onend: (() => void) | null;
-  onstart: (() => void) | null;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognition;
-    webkitSpeechRecognition: new () => SpeechRecognition;
-  }
-}
-
-// Web Speech restarts wait this long, doubling each time a session fails quickly
-const MIN_RESTART_DELAY_MS = 100;
-const MAX_RESTART_DELAY_MS = 30000;
-// A session that ran this long worked, however it ended
-const HEALTHY_SESSION_MS = 3000;
-
-/** Available speech recognition providers */
-export type SpeechRecognitionProvider = "web" | "whisper";
-
 interface UseSpeechRecognitionOptions {
   /** Called when a final transcript is received */
   onResult: (transcript: string) => void;
-  /** Called with interim/partial transcripts (Web Speech only) */
+  /** Called with "..." while recording or transcribing, and "" once a transcript is in */
   onInterimResult?: (transcript: string) => void;
-  /** Called when recording state changes (Whisper mode) */
+  /** Called when recording state changes */
   onRecordingStateChange?: (isRecording: boolean) => void;
-  /** Called with volume level for visualization (Whisper mode) */
+  /** Called with volume level for visualization */
   onVolumeChange?: (volume: number) => void;
-  /** Language code (default: "en-US") */
-  lang?: string;
-  /** Override provider selection from config */
-  provider?: SpeechRecognitionProvider;
   /**
-   * True while waiting for the wake word. Whisper recordings made at any point while it's true
+   * True while waiting for the wake word. Recordings made at any point while it's true
    * go to local Whisper only, and are cut short so a long talk can't delay the wake word.
    */
   listeningForWakeWord: boolean;
-  /** Told how each Whisper request went, and asked first whether to wait */
+  /** Told how the config and each transcription request went, and asked first whether to wait */
   serviceErrors?: ServiceErrorReporter;
 }
 
 interface UseSpeechRecognitionReturn {
-  /** Whether currently listening/recording */
+  /** Whether currently recording */
   isListening: boolean;
-  /** Whether speech recognition is supported */
+  /** Whether the browser can record audio */
   isSupported: boolean;
   /** Whether Whisper is currently transcribing audio */
   isTranscribing: boolean;
-  /** Current active provider, null until the config has loaded */
-  activeProvider: SpeechRecognitionProvider | null;
-  /** Current volume level (0-1, Whisper mode only) */
+  /** Current volume level (0-1) */
   currentVolume: number;
   /** Start listening */
   start: () => void;
@@ -89,42 +43,25 @@ interface UseSpeechRecognitionReturn {
 }
 
 /**
- * Enhanced speech recognition hook with Whisper API support
+ * Speech recognition with Whisper (OpenAI or local), through /api/stt
  *
  * Features:
- * - Web Speech API for real-time transcription with interim results
- * - Whisper API (OpenAI or local) for high-accuracy transcription
  * - Automatic silence detection for natural conversation flow
- * - Backward compatible with existing usage
+ * - Records nothing until the STT config has loaded, since it says how to cut recordings
  */
 export function useSpeechRecognition({
   onResult,
   onInterimResult,
   onRecordingStateChange,
   onVolumeChange,
-  lang = "en-US",
-  provider: providerOverride,
   listeningForWakeWord,
   serviceErrors,
 }: UseSpeechRecognitionOptions): UseSpeechRecognitionReturn {
   // State
   const [isListening, setIsListening] = useState(false);
-  const [isSupported, setIsSupported] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  // Null until the config arrives, so Web Speech never starts in a Whisper setup
-  const [activeProvider, setActiveProvider] =
-    useState<SpeechRecognitionProvider | null>(null);
   const [sttConfig, setSTTConfig] = useState<STTClientConfig | null>(null);
   const [currentVolume, setCurrentVolume] = useState(0);
-
-  // Web Speech API refs
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const shouldRestartRef = useRef(true);
-  const isListeningRef = useRef(false);
-  const restartAttemptsRef = useRef(0);
-  const restartDelayRef = useRef(MIN_RESTART_DELAY_MS);
-  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const sessionStartedAtRef = useRef<number | null>(null);
 
   // Wake word refs, all times from Date.now()
   const listeningForWakeWordRef = useRef(listeningForWakeWord);
@@ -154,43 +91,27 @@ export function useSpeechRecognition({
     onInterimResultRef.current = onInterimResult;
   }, [onInterimResult]);
 
-  // Fetch STT configuration from server
+  // Fetch STT configuration from server. Without it nothing is recorded, and the pages say why.
   useEffect(() => {
     async function fetchSTTConfig() {
       try {
         const res = await fetch("/api/stt/config");
         if (!res.ok) {
-          throw new Error(`STT config request failed: ${res.status}`);
+          const error = await routeErrorFrom(res);
+          console.error("[SpeechRecognition] STT config request failed:", res.status, error);
+          serviceErrorsRef.current?.failed("speech", error);
+          return;
         }
         const config: STTClientConfig = await res.json();
         setSTTConfig(config);
-
-        // Determine provider from config unless overridden
-        if (!providerOverride) {
-          const configProvider =
-            config.provider === "openai" || config.provider === "local"
-              ? "whisper"
-              : "web";
-          setActiveProvider(configProvider);
-          console.log(`[SpeechRecognition] Using provider: ${configProvider}`);
-        }
       } catch (error) {
-        console.warn(
-          "[SpeechRecognition] Failed to fetch STT config, using Web Speech API"
-        );
-        setActiveProvider("web");
+        console.error("[SpeechRecognition] STT config request failed:", error);
+        // The app's own server didn't answer
+        serviceErrorsRef.current?.failed("speech", { code: "unavailable" });
       }
     }
     fetchSTTConfig();
-  }, [providerOverride]);
-
-  // Apply provider override
-  useEffect(() => {
-    if (providerOverride) {
-      setActiveProvider(providerOverride);
-      console.log(`[SpeechRecognition] Provider overridden to: ${providerOverride}`);
-    }
-  }, [providerOverride]);
+  }, []);
 
   /**
    * Handle Whisper transcription
@@ -222,9 +143,8 @@ export function useSpeechRecognition({
         const formData = new FormData();
         formData.append("audio", audioBlob, "audio.webm");
         formData.append("purpose", purpose);
-        // Use language from server config, fallback to prop, then convert BCP 47 to ISO 639-1
-        const effectiveLang = sttConfig?.language || lang;
-        const whisperLang = effectiveLang.split("-")[0];
+        // Whisper takes ISO 639-1 codes, so a language set as en-US is sent as en
+        const whisperLang = (sttConfig?.language || "en").split("-")[0];
         formData.append("language", whisperLang);
 
         console.log(
@@ -274,7 +194,7 @@ export function useSpeechRecognition({
         }
       }
     },
-    [lang, sttConfig?.language]
+    [sttConfig?.language]
   );
 
   /**
@@ -293,22 +213,18 @@ export function useSpeechRecognition({
    */
   const handleRecordingStateChange = useCallback(
     (recording: boolean) => {
-      if (activeProvider === "whisper") {
-        setIsListening(recording);
-        isListeningRef.current = recording;
-      }
+      setIsListening(recording);
       onRecordingStateChange?.(recording);
     },
-    [activeProvider, onRecordingStateChange]
+    [onRecordingStateChange]
   );
 
-  // Audio recorder for Whisper mode
   const {
     isRecording,
-    isSupported: isRecorderSupported,
+    isSupported,
     hasAudioStarted,
     startRecording,
-    stopRecording: stopAudioRecording,
+    stopRecording,
     dropTakes,
   } = useAudioRecorder({
     onAudioReady: handleWhisperTranscription,
@@ -338,243 +254,33 @@ export function useSpeechRecognition({
     dropTakes((take) => take.startedAt < wakeWordEnd || take.voiceAt === null);
   }, [listeningForWakeWord, dropTakes]);
 
-  // Show interim feedback while recording (Whisper mode)
+  // Show interim feedback while recording
   useEffect(() => {
-    if (activeProvider === "whisper") {
-      if (isRecording && hasAudioStarted) {
-        onInterimResultRef.current?.("...");
-      } else if (isRecording && !hasAudioStarted) {
-        onInterimResultRef.current?.("...");
-      } else if (!isRecording && !isTranscribing) {
-        // Clear interim when not recording and not transcribing
-      }
+    if (isRecording && hasAudioStarted) {
+      onInterimResultRef.current?.("...");
+    } else if (isRecording && !hasAudioStarted) {
+      onInterimResultRef.current?.("...");
+    } else if (!isRecording && !isTranscribing) {
+      // Clear interim when not recording and not transcribing
     }
-  }, [isRecording, hasAudioStarted, isTranscribing, activeProvider]);
+  }, [isRecording, hasAudioStarted, isTranscribing]);
 
-  // Web Speech API setup
-  useEffect(() => {
-    // Skip Web Speech setup if using Whisper
-    if (activeProvider !== "web") {
-      // Cleanup existing Web Speech instance
-      if (recognitionRef.current) {
-        shouldRestartRef.current = false;
-        recognitionRef.current.abort();
-        recognitionRef.current = null;
-      }
-      return;
+  // Starting and resuming are the same, as are stopping and pausing. Also starts while the last
+  // recording is transcribed, or what's said meanwhile is lost.
+  const listen = useCallback(() => {
+    if (sttConfig && !isRecording) {
+      startRecording();
     }
-
-    const SpeechRecognitionAPI =
-      typeof window !== "undefined"
-        ? window.SpeechRecognition || window.webkitSpeechRecognition
-        : null;
-
-    if (!SpeechRecognitionAPI) {
-      console.warn("[SpeechRecognition] Web Speech API not supported");
-      setIsSupported(false);
-      return;
-    }
-
-    setIsSupported(true);
-    const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = lang;
-
-    const resetRestartBackoff = () => {
-      restartAttemptsRef.current = 0;
-      restartDelayRef.current = MIN_RESTART_DELAY_MS;
-    };
-
-    recognition.onstart = () => {
-      console.log("[SpeechRecognition] Web Speech started");
-      isListeningRef.current = true;
-      setIsListening(true);
-      // Starting proves nothing: browsers fire start, then error and end right after it
-      sessionStartedAtRef.current = Date.now();
-    };
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      resetRestartBackoff();
-
-      let interimTranscript = "";
-      let finalTranscript = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        const transcript = result[0].transcript;
-
-        if (result.isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-
-      if (interimTranscript && onInterimResultRef.current) {
-        onInterimResultRef.current(interimTranscript);
-      }
-
-      if (finalTranscript) {
-        console.log("[SpeechRecognition] Web Speech result:", finalTranscript);
-        onResultRef.current(finalTranscript);
-      }
-    };
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      switch (event.error) {
-        case "not-allowed":
-          console.error("[SpeechRecognition] Microphone permission denied");
-          shouldRestartRef.current = false;
-          break;
-        case "network":
-          console.warn("[SpeechRecognition] Network error - will retry");
-          break;
-        case "no-speech":
-          console.log("[SpeechRecognition] No speech detected");
-          resetRestartBackoff();
-          break;
-        case "aborted":
-          console.log("[SpeechRecognition] Aborted");
-          break;
-        case "audio-capture":
-          console.error("[SpeechRecognition] Audio capture failed");
-          break;
-        default:
-          console.error("[SpeechRecognition] Error:", event.error);
-      }
-    };
-
-    recognition.onend = () => {
-      console.log("[SpeechRecognition] Web Speech ended");
-      isListeningRef.current = false;
-      setIsListening(false);
-
-      const startedAt = sessionStartedAtRef.current;
-      sessionStartedAtRef.current = null;
-      if (startedAt !== null && Date.now() - startedAt >= HEALTHY_SESSION_MS) {
-        resetRestartBackoff();
-      }
-
-      // Auto restart with exponential backoff
-      if (shouldRestartRef.current && activeProvider === "web") {
-        const delay = restartDelayRef.current;
-        restartAttemptsRef.current++;
-
-        console.log(
-          `[SpeechRecognition] Restarting in ${delay}ms (attempt ${restartAttemptsRef.current})...`
-        );
-
-        // Keep one restart pending, or failures would build up parallel retry loops
-        clearTimeout(restartTimerRef.current);
-        restartTimerRef.current = setTimeout(() => {
-          if (
-            shouldRestartRef.current &&
-            !isListeningRef.current &&
-            activeProvider === "web"
-          ) {
-            try {
-              recognition.start();
-            } catch (e) {
-              console.log("[SpeechRecognition] Already running, skip restart");
-            }
-          }
-        }, delay);
-
-        restartDelayRef.current = Math.min(delay * 2, MAX_RESTART_DELAY_MS);
-      }
-    };
-
-    recognitionRef.current = recognition;
-
-    return () => {
-      shouldRestartRef.current = false;
-      clearTimeout(restartTimerRef.current);
-      recognition.abort();
-    };
-  }, [lang, activeProvider]);
-
-  // Update isSupported based on active provider
-  useEffect(() => {
-    if (activeProvider === "whisper") {
-      setIsSupported(isRecorderSupported);
-    }
-  }, [activeProvider, isRecorderSupported]);
-
-  // Control methods
-  const start = useCallback(() => {
-    if (activeProvider === "whisper") {
-      if (!isRecording) {
-        shouldRestartRef.current = true;
-        startRecording();
-      }
-    } else {
-      if (!recognitionRef.current || isListeningRef.current) return;
-      shouldRestartRef.current = true;
-      try {
-        recognitionRef.current.start();
-      } catch (e) {
-        // Already started
-      }
-    }
-  }, [activeProvider, isRecording, startRecording]);
-
-  const stop = useCallback(() => {
-    shouldRestartRef.current = false;
-    if (activeProvider === "whisper") {
-      stopAudioRecording();
-    } else {
-      if (!recognitionRef.current) return;
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        // Already stopped
-      }
-    }
-  }, [activeProvider, stopAudioRecording]);
-
-  const pause = useCallback(() => {
-    shouldRestartRef.current = false;
-    if (activeProvider === "whisper") {
-      stopAudioRecording();
-    } else {
-      if (!recognitionRef.current || !isListeningRef.current) return;
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        // Already stopped
-      }
-    }
-  }, [activeProvider, stopAudioRecording]);
-
-  const resume = useCallback(() => {
-    if (activeProvider === "whisper") {
-      // Also while the last recording is transcribed, or what's said meanwhile is lost
-      if (!isRecording) {
-        shouldRestartRef.current = true;
-        startRecording();
-      }
-    } else {
-      // Set this first: if a pause is still stopping recognition, onend restarts it
-      shouldRestartRef.current = true;
-      if (!recognitionRef.current || isListeningRef.current) return;
-      try {
-        recognitionRef.current.start();
-      } catch (e) {
-        // Already started
-      }
-    }
-  }, [activeProvider, isRecording, startRecording]);
+  }, [sttConfig, isRecording, startRecording]);
 
   return {
     isListening,
     isSupported,
     isTranscribing,
-    activeProvider,
     currentVolume,
-    start,
-    stop,
-    pause,
-    resume,
+    start: listen,
+    stop: stopRecording,
+    pause: stopRecording,
+    resume: listen,
   };
 }

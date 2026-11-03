@@ -64,7 +64,7 @@ export function loadProvidersConfig(): ProvidersConfig {
 
   // Allow environment variable override for STT provider
   if (process.env.STT_PROVIDER && cachedConfig.providers?.stt) {
-    cachedConfig.providers.stt.provider = process.env.STT_PROVIDER as "openai" | "local" | "web";
+    cachedConfig.providers.stt.provider = process.env.STT_PROVIDER as "openai" | "local";
     console.log(`[Providers] STT provider overridden by env: ${process.env.STT_PROVIDER}`);
   }
 
@@ -79,9 +79,6 @@ export function loadProvidersConfig(): ProvidersConfig {
     }
     if (stt.local) {
       stt.local.language = stt.local.language || sttPreset.language;
-    }
-    if (stt.web) {
-      stt.web.language = stt.web.language || sttPreset.webLanguage;
     }
   }
 

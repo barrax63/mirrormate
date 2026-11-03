@@ -66,7 +66,7 @@ export interface VLMProviderConfig extends ProviderConfig {
 
 export interface STTProviderConfig extends ProviderConfig {
   /** For what's said after the wake word, or everything when the wake word is off */
-  provider: "openai" | "local" | "web";
+  provider: "openai" | "local";
   /** For what's heard while waiting for the wake word, which never goes to a cloud service */
   wakeWord?: {
     provider?: "local";
@@ -82,9 +82,6 @@ export interface STTProviderConfig extends ProviderConfig {
   local?: {
     baseUrl?: string;
     model?: string;
-    language?: string;
-  };
-  web?: {
     language?: string;
   };
   silenceDetection?: {

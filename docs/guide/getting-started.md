@@ -4,7 +4,7 @@ Mirror Mate is a self-hosted AI companion designed for smart mirror displays. Th
 
 ## Prerequisites
 
-- **A Chromium browser** - Chrome or Brave. Only the Web Speech provider (`stt.provider: web`) needs Chrome, since Brave's fails
+- **A Chromium browser** - Chrome or Brave
 - **Docker** - Recommended for easy deployment
 - **An OpenAI API key and an ElevenLabs API key** - For the default setup
 - **Bun** - For local development (optional)
@@ -105,7 +105,6 @@ This single setting automatically configures:
 
 ::: warning Language limits
 - **UI text** uses the locale at build time, because pages are prerendered. After changing the locale on a built app, rebuild to change UI text (`docker compose up -d --build`). `bun run dev` only needs a restart.
-- **Web Speech API** always starts in `en-US`, whatever the locale or `stt.web.language`. For Japanese, use the `local` or `openai` STT provider, which follow the preset.
 :::
 
 You can customize these defaults by editing `config/presets/[lang].yaml`. See [Locale Presets](/config/presets) for details.

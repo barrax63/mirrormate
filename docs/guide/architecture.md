@@ -2,8 +2,6 @@
 
 Mirror Mate is a Next.js application that provides an interactive AI avatar for smart mirror displays.
 
-> **Browser Requirement**: Google Chrome is required for voice recognition with the Web Speech API. Brave doesn't work with it, so use a [Whisper provider](../config/providers.md) there.
-
 ## System Architecture
 
 ```mermaid
@@ -27,7 +25,7 @@ flowchart TB
         Avatar --> AvatarComponents
         Control --> ControlComponents
         AvatarComponents --> SpeechRecog["useSpeechRecognition"]
-        SpeechRecog -->|Web Speech API| Browser["Browser"]
+        SpeechRecog -->|MediaRecorder| Browser["Browser"]
     end
 
     subgraph Backend["Backend (API Routes)"]
@@ -236,8 +234,8 @@ data/
       │
       ▼
 2. Speech recognition (useSpeechRecognition)
-   Web Speech API, or POST /api/stt for Whisper: local Whisper
-   until the wake word, stt.provider after it
+   POST /api/stt: local Whisper until the wake word,
+   stt.provider after it
       │
       ▼
 3. Wake word check and camera capture

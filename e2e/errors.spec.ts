@@ -1,5 +1,5 @@
-import type { Page } from "@playwright/test";
-import { test, expect, type Failure } from "./fixtures";
+import type { Page, Route } from "@playwright/test";
+import { test, expect, AvatarPage, ControlPage, type Failure } from "./fixtures";
 
 // The mock answers as OpenAI and ElevenLabs do when a key is wrong, the account is out of
 // credit, requests are rate limited or the service fails. Both pages should say which, and
@@ -88,6 +88,34 @@ test.describe("Voice input failures", () => {
     expect(await mock.localTranscriptions()).toHaveLength(2);
     expect(await mock.transcriptions()).toEqual([]);
   });
+
+  const configFailures: { name: string; answer: (route: Route) => Promise<void>; reason: string }[] = [
+    {
+      name: "fails",
+      answer: (route) => route.fulfill({ status: 500, json: { error: "test failure", code: "failed" } }),
+      reason: "Voice input: The server returned an error. The server log has details.",
+    },
+    {
+      name: "can't reach the server",
+      answer: (route) => route.abort(),
+      reason: "Voice input: The server can't be reached.",
+    },
+  ];
+
+  for (const { name, answer, reason } of configFailures) {
+    test(`says so when the STT config request ${name}, and records nothing`, async ({ context, page }) => {
+      await page.route("**/api/stt/config", answer);
+      const avatar = new AvatarPage(page);
+      await avatar.open();
+      const control = new ControlPage(await context.newPage());
+      await control.open();
+
+      await expectReason([avatar, control], reason);
+      await avatar.page.waitForTimeout(1000);
+      expect(await avatar.micRequests()).toBe(0);
+      expect(avatar.postsTo("/api/stt")).toEqual([]);
+    });
+  }
 });
 
 test.describe("Reply failures", () => {

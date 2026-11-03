@@ -18,7 +18,7 @@ providers:
 
   stt:
     enabled: true
-    provider: openai  # openai, local, or web
+    provider: openai  # openai or local
     wakeWord:
       provider: local
     # ...
@@ -193,11 +193,10 @@ The free plan includes 10,000 credits a month. `eleven_v4_turbo` cost 0.2 to 0.5
 
 STT providers enable speech recognition for voice input. Mirror Mate supports multiple providers with automatic silence detection.
 
-> **Note**: The Whisper providers (`openai`, `local`) take their language from [Locale Presets](presets.md) unless you set one. The Web Speech API always starts in `en-US`, whatever the locale or `web.language`.
+> **Note**: Both providers take their language from [Locale Presets](presets.md) unless you set one.
 
 | Provider | Description | API Key Required | Accuracy |
 |----------|-------------|------------------|----------|
-| Web Speech API | Browser native (Chrome/Edge) | No | Good |
 | OpenAI | Cloud API (`gpt-transcribe`) | Yes | Excellent |
 | Local Whisper | Self-hosted (`speaches`) | No | Good with `small` |
 
@@ -228,25 +227,9 @@ providers:
 With the wake word off (`wakeWord.enabled: false` in the [character config](character.md)), there's nothing to wait for, so everything said in the room goes to `stt.provider`. With `provider: openai`, that means OpenAI hears and bills it all.
 :::
 
-### Web Speech API
-
-Uses the browser's built-in speech recognition, in Chrome. It's what an `stt` section without `provider` uses, though the committed config uses `openai`.
-
-```yaml
-providers:
-  stt:
-    enabled: true
-    provider: web
-```
-
-**Pros**: Zero cost, instant setup, real-time interim results
-**Cons**: Browser-dependent quality, requires Chrome/Edge
-
-> **Note**: Brave has the API, but every session fails with a `network` error, so voice input stays on "Paused". Use a Whisper provider in Brave.
-
 ### OpenAI Transcription
 
-High-accuracy speech recognition using OpenAI's `gpt-transcribe`.
+High-accuracy speech recognition using OpenAI's `gpt-transcribe`. It's what an `stt` section without `provider` uses.
 
 ```yaml
 providers:
@@ -295,7 +278,7 @@ Measured on one x86 machine, on the wake word in English and German. `small` ran
 
 ### Silence Detection
 
-The Whisper providers (`openai`, `local`) use automatic silence detection to determine when the user has finished speaking. The Web Speech API handles this in the browser and ignores these settings.
+Both providers use automatic silence detection to determine when the user has finished speaking.
 
 ```yaml
 providers:
@@ -318,7 +301,7 @@ providers:
 
 | Option | Type | Description | Default |
 |--------|------|-------------|---------|
-| `provider` | string | `web`, `openai`, or `local`, for what's said after the wake word | `web` |
+| `provider` | string | `openai` or `local`, for what's said after the wake word | `openai` |
 | `wakeWord.provider` | string | `local`, for everything heard before the wake word | `local` |
 | `wakeWord.maxRecordingDuration` | number | While waiting, ms after its sound starts that a recording is cut | `10000` |
 | `wakeWord.overlap` | number | ms the next recording starts before the cut | `3000` |
@@ -514,6 +497,8 @@ When a request to a provider fails, the avatar page shows why under the mic stat
 After a missing or rejected key, a missing permission, no credit, a spending limit or a rate limit, the avatar page stops asking for that kind of request for 30 seconds, then twice as long each time it fails again, up to 10 minutes. A rate limit that says how long to wait is waited out instead. Asking again on every utterance wouldn't help, so what's said meanwhile is dropped. `/control` still sends what you type each time.
 
 The app asks OpenAI once per request, without the SDK's own retries, which would also retry a 429 for an account out of credit.
+
+The avatar page also needs its speech settings from the app's own server (`/api/stt/config`) before it records anything. If they can't be loaded, it doesn't listen, and the voice input line says why, such as "Voice input: The server can't be reached." Reload the page once the server is back.
 
 ---
 

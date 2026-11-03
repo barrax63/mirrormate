@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       const error =
         purpose === "wakeWord"
           ? "No wake word provider. Set stt.wakeWord.provider to 'local' in providers.yaml: wake word audio never goes to a cloud service."
-          : "STT provider not configured. Set provider to 'openai' or 'local' in providers.yaml, or use Web Speech API on client.";
+          : "No STT provider. Set stt.enabled to true, and stt.provider to 'openai' or 'local', in providers.yaml.";
       // The page tells the user to look here
       console.error(`[STT API] ${error}`);
       return NextResponse.json({ error, code: "failed" }, { status: 400 });

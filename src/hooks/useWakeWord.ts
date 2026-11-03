@@ -85,7 +85,7 @@ export function useWakeWord({
       }
 
       // Normalize both strings for comparison. Only letters and digits count,
-      // since Whisper punctuates ("Hey, Mira!") and Web Speech doesn't.
+      // since Whisper punctuates ("Hey, Mira!").
       const normalize = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
       const normalizedTranscript = normalize(transcript);
       const normalizedPhrase = normalize(config.phrase);

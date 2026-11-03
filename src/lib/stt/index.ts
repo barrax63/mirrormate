@@ -10,7 +10,6 @@ export type {
   TranscribeResult,
   OpenAIWhisperConfig,
   LocalWhisperConfig,
-  WebSpeechConfig,
   SilenceDetectionConfig,
   STTPurpose,
   WakeWordRecordingConfig,

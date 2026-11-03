@@ -62,8 +62,7 @@ clock:
 
 # Speech-to-Text settings
 stt:
-  language: "en"       # For OpenAI/Local Whisper (ISO 639-1)
-  webLanguage: "en-US" # For Web Speech API (BCP 47)
+  language: "en"  # ISO 639-1
 ```
 
 ## Available Presets
@@ -80,7 +79,6 @@ Default settings for Japanese users:
 | Clock | format24h | true |
 | Clock | locale | ja-JP |
 | STT | language | ja |
-| STT | webLanguage | ja-JP |
 
 ### English (en)
 
@@ -94,7 +92,6 @@ Default settings for English (US) users:
 | Clock | format24h | false |
 | Clock | locale | en-US |
 | STT | language | en |
-| STT | webLanguage | en-US |
 
 ## Customizing Presets
 
@@ -125,7 +122,6 @@ clock:
 
 stt:
   language: "en"
-  webLanguage: "en-GB"
 ```
 
 ## Override Behavior
@@ -135,8 +131,6 @@ Preset values serve as defaults that can be overridden in individual config file
 1. **features.yaml** - If you explicitly set `timezone` in `features.time`, it takes precedence over the preset
 2. **plugins.yaml** - If you explicitly set clock settings, they take precedence
 3. **providers.yaml** - If you explicitly set STT language, it takes precedence
-
-> **Note**: `webLanguage` currently has no effect. The Web Speech API always starts in `en-US`, whatever the preset or `stt.web.language`. The Whisper providers do use `language`.
 
 ### Example: Override Weather Location
 
@@ -186,7 +180,6 @@ clock:
 
 stt:
   language: "de"
-  webLanguage: "de-DE"
 ```
 
 2. Add the locale to `src/lib/app/index.ts`, in the type and in the `LOCALE` check in `getLocale()`:
