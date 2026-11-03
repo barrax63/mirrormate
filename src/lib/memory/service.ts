@@ -5,6 +5,10 @@ import { MemoryExtractor } from "./extractor";
 import { MemoryHandler, ProcessingStats } from "./handler";
 import { ConversationContext, ExtractionResult } from "./types";
 
+// Memories last stored or updated that extraction sees, besides the ones RAG found. A history of
+// 20 messages rarely leads to more.
+const RECENT_MEMORIES = 20;
+
 export interface MemoryServiceConfig {
   /** LLM provider for extraction */
   llmProvider: LLMProvider;
@@ -55,11 +59,14 @@ export class MemoryService {
       value: p.content,
     }));
 
-    // Get related memories
+    // Get related memories: the ones RAG found for the latest message, and the ones stored or
+    // updated last. Extraction reads the whole recent conversation, so without the latter it
+    // can't tell that a fact said a few turns ago is already stored, and stores it again.
     const relatedMemories: ConversationContext["relatedMemories"] = [];
-    for (const id of relatedMemoryIds) {
-      const memory = await this.memoryRepo.findById(id);
-      if (memory) {
+    const found = await Promise.all(relatedMemoryIds.map((id) => this.memoryRepo.findById(id)));
+    const recent = await this.memoryRepo.findMany({ userId }, RECENT_MEMORIES);
+    for (const memory of [...found, ...recent]) {
+      if (memory && memory.kind !== "profile" && !relatedMemories.some((related) => related.id === memory.id)) {
         relatedMemories.push({
           id: memory.id,
           title: memory.title,

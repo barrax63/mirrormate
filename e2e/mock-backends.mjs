@@ -86,14 +86,19 @@ function classifyChat(messages) {
   return "llm";
 }
 
-// Extraction prompts can quote stored memories, so each topic is only stored once
-const rememberedTopics = new Set();
-
+// Stores what the conversation mentions, as the real model does, except what the prompt lists
+// as already stored: lines like "- [id] (knowledge) title: content"
 function extractionReply(messages) {
+  const prompt = messages.at(-1)?.content ?? "";
+  const stored = new Set([...prompt.matchAll(/^- \[[^\]]+\] .*REMEMBER_(\w+)/gm)].map(([, topic]) => topic));
+  const said = prompt
+    .split("\n")
+    .filter((line) => line.startsWith("**"))
+    .join("\n");
   const memories = [];
-  for (const [, topic] of (messages.at(-1)?.content ?? "").matchAll(/REMEMBER_(\w+)/g)) {
-    if (rememberedTopics.has(topic)) continue;
-    rememberedTopics.add(topic);
+  for (const [, topic] of said.matchAll(/REMEMBER_(\w+)/g)) {
+    if (stored.has(topic)) continue;
+    stored.add(topic);
     memories.push({
       kind: "knowledge",
       title: `mock memory ${topic}`,

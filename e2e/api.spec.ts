@@ -100,6 +100,33 @@ test.describe("/api/chat", () => {
     expect(llm.body.messages[0].content).not.toContain("[Tool Usage]");
   });
 
+  test("stores a fact once, though later turns still carry it in the conversation", async ({ request, mock }) => {
+    const titles = async () => {
+      const { memories } = await (await request.get("/api/memories")).json();
+      return memories.map((memory: { title: string }) => memory.title);
+    };
+    await chat(request, "my code is REMEMBER_heron");
+    await expect.poll(titles).toContain("mock memory heron");
+    const extractions = (await mock.log("extraction")).length;
+
+    // Nothing in the last message is like the memory, so RAG doesn't find it
+    const response = await request.post("/api/chat", {
+      data: {
+        messages: [
+          { role: "user", content: "my code is REMEMBER_heron" },
+          { role: "assistant", content: "mock reply to: my code is REMEMBER_heron" },
+          { role: "user", content: "jjjj" },
+        ],
+      },
+    });
+    expect(response.status()).toBe(200);
+    await expect.poll(async () => (await mock.log("extraction")).length).toBe(extractions + 1);
+    // Leaves time to store anything the extraction returned
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    expect((await titles()).filter((title: string) => title === "mock memory heron")).toHaveLength(1);
+  });
+
   test("extracts memories after replying and finds them in later requests", async ({ request, mock }) => {
     await chat(request, "my code is REMEMBER_canary");
 
