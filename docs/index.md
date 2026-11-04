@@ -13,8 +13,8 @@ hero:
       text: Get Started
       link: /guide/getting-started
     - theme: alt
-      text: Recommended Setup
-      link: /guide/recommended-setup
+      text: Docker Setup
+      link: /guide/docker
     - theme: alt
       text: View on GitHub
       link: https://github.com/orangekame3/mirrormate

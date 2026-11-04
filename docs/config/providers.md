@@ -119,6 +119,8 @@ providers:
       temperature: 0.7
 ```
 
+`localhost` works under `bun run dev`. Under `docker compose`, it's the app's own container, so use the IP address of the machine running Ollama, as in [Services on Another Machine](#services-on-another-machine).
+
 #### Recommended Models for Japanese
 
 | Model | Size | Japanese Quality | Tool Calling | Speed |
@@ -391,41 +393,7 @@ providers:
 
 ### Ollama Embedding
 
-```yaml
-providers:
-  embedding:
-    enabled: true
-    provider: ollama  # PLaMo server provides Ollama-compatible API
-    ollama:
-      model: plamo-embedding-1b
-      baseUrl: "http://studio:8000"  # PLaMo embedding server
-```
-
-#### Recommended Embedding Models
-
-| Model | Dimensions | Description |
-|-------|------------|-------------|
-| `plamo-embedding-1b` | 2048 | Japanese-optimized, top JMTEB scores (recommended) |
-| `bge-m3` | 1024 | Multi-lingual, good quality (alternative) |
-| `nomic-embed-text` | 768 | Fast, English-focused |
-
-### Setup
-
-#### Option 1: PLaMo-Embedding-1B (Recommended for Japanese)
-
-PLaMo-Embedding-1B provides superior Japanese text embedding. See [Recommended Setup](/guide/recommended-setup) for full instructions.
-
-```bash
-# On Mac Studio
-docker compose -f compose.studio.yaml up -d
-```
-
-#### Option 2: Ollama with bge-m3 (Alternative)
-
-```bash
-ollama serve
-ollama pull bge-m3
-```
+Pull the model where Ollama runs (`ollama pull bge-m3`), then:
 
 ```yaml
 providers:
@@ -434,8 +402,15 @@ providers:
     provider: ollama
     ollama:
       model: bge-m3
-      baseUrl: "http://localhost:11434"
+      baseUrl: "http://localhost:11434"  # An IP address under docker compose
 ```
+
+#### Recommended Embedding Models
+
+| Model | Dimensions | Description |
+|-------|------------|-------------|
+| `bge-m3` | 1024 | Multilingual, including Japanese (the default) |
+| `nomic-embed-text` | 768 | Fast, English-focused |
 
 ---
 
@@ -502,9 +477,15 @@ The avatar page also needs its speech settings from the app's own server (`/api/
 
 ---
 
-## Remote Server Configuration
+## Services on Another Machine
 
-Recommended setup: Run heavy services (Ollama, PLaMo) on a powerful server (e.g., Mac Studio) and connect via Tailscale:
+Ollama and local Whisper can run on another machine, such as one with a GPU, or when a Raspberry Pi can't spare the memory for Whisper. The app reaches them by that machine's IP address, such as its Tailscale IP (`tailscale ip -4`). Under `docker compose`, `localhost` is the app's own container, so use the IP address even for Ollama on the same machine.
+
+Mirror Mate sends neither of them a key, so anything that reaches their ports can use them. Keep those machines on a trusted network, such as Tailscale, or restrict their ports with a firewall. Restart the app after changing `config/providers.yaml`.
+
+### Ollama
+
+Ollama only listens on localhost unless told otherwise, so start it with `OLLAMA_HOST=0.0.0.0` on its machine. Then set `baseUrl` for each provider that uses it:
 
 ```yaml
 # config/providers.yaml
@@ -513,23 +494,48 @@ providers:
     provider: ollama
     ollama:
       model: "gpt-oss:20b"
-      baseUrl: "http://studio:11434"  # Tailscale hostname
+      baseUrl: "http://100.x.x.x:11434"
 
   embedding:
-    enabled: true
-    provider: ollama  # PLaMo server provides Ollama-compatible API
+    provider: ollama
     ollama:
-      model: plamo-embedding-1b
-      baseUrl: "http://studio:8000"  # PLaMo embedding server
+      model: bge-m3
+      baseUrl: "http://100.x.x.x:11434"
 
-  memory:
-    enabled: true
-    rag:
-      topK: 8
-      threshold: 0.3
-    extraction:
-      autoExtract: true
-      minConfidence: 0.5
+  vlm:
+    provider: ollama
+    ollama:
+      model: llava:7b
+      baseUrl: "http://100.x.x.x:11434"
 ```
 
-See [Docker Documentation](/guide/docker) for details.
+### Local Whisper
+
+Whisper on another machine hears everything said in the room while Mirror Mate waits for the wake word, so only use a machine you trust with that. Run `speaches` there with the image and settings from `compose.yaml`, publishing its port on the address the app reaches it by. Docker can only publish on an address that exists when the container starts, so Tailscale must be up first:
+
+```bash
+docker run -d --name whisper --restart unless-stopped \
+  -p 100.x.x.x:8000:8000 \
+  -e 'PRELOAD_MODELS=["Systran/faster-whisper-small"]' \
+  -e ENABLE_UI=false -e WHISPER__INFERENCE_DEVICE=cpu -e STT_MODEL_TTL=-1 \
+  -v whisper-models:/home/ubuntu/.cache/huggingface/hub \
+  ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cpu@sha256:2163775b6df5e451a71200e8f675fed68dbd8ab184fc604453d549e486f22fd2
+```
+
+Then point the app at it:
+
+```yaml
+providers:
+  stt:
+    local:
+      baseUrl: "http://100.x.x.x:8000"
+      model: Systran/faster-whisper-small
+```
+
+`compose.yaml` would still start its own Whisper as well, so start only the app:
+
+```bash
+docker compose up -d --no-deps mirrormate
+```
+
+See [Docker Setup](/guide/docker) for details.

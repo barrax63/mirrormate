@@ -1,105 +1,38 @@
 # Docker Setup
 
-Mirror Mate can be deployed using Docker with a recommended split architecture.
+`compose.yaml` runs Mirror Mate and local Whisper on one machine, such as a Raspberry Pi. Everything else goes to OpenAI and ElevenLabs, unless you point it at Ollama.
 
-## Recommended Architecture
+## Architecture
 
-Run heavy services on a powerful server (e.g., Mac Studio) and the UI on a lightweight device (e.g., Raspberry Pi), connected via Tailscale. Local Whisper runs next to the app, because it hears everything said in the room while the app waits for the wake word:
+Local Whisper runs next to the app, because it hears everything said in the room while the app waits for the wake word:
 
 ```mermaid
 flowchart TB
-    subgraph Tailscale["Tailscale Network"]
-        subgraph Studio["Mac Studio (studio)"]
-            Ollama["Ollama (native)<br/>:11434"]
-            PLaMo["PLaMo-Embedding (Docker)<br/>:8000"]
+    subgraph Host["Raspberry Pi (or any machine)"]
+        subgraph MM["mirrormate :3000"]
+            App["Next.js App"]
+            SQLite[(SQLite<br/>Memory)]
         end
-
-        subgraph RPi["Raspberry Pi"]
-            subgraph MM["mirrormate :3000"]
-                App["Next.js App"]
-                SQLite[(SQLite<br/>Memory)]
-            end
-            Whisper["whisper (speaches)<br/>no published port"]
-            Volume[("mirrormate-data<br/>volume")] -.-> SQLite
-        end
-
-        MM -->|http://studio:11434| Ollama
-        MM -->|http://studio:8000| PLaMo
-        MM -->|"http://whisper:8000<br/>before the wake word"| Whisper
+        Whisper["whisper (speaches)<br/>no published port"]
+        Volume[("mirrormate-data<br/>volume")] -.-> SQLite
     end
 
+    MM -->|"http://whisper:8000<br/>before the wake word"| Whisper
+    MM -->|"HTTPS<br/>replies, memory, vision,<br/>speech after the wake word"| OpenAI["OpenAI (cloud)"]
     MM -->|HTTPS| ElevenLabs["ElevenLabs (cloud)<br/>speech"]
-    MM -->|"HTTPS<br/>after the wake word"| OpenAI["OpenAI (cloud)<br/>speech recognition"]
+    MM -.->|"optional, by IP address"| Ollama["Ollama<br/>(another machine)"]
 ```
 
 ## Quick Start
-
-### Mac Studio Setup
-
-1. **Install Ollama (native)**
-
-```bash
-brew install ollama
-brew services start ollama
-ollama pull gpt-oss:20b
-```
-
-2. **Start Docker Services**
-
-```bash
-docker compose -f compose.studio.yaml up -d
-```
-
-This starts:
-- **PLaMo-Embedding-1B** (:8000) - Japanese-optimized embedding
-
-3. **Verify**
-
-```bash
-curl http://localhost:11434/api/tags    # Ollama
-curl http://localhost:8000/health       # PLaMo
-```
-
-### Raspberry Pi Setup
 
 1. **Create Environment File**
 
 ```bash
 cp .env.example .env
-# Set STUDIO_IP to the Mac Studio's Tailscale IP (tailscale ip -4) and add your API keys
+# Set OPENAI_API_KEY and ELEVENLABS_API_KEY
 ```
 
-2. **Configure providers.yaml**
-
-Ensure `config/providers.yaml` points to your Mac Studio:
-
-```yaml
-providers:
-  llm:
-    provider: ollama
-    ollama:
-      baseUrl: "http://studio:11434"  # Tailscale hostname
-
-  tts:
-    provider: elevenlabs  # Needs ELEVENLABS_API_KEY in .env
-
-  stt:
-    provider: openai  # What's said after the wake word. Needs OPENAI_API_KEY in .env
-    wakeWord:
-      provider: local  # Everything heard before it, which stays on this machine
-    local:
-      baseUrl: "http://whisper:8000"  # The whisper service in compose.yaml
-      model: Systran/faster-whisper-small
-
-  embedding:
-    provider: ollama
-    ollama:
-      baseUrl: "http://studio:8000"  # PLaMo server
-```
-
-Inside the container, `studio` resolves to `STUDIO_IP` through `extra_hosts` in `compose.yaml`, and `whisper` to the Whisper container.
-
-3. **Start the app and Whisper**
+2. **Start the app and Whisper**
 
 ```bash
 docker compose up -d
@@ -107,13 +40,21 @@ docker compose up -d
 
 The first start downloads the Whisper model, about half a gigabyte, into the `whisper-models` volume. The app only starts once Whisper answers on `/health`, so this takes a minute or more.
 
-4. **Access**
+3. **Access**
 
 Open http://localhost:3000
 
-## Compose Files
+## Ollama or Whisper on Another Machine
 
-### compose.yaml (App and Whisper - Raspberry Pi)
+Ollama is optional, and Whisper can run on another machine too, such as when a Raspberry Pi can't spare the memory. `config/providers.yaml` reaches both by the IP address of the machine they run on, such as its Tailscale IP (`tailscale ip -4`). Inside the container, `localhost` is the container itself, so use the IP address even if that's this machine. See [Services on Another Machine](/config/providers#services-on-another-machine) for the settings.
+
+With Whisper on another machine, start only the app, or `compose.yaml` starts its own Whisper as well:
+
+```bash
+docker compose up -d --no-deps mirrormate
+```
+
+## Compose File
 
 ```yaml
 services:
@@ -131,8 +72,6 @@ services:
       - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID}
       - OLLAMA_API_KEY=${OLLAMA_API_KEY}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
-    extra_hosts:
-      - "studio:${STUDIO_IP:-host-gateway}"
     volumes:
       - ./config:/app/config:ro
       - mirrormate-data:/app/data
@@ -160,21 +99,7 @@ volumes:
   whisper-models:
 ```
 
-The image is pinned to a digest, so it can't change under you. `speaches` answers `model: small` with a 404, so `stt.local.model` needs the full ID.
-
-### compose.studio.yaml (Services - Mac Studio)
-
-```yaml
-services:
-  # Embedding
-  plamo-embedding:
-    build:
-      context: ./plamo-server
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    restart: unless-stopped
-```
+The image is pinned to a digest, so it can't change under you. `speaches` answers `model: small` with a 404, so `stt.local.model` needs the full ID. Inside the app's container, `whisper` in `config/providers.yaml` resolves to the Whisper container.
 
 ## Network Access
 
@@ -192,7 +117,7 @@ BIND_ADDRESS=100.x.x.x  # for example, this machine's Tailscale IP (tailscale ip
 - Browsers only allow the mic and camera on localhost or HTTPS, so the avatar page needs one of those for voice and vision.
 - `/control` must run in the same browser as the avatar page, so another device can only use it for pages that don't need the avatar, such as `/control/memory`.
 
-The Whisper container publishes no port, so only the app can reach it. `compose.studio.yaml` publishes PLaMo on all interfaces, also without authentication, because an app on another machine has to reach it. Ollama with `OLLAMA_HOST=0.0.0.0` is the same. Keep that machine on a trusted network, such as Tailscale, or restrict those ports with a firewall.
+The Whisper container publishes no port, so only the app can reach it. Ollama with `OLLAMA_HOST=0.0.0.0`, and Whisper published on another machine, take no key from Mirror Mate either, so anything that reaches their ports can use them, and that Whisper hears the room. Keep those machines on a trusted network, such as Tailscale, or restrict those ports with a firewall.
 
 ## Data Persistence
 
@@ -230,10 +155,6 @@ OPENAI_API_KEY=sk-...
 # model training.
 ELEVENLABS_API_KEY=...
 
-# Optional: Tailscale IP of the machine running Ollama or PLaMo, if you use them.
-# Defaults to host-gateway, this machine.
-STUDIO_IP=100.x.x.x
-
 # Optional: Google Calendar
 GOOGLE_SERVICE_ACCOUNT_EMAIL=...
 GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
@@ -251,25 +172,21 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 
 ### Whisper
 
-`compose.yaml` runs Whisper on the CPU. On the x86 machine it was tested on, `small` took about 1.2 s per recording on 16 cores and 4.4 s on one, and used up to 2.6 GB of memory. It hasn't been measured on a Raspberry Pi, and a 2 GB Pi doesn't have the memory. On a machine that can't spare it, point `stt.local.baseUrl` at Whisper on another machine you trust with the room's audio, or use `Systran/faster-whisper-base`, which recognized the wake word less reliably in testing.
+`compose.yaml` runs Whisper on the CPU. On the x86 machine it was tested on, `small` took about 1.2 s per recording on 16 cores and 4.4 s on one, and used up to 2.6 GB of memory. It hasn't been measured on a Raspberry Pi, and a 2 GB Pi doesn't have the memory. On a machine that can't spare it, run [Whisper on another machine](#ollama-or-whisper-on-another-machine) you trust with the room's audio, or use `Systran/faster-whisper-base`, which recognized the wake word less reliably in testing.
 
 `speaches` also publishes CUDA images, which haven't been tried with Mirror Mate.
-
-### Apple Silicon (Mac Studio)
-
-Note: Metal GPU acceleration is not available in Docker containers.
 
 ## Troubleshooting
 
 ### Cannot connect to Ollama
 
-**Error**: Connection refused to `studio:11434`
+**Error**: Connection refused, or a timeout, for Ollama's `baseUrl` in the app's log
 
 **Solution**:
-1. Ensure Ollama is running on Mac Studio: `ollama serve` or `brew services start ollama`
-2. Verify Tailscale connection: `ping studio`
-3. Check Ollama is listening: `curl http://studio:11434/api/tags`
-4. Check `STUDIO_IP` in `.env`, and that Ollama listens on more than localhost (`OLLAMA_HOST=0.0.0.0`)
+1. Ensure Ollama is running on its machine: `curl http://localhost:11434/api/tags` there
+2. Check it listens beyond localhost: start it with `OLLAMA_HOST=0.0.0.0`
+3. Check this machine reaches it: `curl http://100.x.x.x:11434/api/tags`, with that machine's IP address
+4. Check `baseUrl` uses that IP address, not `localhost`, and restart the app after changing it
 
 ### Config changes not applied
 
@@ -285,23 +202,18 @@ While local Whisper is down, the wake word stops working. Nothing heard is sent 
 1. Check the Whisper container: `docker compose ps whisper`
 2. Check logs: `docker compose logs whisper`
 3. A 404 in the app's log means `stt.local.model` isn't a full model ID such as `Systran/faster-whisper-small`
+4. With Whisper on another machine, check `stt.local.baseUrl`, and that `curl http://100.x.x.x:8000/health` answers from this machine
+
+### No audio on Raspberry Pi
+
+Replies play from the device running the browser.
+
+**Solution**:
+1. Check audio output: `aplay -l`
+2. Set correct output: `raspi-config` → Audio
+3. Test: `speaker-test -t wav`
 
 ## Commands
-
-### Mac Studio
-
-```bash
-# Start PLaMo Embedding
-docker compose -f compose.studio.yaml up -d
-
-# View logs
-docker compose -f compose.studio.yaml logs -f
-
-# Stop
-docker compose -f compose.studio.yaml down
-```
-
-### Raspberry Pi
 
 ```bash
 # Start the app and Whisper
