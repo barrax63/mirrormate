@@ -57,10 +57,10 @@ describe("RAGService with memories from another embedding model", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  // A memory with a 2048-dimension vector, as PLaMo stored them, and one with no vector
+  // A memory with a 2048-dimension vector from an earlier model, and one with no vector
   async function storeOldMemories() {
     const coffee = await repo.create({ userId: USER, kind: "knowledge", title: "Favorite drink", content: "coffee" });
-    await repo.saveEmbedding(coffee.id, new Array(2048).fill(0.01), "plamo-embedding-1b", 2048);
+    await repo.saveEmbedding(coffee.id, new Array(2048).fill(0.01), "earlier-embedding-model", 2048);
     const birthday = await repo.create({ userId: USER, kind: "knowledge", title: "Sister's birthday", content: "June 3" });
     return { coffee, birthday };
   }

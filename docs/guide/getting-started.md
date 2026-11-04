@@ -31,30 +31,29 @@ To use Japanese, see [Language Support](#language-support).
 
 ### Option 2: Ollama and local Whisper
 
-To keep the LLM, embeddings and speech recognition on your own machine. Speech output still needs an ElevenLabs key:
+To keep replies, memory, vision and speech recognition on your own hardware, run [Ollama](https://ollama.com/) on a machine that can handle it, such as one with a GPU. Speech output still needs an ElevenLabs key:
 
 ```bash
-# 1. Install and start Ollama
-ollama serve
+# 1. Where Ollama runs: listen beyond localhost, so the app's container can reach it
+OLLAMA_HOST=0.0.0.0 ollama serve
 ollama pull gpt-oss:20b
+ollama pull bge-m3
+ollama pull llava:7b
 
-# 2. Clone Mirror Mate and start PLaMo Embedding
+# 2. Where Mirror Mate runs: set ELEVENLABS_API_KEY, and the providers (see below)
 git clone https://github.com/barrax63/mirrormate.git
 cd mirrormate
-docker compose -f compose.studio.yaml up -d
-
-# 3. Set ELEVENLABS_API_KEY, and point Mirror Mate at those services (see below)
 cp .env.example .env
 
-# 4. Start Mirror Mate and local Whisper
+# 3. Start Mirror Mate and local Whisper
 docker compose up -d
 ```
 
-In `config/providers.yaml`, set `provider: ollama` for `llm`, `embedding` and `vlm`, with `baseUrl: "http://studio:11434"` under `ollama` for the LLM and VLM, and `"http://studio:8000"` for embedding. Inside the container, `studio` is this machine, or the one `STUDIO_IP` in `.env` names.
+In `config/providers.yaml`, set `provider: ollama` for `llm`, `embedding` and `vlm`, and `baseUrl` under each of their `ollama` sections to the IP address of the machine running Ollama, such as `http://100.x.x.x:11434`. Use its IP address even if it's this machine: inside the container, `localhost` is the container itself. See [Services on Another Machine](/config/providers#services-on-another-machine).
 
-Ollama must listen on an address the container can reach (`OLLAMA_HOST=0.0.0.0`). It has no authentication, so only do this on a trusted network.
+Ollama has no authentication, so only let it listen on a trusted network.
 
-Local Whisper only hears the room until the wake word. To keep what's said after it local too, set `stt.provider: local` in `config/providers.yaml`.
+Local Whisper only hears the room until the wake word. To keep what's said after it local too, set `stt.provider: local` in `config/providers.yaml`. Otherwise it goes to OpenAI, which needs `OPENAI_API_KEY`.
 
 Open http://localhost:3000 in Chrome or Brave. Say **"Hey Mira"** (English) or **"OK ミラ"** (Japanese) to start talking!
 
@@ -136,7 +135,6 @@ This project uses [Bun](https://bun.sh/) as the package manager for faster insta
 
 ## Next Steps
 
-- [Recommended Setup](/guide/recommended-setup) - Production setup with Tailscale, Mac Studio & Raspberry Pi
 - [Architecture Overview](/guide/architecture) - Understand how Mirror Mate works
 - [Docker Setup](/guide/docker) - Detailed Docker configuration
 - [Locale Presets](/config/presets) - Configure locale-specific settings

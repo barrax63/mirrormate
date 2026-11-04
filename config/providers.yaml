@@ -9,8 +9,9 @@ providers:
       temperature: 0.7
     ollama:
       model: gpt-oss:20b
-      # baseUrl defaults to http://localhost:11434, which is the app's own container in
-      # compose.yaml. Ollama on the machine STUDIO_IP names is http://studio:11434.
+      # baseUrl defaults to http://localhost:11434, which in compose.yaml is the app's own
+      # container. Use the IP address of the machine running Ollama, even if that's this one,
+      # such as http://100.x.x.x:11434.
       maxTokens: 300
       temperature: 0.7
 
@@ -50,12 +51,12 @@ providers:
 
   embedding:
     enabled: true
-    provider: openai  # openai or ollama. PLaMo server provides Ollama-compatible API
+    provider: openai  # openai or ollama
     openai:
       model: text-embedding-3-small
     ollama:
-      model: plamo-embedding-1b
-      # PLaMo from compose.studio.yaml, on the machine STUDIO_IP names, is http://studio:8000
+      model: bge-m3
+      # baseUrl as for the LLM
 
   memory:
     enabled: true

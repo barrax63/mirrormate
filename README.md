@@ -69,16 +69,17 @@ Just talk to the mirror.
 │         ▲                 │         ┌────────────────────────┐  │
 │         │                 ├────────►│  Whisper (wake word)   │  │
 │         │                 │         └────────────────────────┘  │
-│         │                 │ Tailscale VPN                       │
+│         │                 │ HTTPS                               │
 └─────────┼─────────────────┼─────────────────────────────────────┘
           │                 ▼
           │   ┌─────────────────────────────────────────────────┐
-          │   │                  Mac Studio                     │
-          │   │  ┌────────────┐ ┌──────────────┐                │
-          │   │  │  Ollama    │ │  PLaMo       │                │
-          │   │  │  LLM/VLM   │ │  Embedding   │                │
-          │   │  │  Port 11434│ │  Port 8000   │                │
-          │   │  └────────────┘ └──────────────┘                │
+          │   │                      Cloud                      │
+          │   │  ┌────────────────────┐ ┌──────────────────┐    │
+          │   │  │  OpenAI            │ │  ElevenLabs      │    │
+          │   │  │  LLM, embedding,   │ │  Speech output   │    │
+          │   │  │  VLM, speech after │ │                  │    │
+          │   │  │  the wake word     │ │                  │    │
+          │   │  └────────────────────┘ └──────────────────┘    │
           │   └─────────────────────────────────────────────────┘
           │
           └── Half Mirror + Monitor
@@ -86,7 +87,7 @@ Just talk to the mirror.
 
 **Minimal setup**: Raspberry Pi + OpenAI and ElevenLabs API keys
 
-**With a local server**: Combine with Mac Studio (or any GPU machine) as shown above. Speech output still comes from ElevenLabs.
+**With a local server**: Ollama on another machine, such as one with a GPU, can take over replies, memory and vision. Speech output still comes from ElevenLabs. See `docs/config/providers.md`.
 
 ---
 
@@ -124,7 +125,7 @@ Lip-synced avatar speaks responses. Eight animation states (Idle, Listening, Thi
 | LLM       | OpenAI, Ollama                                |
 | TTS       | ElevenLabs                                    |
 | STT       | OpenAI, Local Whisper                         |
-| Embedding | Ollama, PLaMo-Embedding-1B                    |
+| Embedding | OpenAI, Ollama                                |
 
 ### Built-in Integrations
 - Weather (Open-Meteo)

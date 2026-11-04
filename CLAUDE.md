@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-MirrorMate is a voice-first AI avatar shown behind a half mirror. It is one Next.js 15 App Router app (`output: "standalone"`), typically on a Raspberry Pi, with local Whisper (`speaches`) next to it for the wake word, heavy services (Ollama, PLaMo embedding) optionally on another host, and ElevenLabs for speech. It is effectively single-user: requests fall back to `default-user`, and locale is server-wide.
+MirrorMate is a voice-first AI avatar shown behind a half mirror. It is one Next.js 15 App Router app (`output: "standalone"`), typically on a Raspberry Pi, with local Whisper (`speaches`) next to it for the wake word, ElevenLabs for speech output, and OpenAI for everything else, or optionally Ollama on another host. It is effectively single-user: requests fall back to `default-user`, and locale is server-wide.
 
 ## Commands
 
@@ -32,7 +32,6 @@ bun audit --prod --audit-level=high             # the dependency check CI runs
 bun run docs:dev                                # VitePress site in docs/
 
 docker compose up -d                            # app and local Whisper; needs both keys in .env
-docker compose -f compose.studio.yaml up -d     # PLaMo (Ollama runs natively)
 ```
 
 Use `bun run test`, not `bun test`: the latter starts Bun's own runner instead of Vitest.
@@ -69,7 +68,7 @@ Tool effects (confetti and similar) return through module-level pending state in
 
 ### Memory
 
-Embeddings are BLOBs in SQLite, searched by brute-force cosine similarity in JS (`searchSimilar` in `src/lib/repositories/memory.ts`). RAG needs both `providers.embedding.enabled` and `providers.memory.enabled`. The embedding providers are `openai` and `ollama`; `plamo-server/` works with the latter by implementing Ollama's `/api/embed`. Each vector is stored with its model's name, `searchSimilar` only compares vectors from the query's model, and `RAGService` first embeds any memory that has no vector from the current model, so changing the embedding model re-embeds everything on the next chat request.
+Embeddings are BLOBs in SQLite, searched by brute-force cosine similarity in JS (`searchSimilar` in `src/lib/repositories/memory.ts`). RAG needs both `providers.embedding.enabled` and `providers.memory.enabled`. The embedding providers are `openai` and `ollama`. Each vector is stored with its model's name, `searchSimilar` only compares vectors from the query's model, and `RAGService` first embeds any memory that has no vector from the current model, so changing the embedding model re-embeds everything on the next chat request.
 
 ### Configuration
 
@@ -89,14 +88,13 @@ How the layers resolve:
 Things that are easy to miss:
 
 - User-facing and prompt text must exist in both `en` and `ja`: the locale YAML, the `messages` files, and inline `getLocale() === "ja"` branches in server code.
-- The committed `config/providers.yaml` uses OpenAI and ElevenLabs, with local Whisper at `http://whisper:8000`, compose's Whisper service. Under `bun run dev`, make `whisper` resolve or use another config through `PROVIDERS_CONFIG`. Ollama and PLaMo reach another machine as `http://studio:*`, a hostname that only compose's `extra_hosts` defines, as `STUDIO_IP` or this machine.
+- The committed `config/providers.yaml` uses OpenAI and ElevenLabs, with local Whisper at `http://whisper:8000`, compose's Whisper service. Under `bun run dev`, make `whisper` resolve or use another config through `PROVIDERS_CONFIG`. Ollama, and Whisper on another machine, are reached by IP address in their `baseUrl`, since `localhost` in compose's container is the container itself.
 - `compose.yaml` passes an explicit env list that omits `LOCALE` and the `*_PROVIDER` variables, so setting them in `.env` has no effect there. A new key, like `ELEVENLABS_API_KEY`, has to be added to that list.
-- No API route has authentication, so `compose.yaml` publishes port 3000 on localhost only, unless `BIND_ADDRESS` says otherwise. `compose.studio.yaml` still publishes on all interfaces, because an app on another machine has to reach it.
+- No API route has authentication, so `compose.yaml` publishes port 3000 on localhost only, unless `BIND_ADDRESS` says otherwise.
 - `next build` prerenders pages, so UI strings and `<html lang>` use the locale at build time. Changing `LOCALE` or `app.yaml` afterwards only switches the server side (wake word, prompts, database, presets). `next dev` renders per request, which hides this.
 - The voice selector on `/control` lists the ElevenLabs account's voices, which `src/instrumentation.ts` loads once when the server starts, so restart to see voices added in ElevenLabs. Listing them needs the key's `voices_read` permission. The voice picked is saved in `user_settings.voice` and sent to `/api/tts` as `voice`. A character's `recommendedVoice` only applies if it's in that list.
 - `/api/tts` removes emoji and markdown before speech, so what's spoken can differ from the reply on screen. ElevenLabs answers a wrong key, a missing permission and running out of credits all with a 401, and only `detail.status` tells them apart (`invalid_api_key`, `missing_permissions`, `quota_exceeded`).
 - `/api/stt`, `/api/chat` and `/api/tts` answer failures with a `code` and `service` (`src/lib/errors/`), which both pages show in `messages/*.json` text and share over the channel through `useServiceErrors`. After a missing or rejected key, a missing permission, no credit, a spending limit or a rate limit, the avatar page skips that route for a while instead of asking on every utterance. The OpenAI clients have `maxRetries: 0`, so one request reaches OpenAI per attempt.
-- `plamo-server` pins `sentencepiece`, `transformers` and the model revision (`PLAMO_REVISION` in its Dockerfile), because the model's remote code breaks on newer packages. When changing any of them, test `/api/embed` as well as the build: `transformers` 5 builds fine and only fails there.
 
 ### Database
 

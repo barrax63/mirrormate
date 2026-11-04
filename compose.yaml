@@ -3,10 +3,8 @@
 # OPENAI_API_KEY and ELEVENLABS_API_KEY.
 # Usage: docker compose up -d
 #
-# Optional: to use Ollama or PLaMo instead, as http://studio:... in config/providers.yaml, set
-# STUDIO_IP in .env to the machine running them:
-#   STUDIO_IP=host-gateway   this machine, the default
-#   STUDIO_IP=100.x.x.x      another machine, such as its Tailscale IP (tailscale ip -4)
+# Optional: config/providers.yaml reaches Ollama, or Whisper on another machine, by IP address.
+# With Whisper elsewhere, start only the app: docker compose up -d --no-deps mirrormate
 
 services:
   mirrormate:
@@ -24,8 +22,6 @@ services:
       - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID}
       - OLLAMA_API_KEY=${OLLAMA_API_KEY}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
-    extra_hosts:
-      - "studio:${STUDIO_IP:-host-gateway}"
     volumes:
       - ./config:/app/config:ro
       - mirrormate-data:/app/data

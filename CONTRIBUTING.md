@@ -35,7 +35,7 @@ For questions about usage or development, create an issue using the **Question**
 
 - Node.js 22+
 - bun
-- Docker (optional, for the services in `compose.studio.yaml`)
+- Docker (optional, for `compose.yaml`, which runs the app and local Whisper)
 
 ### Local Development
 
@@ -129,7 +129,6 @@ mirrormate/
 ├── config/           # YAML configuration files
 ├── docs/             # Documentation
 ├── messages/         # i18n translation files
-├── plamo-server/     # PLaMo embedding server
 ├── plugins/          # Local plugins
 └── src/
     ├── app/          # Next.js pages and API routes
