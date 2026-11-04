@@ -17,11 +17,15 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
-      - GOOGLE_SERVICE_ACCOUNT_EMAIL=${GOOGLE_SERVICE_ACCOUNT_EMAIL}
-      - GOOGLE_PRIVATE_KEY=${GOOGLE_PRIVATE_KEY}
-      - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID}
-      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      # Optional, so blank without a warning when .env doesn't set them. The app ignores blank values.
+      - LOCALE=${LOCALE:-}
+      - LLM_PROVIDER=${LLM_PROVIDER:-}
+      - STT_PROVIDER=${STT_PROVIDER:-}
+      - GOOGLE_SERVICE_ACCOUNT_EMAIL=${GOOGLE_SERVICE_ACCOUNT_EMAIL:-}
+      - GOOGLE_PRIVATE_KEY=${GOOGLE_PRIVATE_KEY:-}
+      - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID:-}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
     volumes:
       - ./config:/app/config:ro
       - mirrormate-data:/app/data

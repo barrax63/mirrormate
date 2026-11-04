@@ -3,6 +3,10 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 
+// Rendered on each request, so <html lang> and the UI text follow LOCALE and config/app.yaml as
+// the server finds them, not as they were when the app was built
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Mirror Mate",
   description: "Your friendly AI companion for smart mirror displays",
