@@ -155,9 +155,11 @@ features:
 ### Output Example
 
 ```
-Today's schedule: 10:00 AM Team Meeting, 02:00 PM 1-on-1
+Today's schedule: all day Holiday, 10:00 AM Team Meeting, 02:00 PM 1-on-1
 Next event: 10:00 AM Team Meeting (in 30 min)
 ```
+
+Times, and which day is today, follow the time feature's timezone, or the locale preset's, not the server's own, which is UTC in Docker. All-day events say "all day" instead of a time, and get no reminders.
 
 Without the environment variables, or when the calendar can't be loaded, it says the schedule is unknown, so the LLM doesn't guess at one, such as calling tomorrow clear:
 

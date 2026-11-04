@@ -59,6 +59,11 @@ export function loadFeaturesConfig(): FeaturesConfig {
   return cachedConfig;
 }
 
+/** The timezone the app tells times in: the time feature's, or the locale preset's */
+export function getTimezone(): string {
+  return loadFeaturesConfig().features.time?.timezone || getTimePreset().timezone;
+}
+
 export function clearFeaturesConfigCache(): void {
   cachedConfig = null;
 }

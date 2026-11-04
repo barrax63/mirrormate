@@ -1,9 +1,12 @@
 import { google, calendar_v3 } from "googleapis";
+import { localDateIn, midnightIn, parseLocalDate } from "./zones";
 
 export interface CalendarEvent {
   summary: string;
   start: Date;
   end: Date;
+  /** An event with a date but no time. It starts and ends at midnight in the timezone. */
+  allDay: boolean;
 }
 
 function getAuth() {
@@ -21,8 +24,10 @@ function getAuth() {
   });
 }
 
+// An all-day event's date is a day in timeZone, so it starts at midnight there, not in UTC
 function parseEventDate(
-  eventDateTime: calendar_v3.Schema$EventDateTime | undefined
+  eventDateTime: calendar_v3.Schema$EventDateTime | undefined,
+  timeZone: string
 ): Date {
   if (!eventDateTime) {
     return new Date();
@@ -31,43 +36,47 @@ function parseEventDate(
     return new Date(eventDateTime.dateTime);
   }
   if (eventDateTime.date) {
-    return new Date(eventDateTime.date);
+    return midnightIn(timeZone, parseLocalDate(eventDateTime.date));
   }
   return new Date();
 }
 
+function toCalendarEvent(event: calendar_v3.Schema$Event, timeZone: string): CalendarEvent {
+  return {
+    summary: event.summary || "無題の予定",
+    start: parseEventDate(event.start, timeZone),
+    end: parseEventDate(event.end, timeZone),
+    allDay: !event.start?.dateTime && !!event.start?.date,
+  };
+}
+
+/** Events on today's date in timeZone */
 export async function fetchTodayEvents(
   calendarId: string,
-  maxResults: number
+  maxResults: number,
+  timeZone: string
 ): Promise<CalendarEvent[]> {
   const auth = getAuth();
   const calendar = google.calendar({ version: "v3", auth });
 
-  const now = new Date();
-  const startOfDay = new Date(now);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(now);
-  endOfDay.setHours(23, 59, 59, 999);
-
+  const today = localDateIn(timeZone, new Date());
   const response = await calendar.events.list({
     calendarId,
-    timeMin: startOfDay.toISOString(),
-    timeMax: endOfDay.toISOString(),
+    // Events that end after today starts, and start before tomorrow does
+    timeMin: midnightIn(timeZone, today).toISOString(),
+    timeMax: midnightIn(timeZone, { ...today, day: today.day + 1 }).toISOString(),
     maxResults,
     singleEvents: true,
     orderBy: "startTime",
   });
 
-  return (response.data.items || []).map((event) => ({
-    summary: event.summary || "無題の予定",
-    start: parseEventDate(event.start),
-    end: parseEventDate(event.end),
-  }));
+  return (response.data.items || []).map((event) => toCalendarEvent(event, timeZone));
 }
 
 export async function fetchUpcomingEvents(
   calendarId: string,
-  maxResults: number
+  maxResults: number,
+  timeZone: string
 ): Promise<CalendarEvent[]> {
   const auth = getAuth();
   const calendar = google.calendar({ version: "v3", auth });
@@ -82,9 +91,5 @@ export async function fetchUpcomingEvents(
     orderBy: "startTime",
   });
 
-  return (response.data.items || []).map((event) => ({
-    summary: event.summary || "無題の予定",
-    start: parseEventDate(event.start),
-    end: parseEventDate(event.end),
-  }));
+  return (response.data.items || []).map((event) => toCalendarEvent(event, timeZone));
 }
