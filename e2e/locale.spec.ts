@@ -37,7 +37,7 @@ test.describe("Japanese server", () => {
 
     await avatar.hear(`${phrase.replace(" ", "、")}。`);
 
-    await expect(avatar.page.getByText("In Conversation")).toBeVisible();
+    await expect(avatar.page.getByText("会話中")).toBeVisible();
     const [wakeWord] = await mock.localTranscriptions();
     expect(wakeWord.language).toBe("ja");
 
@@ -75,22 +75,24 @@ test.describe("Japanese server", () => {
     expect(await titles(JA_URL)).not.toContain("english only");
   });
 
-  test("known bug: serves <html lang=\"ja\">", async ({ page }) => {
+  // The build is English, so these show that the locale applies at runtime
+  test("serves <html lang=\"ja\">", async ({ page }) => {
     await page.goto("/control");
-    await expect(page.locator("html")).toHaveAttribute("lang", /.+/);
 
-    test.fail(true, "Pages are prerendered in the locale used at build time");
-    await expect(page.locator("html")).toHaveAttribute("lang", "ja", { timeout: 2000 });
+    await expect(page.locator("html")).toHaveAttribute("lang", "ja");
   });
 
-  test("known bug: serves Japanese UI text", async ({ page }) => {
+  test("serves Japanese UI text", async ({ page }) => {
     await page.goto("/control");
-    await expect(page.locator("form input")).toHaveAttribute("placeholder", /.+/);
 
-    test.fail(true, "Pages are prerendered in the locale used at build time");
-    await expect(page.locator("form input")).toHaveAttribute("placeholder", "メッセージを入力...", {
-      timeout: 2000,
-    });
+    await expect(page.locator("form input")).toHaveAttribute("placeholder", "メッセージを入力...");
+  });
+
+  test("serves Japanese in the HTML itself, before any script runs", async ({ request }) => {
+    for (const path of ["/", "/control"]) {
+      expect(await (await request.get(path)).text()).toContain('<html lang="ja"');
+    }
+    expect(await (await request.get("/control")).text()).toContain('placeholder="メッセージを入力..."');
   });
 
   test("replies with the Japanese character's line when the LLM gives no text", async ({ request }) => {

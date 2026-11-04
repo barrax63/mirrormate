@@ -102,13 +102,9 @@ This single setting automatically configures:
 | `ja` | Asia/Tokyo | Tokyo, Osaka | Japanese | 24h |
 | `en` | America/Los_Angeles | San Francisco, New York | English | 12h |
 
-::: warning Language limits
-- **UI text** uses the locale at build time, because pages are prerendered. After changing the locale on a built app, rebuild to change UI text (`docker compose up -d --build`). `bun run dev` only needs a restart.
-:::
-
 You can customize these defaults by editing `config/presets/[lang].yaml`. See [Locale Presets](/config/presets) for details.
 
-You can also set the locale via environment variable (overrides config file):
+You can also set the locale via environment variable (overrides config file), such as in `.env`. With Docker, run `docker compose up -d` afterwards to restart the app with it:
 
 ```bash
 LOCALE=en  # or ja

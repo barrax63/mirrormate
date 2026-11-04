@@ -67,11 +67,14 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
-      - GOOGLE_SERVICE_ACCOUNT_EMAIL=${GOOGLE_SERVICE_ACCOUNT_EMAIL}
-      - GOOGLE_PRIVATE_KEY=${GOOGLE_PRIVATE_KEY}
-      - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID}
-      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - LOCALE=${LOCALE:-}
+      - LLM_PROVIDER=${LLM_PROVIDER:-}
+      - STT_PROVIDER=${STT_PROVIDER:-}
+      - GOOGLE_SERVICE_ACCOUNT_EMAIL=${GOOGLE_SERVICE_ACCOUNT_EMAIL:-}
+      - GOOGLE_PRIVATE_KEY=${GOOGLE_PRIVATE_KEY:-}
+      - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID:-}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
     volumes:
       - ./config:/app/config:ro
       - mirrormate-data:/app/data
@@ -155,6 +158,13 @@ OPENAI_API_KEY=sk-...
 # model training.
 ELEVENLABS_API_KEY=...
 
+# Optional: the language, en or ja, in place of config/app.yaml's
+LOCALE=en
+
+# Optional: llm.provider and stt.provider in place of config/providers.yaml's
+LLM_PROVIDER=openai
+STT_PROVIDER=openai
+
 # Optional: Google Calendar
 GOOGLE_SERVICE_ACCOUNT_EMAIL=...
 GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
@@ -167,6 +177,8 @@ OLLAMA_API_KEY=your-ollama-api-key
 # Optional: Discord Integration
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
+
+`compose.yaml` passes only these to the app. After changing `.env`, run `docker compose up -d`, which recreates the app with the new values. `docker compose restart` keeps the old ones.
 
 ## GPU Support
 
