@@ -142,7 +142,7 @@ providers:
 
 Every message sent again costs tokens on a paid LLM, so each request carries only the last `historyLimit` messages, starting at a question.
 
-> **Note**: With `gpt-oss:20b`, reasoning counts against `maxTokens`. At 300, longer prompts such as the `good night` rule use up the limit before any reply is written, so the response is empty. Raising `maxTokens` helps, though gpt-oss can still occasionally return an empty reply.
+> **Note**: With `gpt-oss:20b`, reasoning counts against `maxTokens`. At 300, longer prompts such as the `good night` rule use up the limit before any reply is written. The app then asks once more without tools, and if that's empty too, the avatar says the character's `fallbackReply`. Raising `maxTokens` helps, though gpt-oss can still occasionally return an empty reply.
 
 ---
 

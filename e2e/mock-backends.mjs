@@ -5,10 +5,13 @@
 // don't accept.
 //
 // Words in the last user message choose what the fake LLM does:
-//   CALL_LOOP     calls a tool every time, so the route hits its iteration limit
+//   CALL_LOOP     calls a tool every time it's offered one, so the route hits its iteration limit
 //   CALL_EFFECT   calls show_effect once, then replies
 //   CALL_CAMERA   calls see_camera once, then replies
+//   EMPTY_REPLY   replies with no text, every time
 //   REMEMBER_xyz  memory extraction stores a memory about xyz
+//
+// Like the real model, it only calls tools that the request offers.
 //
 // And in text for speech, QUOTA_EXCEEDED makes the fake ElevenLabs answer as it does when the
 // account is out of credits.
@@ -115,14 +118,16 @@ function extractionReply(messages) {
   );
 }
 
-function llmReply(messages) {
+function llmReply({ messages, tools }) {
   const user = messages.findLast((m) => m.role === "user")?.content ?? "";
   const toolResults = messages.filter((m) => m.role === "tool").map((m) => m.content);
+  const offered = (name) => tools?.some((tool) => tool.function.name === name);
 
-  if (user.includes("CALL_LOOP")) return toolCall("show_effect", { effect: "hearts" });
+  if (user.includes("EMPTY_REPLY")) return reply("");
+  if (user.includes("CALL_LOOP") && offered("show_effect")) return toolCall("show_effect", { effect: "hearts" });
   if (toolResults.length > 0) return reply(`mock reply after tool: ${toolResults.join(" | ")}`);
-  if (user.includes("CALL_EFFECT")) return toolCall("show_effect", { effect: "confetti" });
-  if (user.includes("CALL_CAMERA")) return toolCall("see_camera", { focus: "their hands" });
+  if (user.includes("CALL_EFFECT") && offered("show_effect")) return toolCall("show_effect", { effect: "confetti" });
+  if (user.includes("CALL_CAMERA") && offered("see_camera")) return toolCall("see_camera", { focus: "their hands" });
   return reply(`mock reply to: ${user}`);
 }
 
@@ -345,7 +350,7 @@ function handle(req, res, body, raw) {
       if (rejected) return sendOpenAIError(res, ...rejected);
       if (kind === "vlm") return sendJson(res, reply("person holding a mug"));
       if (kind === "extraction") return sendJson(res, extractionReply(body.messages));
-      return sendJson(res, llmReply(body.messages));
+      return sendJson(res, llmReply(body));
     }
     case "/v1/audio/transcriptions":
       return transcribe(req, res, raw);

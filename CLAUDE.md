@@ -62,7 +62,8 @@ Use `bun audit fix` to patch dependencies, and don't delete entries from `bun.lo
 2. Match the last user message against keyword rules (case-insensitive substring match). A match runs that rule's modules, which can call features and tools.
 3. Build the system prompt from the character prompt, RAG memories, and either the rule context or all feature contexts.
 4. Run the LLM tool loop, up to 3 iterations. **Tools are disabled when a rule matched, and feature contexts are skipped.** The exception: if the rule's modules return nothing, its response hint is dropped and feature contexts are used, still without tools.
-5. Start memory extraction without awaiting it, so failures only appear in logs.
+5. If that ends without reply text, such as with tools still being called at the limit, ask once more without tools. If that's empty too, reply with `character.fallbackReply` from the locale's `character.yaml`, and skip memory extraction.
+6. Start memory extraction without awaiting it, so failures only appear in logs.
 
 Tool effects (confetti and similar) return through module-level pending state in `src/lib/tools/effects.ts`, not through the tool result.
 

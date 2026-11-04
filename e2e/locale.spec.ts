@@ -93,6 +93,14 @@ test.describe("Japanese server", () => {
     });
   });
 
+  test("replies with the Japanese character's line when the LLM gives no text", async ({ request }) => {
+    const response = await request.post("/api/chat", {
+      data: { messages: [{ role: "user", content: "EMPTY_REPLY ください" }] },
+    });
+
+    expect((await response.json()).message).toBe("うーん、考えがまとまらなかったみたい。もう一回言ってくれる？");
+  });
+
   test("/api/tts asks ElevenLabs for Japanese", async ({ request, mock }) => {
     const response = await request.post("/api/tts", { data: { text: "こんにちは" } });
 

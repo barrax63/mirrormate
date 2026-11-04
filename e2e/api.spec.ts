@@ -64,18 +64,33 @@ test.describe("/api/chat", () => {
     expect(await mock.llmRequestsFor("CALL_EFFECT please")).toHaveLength(2);
   });
 
-  test("stops calling the LLM after 3 iterations", async ({ request, mock }) => {
+  test("stops offering tools after 3 iterations, and asks once more without them", async ({ request, mock }) => {
     const body = await chat(request, "CALL_LOOP please");
 
     expect(body.effect).toBe("hearts");
-    expect(await mock.llmRequestsFor("CALL_LOOP please")).toHaveLength(3);
+    const requests = await mock.llmRequestsFor("CALL_LOOP please");
+    expect(requests.map((llm) => Boolean(llm.body.tools?.length))).toEqual([true, true, true, false]);
   });
 
-  test("known bug: replies when the tool limit is reached", async ({ request }) => {
+  test("replies when the tool limit is reached", async ({ request }) => {
     const body = await chat(request, "CALL_LOOP again");
 
-    test.fail(true, "The reply is empty, so the avatar says nothing");
-    expect(body.message).not.toBe("");
+    expect(body.message).toBe(
+      "mock reply after tool: Displaying hearts effect | Displaying hearts effect | Displaying hearts effect"
+    );
+  });
+
+  test("replies with the character's line when the LLM gives no text", async ({ request, mock }) => {
+    const body = await chat(request, "EMPTY_REPLY please");
+
+    expect(body.message).toBe("Hmm... I lost my train of thought! Could you say that again?");
+    const requests = await mock.llmRequestsFor("EMPTY_REPLY please");
+    expect(requests.map((llm) => Boolean(llm.body.tools?.length))).toEqual([true, false]);
+    // Nothing to remember from a turn that failed
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect((await mock.log("extraction")).filter((llm) => JSON.stringify(llm.body).includes("EMPTY_REPLY"))).toEqual(
+      []
+    );
   });
 
   test("sends the camera image to the VLM through see_camera", async ({ request, mock }) => {

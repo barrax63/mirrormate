@@ -38,6 +38,8 @@ export interface CharacterConfig {
     examples: string[];
     behaviors?: string[];
     background: string;
+    /** Said when the LLM gives no reply text, so the avatar never stays silent */
+    fallbackReply?: string;
   };
 }
 
@@ -97,6 +99,7 @@ const defaultConfig: CharacterConfig = {
     ],
     background:
       "You are a helpful assistant living in the mirror, always watching over and ready to help.",
+    fallbackReply: "Sorry, I lost my train of thought. Could you say that again?",
   },
 };
 
@@ -120,15 +123,19 @@ export function loadCharacterConfig(): CharacterConfig {
   return cachedConfig;
 }
 
-export function getSystemPrompt(): string {
+// Clears what was cached for another locale, and returns the current one
+function syncLocale(): Locale {
   const locale = getLocale();
-
-  // Clear cache if locale changed
   if (cachedLocale !== locale) {
     cachedConfig = null;
     cachedPrompt = null;
     cachedLocale = locale;
   }
+  return locale;
+}
+
+export function getSystemPrompt(): string {
+  const locale = syncLocale();
 
   if (cachedPrompt) {
     return cachedPrompt;
@@ -186,6 +193,17 @@ export function getSystemPrompt(): string {
 export function clearCharacterCache(): void {
   cachedConfig = null;
   cachedPrompt = null;
+}
+
+/** What the avatar says when the LLM gives no reply text: character.fallbackReply */
+export function getFallbackReply(): string {
+  syncLocale();
+  const reply = loadCharacterConfig().character.fallbackReply?.trim();
+  if (reply) {
+    return reply;
+  }
+  console.warn("[Character] character.fallbackReply is missing from the config, using the built-in line");
+  return defaultConfig.character.fallbackReply!;
 }
 
 export function getWakeWordConfig(): WakeWordConfig {

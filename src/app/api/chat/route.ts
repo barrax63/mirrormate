@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllContexts, initializeFeatures } from "@/lib/features/registry";
 import { getLLMProvider, ChatMessage } from "@/lib/llm";
-import { getSystemPrompt, getSystemPromptForCharacter } from "@/lib/character";
+import { getFallbackReply, getSystemPrompt, getSystemPromptForCharacter } from "@/lib/character";
 import { getToolDefinitions, executeTool, getPendingEffect, clearPendingEffect, ToolInfoCard, ToolContext } from "@/lib/tools";
 import { executeRule, formatRuleContext } from "@/lib/rules";
 import { loadProvidersConfig, getEmbeddingProvider } from "@/lib/providers";
@@ -229,6 +229,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // No text, such as when tools were still being called at the limit, leaves the avatar
+    // silent. One more call, without tools, so the LLM can only answer.
+    if (!assistantMessage.trim()) {
+      console.warn(`[Chat] No reply text after ${iterations} LLM call(s), asking once more without tools`);
+      const result = await llmProvider.chat({ messages: chatMessages });
+      assistantMessage = result.content;
+    }
+
+    // Still nothing: the character's line from the locale's character.yaml
+    const usedFallback = !assistantMessage.trim();
+    if (usedFallback) {
+      console.warn("[Chat] The LLM gave no reply text again, using the fallback line");
+      assistantMessage = getFallbackReply();
+    }
+
     // Determine effect: tool-triggered effect takes priority, then rule effect
     const toolEffect = getPendingEffect();
     const effect = toolEffect || ruleResult.effect;
@@ -242,8 +257,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Extract memories from conversation (async, non-blocking)
-    if (memService && assistantMessage) {
+    // Extract memories from conversation (async, non-blocking). Not after the fallback line,
+    // which isn't the LLM's reply to it.
+    if (memService && !usedFallback) {
       const conversationMessages = messages
         .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
         .slice(-10) // Use last 10 messages for extraction

@@ -9,6 +9,9 @@ character:
     phrase: "Hey Mira"
     timeout: 60
 
+  # Said when the LLM gives no reply text, so the avatar never stays silent
+  fallbackReply: "Hmm... I lost my train of thought! Could you say that again?"
+
   appearance:
     - Round white eyes
     - Simple and cute form with just a small mouth

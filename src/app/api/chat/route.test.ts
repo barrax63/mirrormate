@@ -58,6 +58,10 @@ vi.mock("@/lib/vlm", () => ({
 
 const JAPANESE = /[぀-ヿ㐀-鿿]/;
 
+// character.fallbackReply in config/locales/*/character.yaml
+const FALLBACK_EN = "Hmm... I lost my train of thought! Could you say that again?";
+const FALLBACK_JA = "うーん、考えがまとまらなかったみたい。もう一回言ってくれる？";
+
 const text = (content: string): ChatCompletionResult => ({ content, finishReason: "stop" });
 
 const toolCalls = (...calls: [string, Record<string, unknown>?][]): ChatCompletionResult => ({
@@ -228,35 +232,91 @@ describe("POST /api/chat", () => {
       expect(llmRequests[1].messages.at(-1)?.content).toBe('Tool "no_such_tool" not found.');
     });
 
-    it("stops after 3 iterations", async () => {
-      scriptLLM(toolCalls(["show_effect", { effect: "hearts" }]));
+    it("stops calling tools after 3 iterations, and asks once more without them", async () => {
+      const loop = toolCalls(["show_effect", { effect: "hearts" }]);
+      scriptLLM(loop, loop, loop, text("All done!"));
 
       const { status, body } = await say("keep going");
 
       expect(status).toBe(200);
-      expect(mocks.chat).toHaveBeenCalledTimes(3);
+      expect(mocks.chat).toHaveBeenCalledTimes(4);
+      expect(llmRequests.slice(0, 3).every((request) => request.tools?.length)).toBe(true);
+      expect(llmRequests[3].tools).toBeUndefined();
+      // With the results of the last round of tool calls
+      expect(llmRequests[3].messages.at(-1)).toEqual({
+        role: "tool",
+        content: "Displaying hearts effect",
+        tool_call_id: "call_0",
+      });
+      expect(body.message).toBe("All done!");
       expect(body.toolsUsed).toBe(true);
       expect(body.effect).toBe("hearts");
     });
 
-    // Known bug: the avatar says nothing. Remove .fails when the route makes a final
-    // call without tools or returns a fallback line.
-    it.fails("returns a non-empty reply when the tool limit is reached", async () => {
+    it("returns a non-empty reply when the tool limit is reached", async () => {
       scriptLLM(toolCalls(["show_effect", { effect: "hearts" }]));
 
       const { body } = await say("keep going");
 
-      expect(body.message).not.toBe("");
+      expect(body.message).toBe(FALLBACK_EN);
     });
 
-    // Known bug: seen with gpt-oss:20b when thinking uses up maxTokens. Remove .fails
-    // when the route returns something else.
-    it.fails("returns a non-empty reply when the LLM returns no content", async () => {
+    // Seen with gpt-oss:20b when thinking used up maxTokens
+    it("asks once more without tools when the LLM returns no content", async () => {
+      scriptLLM(text(""), text("Hi there!"));
+
+      const { body } = await say("hello");
+
+      expect(mocks.chat).toHaveBeenCalledTimes(2);
+      expect(llmRequests[0].tools?.length).toBeGreaterThan(0);
+      expect(llmRequests[1].tools).toBeUndefined();
+      expect(llmRequests[1].messages).toEqual(llmRequests[0].messages);
+      expect(body.message).toBe("Hi there!");
+    });
+
+    it("counts a reply of only whitespace as no content", async () => {
+      scriptLLM(text(" \n "), text("Hi there!"));
+
+      const { body } = await say("hello");
+
+      expect(body.message).toBe("Hi there!");
+    });
+
+    it("returns a non-empty reply when the LLM returns no content", async () => {
       scriptLLM(text(""));
 
       const { body } = await say("hello");
 
-      expect(body.message).not.toBe("");
+      expect(mocks.chat).toHaveBeenCalledTimes(2);
+      expect(body.message).toBe(FALLBACK_EN);
+    });
+
+    it("asks once more when a rule matched too, which offers no tools", async () => {
+      scriptLLM(text(""), text("Sleep well"));
+
+      const { body } = await say("good night");
+
+      expect(mocks.chat).toHaveBeenCalledTimes(2);
+      expect(llmRequests.map((request) => request.tools)).toEqual([undefined, undefined]);
+      expect(body.message).toBe("Sleep well");
+    });
+
+    it("falls back to the Japanese line in Japanese mode", async () => {
+      vi.stubEnv("LOCALE", "ja");
+      scriptLLM(text(""));
+
+      const { body } = await say("こんにちは");
+
+      expect(body.message).toBe(FALLBACK_JA);
+    });
+
+    it("reports a failure of the call without tools", async () => {
+      mocks.chat.mockResolvedValueOnce(text("")).mockRejectedValueOnce(new Error("connection refused"));
+
+      const { status, body } = await say("hello");
+
+      expect(status).toBe(500);
+      expect(body).toEqual({ error: "connection refused", code: "failed" });
     });
   });
 
@@ -429,12 +489,21 @@ describe("POST /api/chat", () => {
       expect(conversation.at(-1)).toEqual({ role: "assistant", content: "Reply" });
     });
 
-    it("skips extraction when the reply is empty", async () => {
+    it("skips extraction after the fallback line", async () => {
       scriptLLM(text(""));
 
       await say("hello");
 
       expect(mocks.processConversation).not.toHaveBeenCalled();
+    });
+
+    it("extracts from the reply that came without tools", async () => {
+      scriptLLM(text(""), text("Hi there!"));
+
+      await say("hello");
+
+      const [, conversation] = mocks.processConversation.mock.calls[0];
+      expect(conversation.at(-1)).toEqual({ role: "assistant", content: "Hi there!" });
     });
   });
 
