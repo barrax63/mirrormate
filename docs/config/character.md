@@ -30,6 +30,8 @@ character:
     phrase: "Hey Mira"
     timeout: 60
 
+  fallbackReply: "Hmm... I lost my train of thought! Could you say that again?"
+
   appearance:
     - Round white eyes
     - Simple and cute form with just a small mouth
@@ -68,6 +70,8 @@ character:
     enabled: true
     phrase: "OK ミラ"
     timeout: 60
+
+  fallbackReply: "うーん、考えがまとまらなかったみたい。もう一回言ってくれる？"
 
   appearance:
     - 白くてまるい目
@@ -109,6 +113,7 @@ character:
 | `wakeWord.enabled` | boolean | Enable wake word detection, off if `wakeWord` is missing. Without it, everything said in the room goes to `stt.provider`, see [Wake Word Audio](providers.md#wake-word-audio) |
 | `wakeWord.phrase` | string | Wake word phrase (e.g., "Hey Mira") |
 | `wakeWord.timeout` | number | Seconds before returning to waiting mode |
+| `fallbackReply` | string | Said when the LLM gives no reply text, even after asking once more without tools, so the avatar never stays silent. Every character uses this one, and a built-in English line stands in if it's missing |
 | `appearance` | list | Physical appearance traits |
 | `personality` | list | Personality traits |
 | `speech_style` | list | How the character speaks |

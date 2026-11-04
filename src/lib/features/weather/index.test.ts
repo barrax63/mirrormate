@@ -43,6 +43,21 @@ describe("WeatherFeature", () => {
     expect(context).toContain("10km/h");
   });
 
+  // Without it, the LLM gave the current weather as tomorrow's
+  it("says there's no forecast", async () => {
+    const context = await new WeatherFeature(config).getContext();
+
+    expect(context.split("\n").at(-1)).toBe("Forecast: none, so the weather later today and tomorrow is unknown.");
+  });
+
+  it("says there's no forecast in Japanese in Japanese mode", async () => {
+    vi.stubEnv("LOCALE", "ja");
+
+    const context = await new WeatherFeature(config).getContext();
+
+    expect(context.split("\n").at(-1)).toBe("天気予報: なし。このあとや明日の天気はわかりません。");
+  });
+
   it("serves repeat requests from the cache", async () => {
     const feature = new WeatherFeature(config);
 

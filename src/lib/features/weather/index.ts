@@ -1,8 +1,15 @@
 import { Feature, WeatherFeatureConfig } from "../types";
 import { fetchWeather, getWeatherDescription } from "./open-meteo";
+import { getLocale, type Locale } from "@/lib/app";
 
 // Cache settings
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+// Only the current weather is fetched. Said, or the LLM passes it off as tomorrow's.
+const NO_FORECAST: Record<Locale, string> = {
+  en: "Forecast: none, so the weather later today and tomorrow is unknown.",
+  ja: "天気予報: なし。このあとや明日の天気はわかりません。",
+};
 
 interface CacheEntry {
   data: string;
@@ -55,7 +62,7 @@ export class WeatherFeature implements Feature {
 
       console.log("[Weather] Fetched:", description, temp + "°C");
 
-      const result = `現在の${location.name}の天気: ${description}、気温${temp}°C、風速${windSpeed}km/h`;
+      const result = `現在の${location.name}の天気: ${description}、気温${temp}°C、風速${windSpeed}km/h\n${NO_FORECAST[getLocale()]}`;
 
       // Update cache
       this.cache = {

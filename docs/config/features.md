@@ -53,10 +53,11 @@ features:
 
 ### Output Example
 
-The text is in Japanese regardless of locale:
+The first line is in Japanese regardless of locale. The second, in the locale's language, says there is no forecast, since only the current weather is fetched. Without it, the LLM gave the current weather as tomorrow's:
 
 ```
 現在のSan Franciscoの天気: 曇り、気温11°C、風速9km/h
+Forecast: none, so the weather later today and tomorrow is unknown.
 ```
 
 ---
@@ -156,6 +157,12 @@ features:
 ```
 Today's schedule: 10:00 AM Team Meeting, 02:00 PM 1-on-1
 Next event: 10:00 AM Team Meeting (in 30 min)
+```
+
+Without the environment variables, or when the calendar can't be loaded, it says the schedule is unknown, so the LLM doesn't guess at one, such as calling tomorrow clear:
+
+```
+Calendar: not connected, so today's and tomorrow's schedules are unknown.
 ```
 
 ### Troubleshooting

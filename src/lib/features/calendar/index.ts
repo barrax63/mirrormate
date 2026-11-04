@@ -1,9 +1,20 @@
 import { Feature, CalendarFeatureConfig } from "../types";
 import { fetchTodayEvents, fetchUpcomingEvents, CalendarEvent } from "./google-calendar";
-import { getLocale } from "@/lib/app";
+import { getLocale, type Locale } from "@/lib/app";
 
 // Cache settings
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Said instead of nothing when there's no schedule to read. Otherwise the LLM guessed at one,
+// such as calling tomorrow clear.
+const NOT_CONNECTED: Record<Locale, string> = {
+  en: "Calendar: not connected, so today's and tomorrow's schedules are unknown.",
+  ja: "カレンダー: 未接続のため、今日と明日の予定はわかりません。",
+};
+const NOT_LOADED: Record<Locale, string> = {
+  en: "Calendar: couldn't be loaded, so today's and tomorrow's schedules are unknown.",
+  ja: "カレンダー: 読み込めなかったため、今日と明日の予定はわかりません。",
+};
 
 interface CacheEntry {
   data: string;
@@ -102,7 +113,7 @@ export class CalendarFeature implements Feature {
       !process.env.GOOGLE_PRIVATE_KEY ||
       !calendarId
     ) {
-      return "";
+      return NOT_CONNECTED[getLocale()];
     }
 
     try {
@@ -137,7 +148,7 @@ export class CalendarFeature implements Feature {
         console.log("[Calendar] Returning stale cache due to error");
         return this.cache.data;
       }
-      return "";
+      return NOT_LOADED[getLocale()];
     }
   }
 }

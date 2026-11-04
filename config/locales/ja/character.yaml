@@ -9,6 +9,9 @@ character:
     phrase: "OK ミラ"          # Wake word phrase
     timeout: 60               # Seconds before returning to waiting mode
 
+  # Said when the LLM gives no reply text, so the avatar never stays silent
+  fallbackReply: "うーん、考えがまとまらなかったみたい。もう一回言ってくれる？"
+
   appearance:
     - 白くてまるい目
     - ちいさな口だけの、シンプルでかわいい姿
