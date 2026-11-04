@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchUpcomingEvents, CalendarEvent } from "@/lib/features/calendar/google-calendar";
-import { loadFeaturesConfig } from "@/lib/features/config-loader";
+import { getTimezone, loadFeaturesConfig } from "@/lib/features/config-loader";
 
 export interface ReminderEvent extends CalendarEvent {
   minutesUntil: number;
@@ -28,7 +28,7 @@ export async function GET() {
       return NextResponse.json({ reminders: [] });
     }
 
-    const events = await fetchUpcomingEvents(calendarId, 5);
+    const events = await fetchUpcomingEvents(calendarId, 5, getTimezone());
     const now = new Date();
     const reminders: ReminderEvent[] = [];
 
@@ -39,6 +39,11 @@ export async function GET() {
     ];
 
     for (const event of events) {
+      // It has no time to remind about. Its start, midnight, would bring a reminder at night.
+      if (event.allDay) {
+        continue;
+      }
+
       const diffMs = event.start.getTime() - now.getTime();
       const diffMinutes = Math.round(diffMs / 60000);
 

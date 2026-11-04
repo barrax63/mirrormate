@@ -1,4 +1,5 @@
 import { Feature, CalendarFeatureConfig } from "../types";
+import { getTimezone } from "../config-loader";
 import { fetchTodayEvents, fetchUpcomingEvents, CalendarEvent } from "./google-calendar";
 import { getLocale, type Locale } from "@/lib/app";
 
@@ -14,6 +15,11 @@ const NOT_CONNECTED: Record<Locale, string> = {
 const NOT_LOADED: Record<Locale, string> = {
   en: "Calendar: couldn't be loaded, so today's and tomorrow's schedules are unknown.",
   ja: "カレンダー: 読み込めなかったため、今日と明日の予定はわかりません。",
+};
+// In place of a time, for an event with only a date
+const ALL_DAY: Record<Locale, string> = {
+  en: "all day",
+  ja: "終日",
 };
 
 interface CacheEntry {
@@ -39,12 +45,17 @@ export class CalendarFeature implements Feature {
     return getLocale() === "ja";
   }
 
-  private formatTime(date: Date): string {
+  // In the timezone the app tells times in. The server's can differ, and is UTC in Docker.
+  private formatStart(event: CalendarEvent): string {
+    if (event.allDay) {
+      return ALL_DAY[getLocale()];
+    }
     const isJa = this.isJapanese();
-    return date.toLocaleTimeString(isJa ? "ja-JP" : "en-US", {
+    return event.start.toLocaleTimeString(isJa ? "ja-JP" : "en-US", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: !isJa,
+      timeZone: getTimezone(),
     });
   }
 
@@ -75,7 +86,7 @@ export class CalendarFeature implements Feature {
 
     const separator = isJa ? "、" : ", ";
     const formatted = events
-      .map((e) => `${this.formatTime(e.start)} ${e.summary}`)
+      .map((e) => `${this.formatStart(e)} ${e.summary}`)
       .join(separator);
     return isJa ? `今日の予定: ${formatted}` : `Today's schedule: ${formatted}`;
   }
@@ -90,7 +101,7 @@ export class CalendarFeature implements Feature {
     const relative = this.formatRelativeTime(next.start);
     const relativeStr = relative ? (isJa ? `（${relative}）` : ` (${relative})`) : "";
     const label = isJa ? "次の予定" : "Next event";
-    return `${label}: ${this.formatTime(next.start)} ${next.summary}${relativeStr}`;
+    return `${label}: ${this.formatStart(next)} ${next.summary}${relativeStr}`;
   }
 
   async getContext(): Promise<string> {
@@ -117,9 +128,10 @@ export class CalendarFeature implements Feature {
     }
 
     try {
+      const timeZone = getTimezone();
       const [todayEvents, upcomingEvents] = await Promise.all([
-        fetchTodayEvents(calendarId, this.config.maxResults),
-        fetchUpcomingEvents(calendarId, 1),
+        fetchTodayEvents(calendarId, this.config.maxResults, timeZone),
+        fetchUpcomingEvents(calendarId, 1, timeZone),
       ]);
 
       console.log("[Calendar] Fetched:", todayEvents.length, "today,", upcomingEvents.length, "upcoming");
