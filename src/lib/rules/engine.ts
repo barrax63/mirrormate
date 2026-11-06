@@ -102,7 +102,7 @@ export async function executeRule(userMessage: string): Promise<RuleExecutionRes
 }
 
 // Locale-specific labels for rule context formatting
-const contextLabels = {
+const contextLabels: Record<Locale, { ruleInfo: string; responseHint: string }> = {
   ja: {
     ruleInfo: "【ルールによる取得情報】",
     responseHint: "【応答のヒント】",
@@ -111,7 +111,7 @@ const contextLabels = {
     ruleInfo: "[Information from Rule]",
     responseHint: "[Response Hint]",
   },
-} as const;
+};
 
 export function formatRuleContext(result: RuleExecutionResult): string {
   if (!result.matched || result.moduleResults.length === 0) {
@@ -119,7 +119,7 @@ export function formatRuleContext(result: RuleExecutionResult): string {
   }
 
   const locale = getLocale();
-  const labels = contextLabels[locale] || contextLabels.en;
+  const labels = contextLabels[locale];
   const sections: string[] = [];
 
   sections.push(labels.ruleInfo);

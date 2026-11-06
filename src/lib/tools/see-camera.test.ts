@@ -39,31 +39,49 @@ describe("seeCameraTool", () => {
     expect(mocks.analyzeImage).not.toHaveBeenCalled();
   });
 
-  // Known bug: the messages and the requested reply language are always Japanese.
-  // Remove .fails when they follow the locale.
   describe("in English mode", () => {
-    it.fails("reports a missing image in English", async () => {
-      expect(await seeCameraTool.execute({})).not.toMatch(JAPANESE);
+    it("reports a missing image in English", async () => {
+      expect(await seeCameraTool.execute({})).toBe("No camera image is available. The user's camera may be off.");
     });
 
-    it.fails("reports a missing VLM provider in English", async () => {
+    it("reports a missing VLM provider in English", async () => {
       mocks.getVLMProvider.mockReturnValue(null);
 
       expect(await seeCameraTool.execute({}, { image: IMAGE })).not.toMatch(JAPANESE);
     });
 
-    it.fails("reports a VLM failure in English", async () => {
+    it("reports a VLM failure in English", async () => {
       mocks.analyzeImage.mockRejectedValue(new Error("model not found"));
 
       expect(await seeCameraTool.execute({}, { image: IMAGE })).not.toMatch(JAPANESE);
     });
 
-    it.fails("doesn't ask the VLM for a Japanese description", async () => {
+    it("asks the VLM for an English description", async () => {
       mocks.analyzeImage.mockResolvedValue("A person");
 
       await seeCameraTool.execute({}, { image: IMAGE });
 
-      expect(mocks.analyzeImage.mock.calls[0][1]).not.toContain("Japanese");
+      expect(mocks.analyzeImage.mock.calls[0][1]).toContain("in 2-3 sentences in English.");
+    });
+  });
+
+  describe("in Japanese mode", () => {
+    beforeEach(() => {
+      vi.stubEnv("LOCALE", "ja");
+    });
+
+    it("reports a missing image in Japanese", async () => {
+      expect(await seeCameraTool.execute({})).toBe(
+        "カメラ画像が利用できません。ユーザーのカメラが有効になっていない可能性があります。"
+      );
+    });
+
+    it("asks the VLM for a Japanese description", async () => {
+      mocks.analyzeImage.mockResolvedValue("人");
+
+      await seeCameraTool.execute({}, { image: IMAGE });
+
+      expect(mocks.analyzeImage.mock.calls[0][1]).toContain("in 2-3 sentences in Japanese.");
     });
   });
 });

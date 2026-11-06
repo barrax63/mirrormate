@@ -2,31 +2,20 @@ import { describe, it, expect } from "vitest";
 import { getWeatherDescription } from "./open-meteo";
 
 describe("getWeatherDescription", () => {
-  it("returns correct description for clear sky", () => {
-    expect(getWeatherDescription(0)).toBe("快晴");
+  it.each([
+    [0, "clear sky", "快晴"],
+    [1, "mainly clear", "晴れ"],
+    [3, "overcast", "曇り"],
+    [63, "rain", "雨"],
+    [73, "snow", "雪"],
+    [95, "thunderstorm", "雷雨"],
+  ])("describes code %i in the locale's language", (code, en, ja) => {
+    expect(getWeatherDescription(code, "en")).toBe(en);
+    expect(getWeatherDescription(code, "ja")).toBe(ja);
   });
 
-  it("returns correct description for sunny", () => {
-    expect(getWeatherDescription(1)).toBe("晴れ");
-  });
-
-  it("returns correct description for cloudy", () => {
-    expect(getWeatherDescription(3)).toBe("曇り");
-  });
-
-  it("returns correct description for rain", () => {
-    expect(getWeatherDescription(63)).toBe("雨");
-  });
-
-  it("returns correct description for snow", () => {
-    expect(getWeatherDescription(73)).toBe("雪");
-  });
-
-  it("returns correct description for thunderstorm", () => {
-    expect(getWeatherDescription(95)).toBe("雷雨");
-  });
-
-  it('returns "不明" for unknown weather code', () => {
-    expect(getWeatherDescription(999)).toBe("不明");
+  it("says unknown for a code it doesn't know", () => {
+    expect(getWeatherDescription(999, "en")).toBe("unknown");
+    expect(getWeatherDescription(999, "ja")).toBe("不明");
   });
 });

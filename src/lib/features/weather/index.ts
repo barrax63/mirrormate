@@ -5,10 +5,28 @@ import { getLocale, type Locale } from "@/lib/app";
 // Cache settings
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-// Only the current weather is fetched. Said, or the LLM passes it off as tomorrow's.
-const NO_FORECAST: Record<Locale, string> = {
-  en: "Forecast: none, so the weather later today and tomorrow is unknown.",
-  ja: "天気予報: なし。このあとや明日の天気はわかりません。",
+interface CurrentWeather {
+  location: string;
+  description: string;
+  temperature: number;
+  windSpeed: number;
+}
+
+interface WeatherText {
+  current(weather: CurrentWeather): string;
+  /** Only the current weather is fetched. Said, or the LLM passes it off as tomorrow's. */
+  noForecast: string;
+}
+
+const TEXT: Record<Locale, WeatherText> = {
+  en: {
+    current: (w) => `Current weather in ${w.location}: ${w.description}, ${w.temperature}°C, wind ${w.windSpeed} km/h`,
+    noForecast: "Forecast: none, so the weather later today and tomorrow is unknown.",
+  },
+  ja: {
+    current: (w) => `現在の${w.location}の天気: ${w.description}、気温${w.temperature}°C、風速${w.windSpeed}km/h`,
+    noForecast: "天気予報: なし。このあとや明日の天気はわかりません。",
+  },
 };
 
 interface CacheEntry {
@@ -54,15 +72,16 @@ export class WeatherFeature implements Feature {
 
     try {
       const weather = await fetchWeather(location.latitude, location.longitude);
-      const description = getWeatherDescription(
-        weather.current_weather.weathercode
-      );
-      const temp = Math.round(weather.current_weather.temperature);
+      const locale = getLocale();
+      const text = TEXT[locale];
+      const description = getWeatherDescription(weather.current_weather.weathercode, locale);
+      const temperature = Math.round(weather.current_weather.temperature);
       const windSpeed = Math.round(weather.current_weather.windspeed);
 
-      console.log("[Weather] Fetched:", description, temp + "°C");
+      console.log("[Weather] Fetched:", description, temperature + "°C");
 
-      const result = `現在の${location.name}の天気: ${description}、気温${temp}°C、風速${windSpeed}km/h\n${NO_FORECAST[getLocale()]}`;
+      const current = text.current({ location: location.name, description, temperature, windSpeed });
+      const result = `${current}\n${text.noForecast}`;
 
       // Update cache
       this.cache = {

@@ -1,5 +1,22 @@
 import { Tool, ToolContext } from "./types";
 import { getVLMProvider } from "@/lib/vlm";
+import { getLocale, type Locale } from "@/lib/app";
+
+// Results for the LLM, and the language the VLM describes the image in
+const TEXT: Record<Locale, { noImage: string; noVlm: string; failed: string; language: string }> = {
+  en: {
+    noImage: "No camera image is available. The user's camera may be off.",
+    noVlm: "The image analysis service isn't available.",
+    failed: "Analyzing the image failed.",
+    language: "English",
+  },
+  ja: {
+    noImage: "カメラ画像が利用できません。ユーザーのカメラが有効になっていない可能性があります。",
+    noVlm: "視覚分析サービスが利用できません。",
+    failed: "画像の分析中にエラーが発生しました。",
+    language: "Japanese",
+  },
+};
 
 /**
  * Tool that allows LLM to see what the camera is showing.
@@ -27,15 +44,17 @@ export const seeCameraTool: Tool = {
     args: Record<string, unknown>,
     context?: ToolContext
   ): Promise<string> {
+    const text = TEXT[getLocale()];
+
     // Check if image is available
     if (!context?.image) {
-      return "カメラ画像が利用できません。ユーザーのカメラが有効になっていない可能性があります。";
+      return text.noImage;
     }
 
     // Get VLM provider
     const vlmProvider = getVLMProvider();
     if (!vlmProvider) {
-      return "視覚分析サービスが利用できません。";
+      return text.noVlm;
     }
 
     try {
@@ -43,7 +62,7 @@ export const seeCameraTool: Tool = {
 
       const prompt = `Describe what you see in this webcam image. Focus on: ${focus}
 
-Provide a concise description in 2-3 sentences in Japanese. Be specific about:
+Provide a concise description in 2-3 sentences in ${text.language}. Be specific about:
 - What the person is doing or showing
 - What they are holding or wearing (if relevant)
 - Any notable details that help answer their question`;
@@ -52,7 +71,7 @@ Provide a concise description in 2-3 sentences in Japanese. Be specific about:
       return result;
     } catch (error) {
       console.error("[see_camera] VLM analysis failed:", error);
-      return "画像の分析中にエラーが発生しました。";
+      return text.failed;
     }
   },
 };

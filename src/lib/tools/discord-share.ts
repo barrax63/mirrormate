@@ -1,6 +1,35 @@
 import { Tool, ToolExecuteResult } from "./types";
 import { sendTextMessage, sendSearchResults, isDiscordEnabled } from "../discord";
 import { getLastSearchResults, findSearchResultsByQuery } from "./web-search";
+import { getLocale, type Locale } from "@/lib/app";
+
+// Results for the LLM, some with what to tell the user
+interface ShareText {
+  missing: string;
+  sentResults(query: string, count: number, titles: string[]): string;
+  sentText(title: string): string;
+  failed: string;
+  error(message: string): string;
+}
+
+const TEXT: Record<Locale, ShareText> = {
+  en: {
+    missing: "Sharing to Discord needs a title or content.",
+    sentResults: (query, count, titles) =>
+      `Sent to Discord! Shared ${count} links about "${query}" (${titles.join(", ")}, and more). Tell the user briefly: "Sent it! I added the links too."`,
+    sentText: (title) => `Sent to Discord! Shared "${title}". Tell the user briefly: "Sent it!"`,
+    failed: "Sending to Discord failed. Tell the user to check the settings.",
+    error: (message) => `Discord error: ${message}`,
+  },
+  ja: {
+    missing: "Discord送信には title または content が必要です。",
+    sentResults: (query, count, titles) =>
+      `Discord送信完了！「${query}」について${count}件のリンク付きで送った（${titles.join("、")}など）。ユーザーに「送ったよ！リンクも付けておいたからね」と短く伝えて。`,
+    sentText: (title) => `Discord送信完了！「${title}」の内容を送った。ユーザーに「送ったよ！」と短く伝えて。`,
+    failed: "Discordへの送信に失敗した。設定を確認するよう伝えて。",
+    error: (message) => `Discordエラー: ${message}`,
+  },
+};
 
 export const discordShareTool: Tool = {
   definition: {
@@ -37,13 +66,15 @@ export const discordShareTool: Tool = {
     const url = args.url as string | undefined;
     const includeSearchResults = args.includeSearchResults === "true" || args.includeSearchResults === true;
 
+    const text = TEXT[getLocale()];
+
     if (!isDiscordEnabled()) {
       return { result: "Discord integration is not configured. Please set DISCORD_WEBHOOK_URL environment variable." };
     }
 
     // Validate required parameters
     if (!title && !content) {
-      return { result: "Discord送信には title または content が必要です。" };
+      return { result: text.missing };
     }
 
     console.log(`[Discord] Sharing: ${title || content.substring(0, 30)}, includeSearchResults: ${includeSearchResults}`);
@@ -72,9 +103,8 @@ export const discordShareTool: Tool = {
           sharedQuery = query;
           sharedCount = results.length;
           if (success) {
-            const topResults = results.slice(0, 2).map(r => r.title).join("、");
             return {
-              result: `Discord送信完了！「${query}」について${results.length}件のリンク付きで送った（${topResults}など）。ユーザーに「送ったよ！リンクも付けておいたからね」と短く伝えて。`,
+              result: text.sentResults(query, results.length, results.slice(0, 2).map((r) => r.title)),
               infoCard: {
                 type: "discord",
                 title: "Sent to Discord",
@@ -90,7 +120,7 @@ export const discordShareTool: Tool = {
 
       if (success) {
         return {
-          result: `Discord送信完了！「${title}」の内容を送った。ユーザーに「送ったよ！」と短く伝えて。`,
+          result: text.sentText(title),
           infoCard: {
             type: "discord",
             title: "Sent to Discord",
@@ -98,11 +128,11 @@ export const discordShareTool: Tool = {
           },
         };
       } else {
-        return { result: "Discordへの送信に失敗した。設定を確認するよう伝えて。" };
+        return { result: text.failed };
       }
     } catch (error) {
       console.error("[Discord] Share error:", error);
-      return { result: `Discordエラー: ${(error as Error).message}` };
+      return { result: text.error((error as Error).message) };
     }
   },
 };

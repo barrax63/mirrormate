@@ -4,14 +4,15 @@ interface VoicePreviewButtonProps {
   onClick: () => void;
   isPlaying: boolean;
   disabled?: boolean;
-  label?: string;
+  /** From messages/*.json, in the UI's language */
+  label: string;
 }
 
 export function VoicePreviewButton({
   onClick,
   isPlaying,
   disabled = false,
-  label = "試聴",
+  label,
 }: VoicePreviewButtonProps) {
   return (
     <button
