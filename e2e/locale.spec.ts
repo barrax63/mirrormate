@@ -8,16 +8,16 @@ test.describe("English server", () => {
     await expect(page.locator("form input")).toHaveAttribute("placeholder", "Enter message...");
   });
 
-  test("known bug: sends no Japanese to the LLM", async ({ request, mock }) => {
+  test("sends no Japanese to the LLM", async ({ request, mock }) => {
     const message = "hello in English";
     await request.post("/api/chat", {
-      data: { messages: [{ role: "user", content: message }] },
+      data: { messages: [{ role: "user", content: message }], image: "data:image/jpeg;base64,QUJD" },
     });
     const [llm] = await mock.llmRequestsFor(message);
     expect(llm.body.messages[0].content).toContain("Current time:");
-    expect(llm.body.messages[0].content).not.toMatch(JAPANESE);
+    expect(llm.body.messages[0].content).toContain("User's camera image is available.");
+    expect(llm.body.tools?.length).toBeGreaterThan(0);
 
-    test.fail(true, "The web_search and show_effect tool descriptions are always Japanese");
     expect(JSON.stringify(llm.body)).not.toMatch(JAPANESE);
   });
 });

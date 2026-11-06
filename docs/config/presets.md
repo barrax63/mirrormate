@@ -188,10 +188,12 @@ stt:
 export type Locale = "ja" | "en" | "de";
 ```
 
-3. Add a `de` entry to the tables keyed by locale. `bun run build` fails until all three have one:
+3. Add a `de` entry to every table of server text keyed by locale (`Record<Locale, ...>`). `bun run build` fails, naming each one, until they all have it:
    - `defaultPresets` in `src/lib/presets/index.ts`
-   - `contextLabels` in `src/lib/rules/engine.ts`
-   - `wikipediaSettings` in `src/lib/rules/modules.ts`
+   - the character prompt in `src/lib/character/index.ts`, and the camera hint in `src/app/api/chat/route.ts`
+   - the time, weather and calendar text in `src/lib/features/`
+   - the tool descriptions and results in `src/lib/tools/`
+   - `contextLabels` in `src/lib/rules/engine.ts` and `wikipediaSettings` in `src/lib/rules/modules.ts`
 
 4. Create locale-specific character and message files in `config/locales/de/` and `messages/de.json`
 

@@ -51,8 +51,14 @@ function loadModulesConfig(): ModulesConfig {
   return cachedConfig;
 }
 
+interface WikipediaSettings {
+  domain: string;
+  formatDate(month: number, day: number): string;
+  formatEvent(month: number, day: number, year: string, text: string): string;
+}
+
 // Locale-specific Wikipedia API settings
-const wikipediaSettings = {
+const wikipediaSettings: Record<Locale, WikipediaSettings> = {
   ja: {
     domain: "ja.wikipedia.org",
     formatDate: (month: number, day: number) => `${month}月${day}日`,
@@ -72,7 +78,7 @@ const wikipediaSettings = {
       return `Today, ${months[month - 1]} ${day}, is the day when "${text}" happened in ${year}.`;
     },
   },
-} as const;
+};
 
 // Today in the time feature's timezone. The server's own date can differ, and is UTC in Docker.
 function getToday(): { month: number; day: number } {
@@ -87,7 +93,7 @@ function getToday(): { month: number; day: number } {
 async function fetchTodayInfo(): Promise<string> {
   const { month, day } = getToday();
   const locale = getLocale();
-  const settings = wikipediaSettings[locale] || wikipediaSettings.en;
+  const settings = wikipediaSettings[locale];
 
   try {
     // Fetch today's events from Wikipedia API

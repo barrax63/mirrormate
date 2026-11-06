@@ -53,10 +53,10 @@ features:
 
 ### Output Example
 
-The first line is in Japanese regardless of locale. The second, in the locale's language, says there is no forecast, since only the current weather is fetched. Without it, the LLM gave the current weather as tomorrow's:
+The text follows the locale. The second line says there is no forecast, since only the current weather is fetched. Without it, the LLM gave the current weather as tomorrow's:
 
 ```
-現在のSan Franciscoの天気: 曇り、気温11°C、風速9km/h
+Current weather in San Francisco: overcast, 11°C, wind 9 km/h
 Forecast: none, so the weather later today and tomorrow is unknown.
 ```
 

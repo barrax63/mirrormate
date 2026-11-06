@@ -88,7 +88,7 @@ How the layers resolve:
 
 Things that are easy to miss:
 
-- User-facing and prompt text must exist in both `en` and `ja`: the locale YAML, the `messages` files, and inline `getLocale() === "ja"` branches in server code.
+- User-facing and prompt text must exist in both `en` and `ja`: the locale YAML, the `messages` files, and the `Record<Locale, ...>` tables in server code, which the compiler checks for every locale. Add new server text to such a table, not as a branch on the locale.
 - The committed `config/providers.yaml` uses OpenAI and ElevenLabs, with local Whisper at `http://whisper:8000`, compose's Whisper service. Under `bun run dev`, make `whisper` resolve or use another config through `PROVIDERS_CONFIG`. Ollama, and Whisper on another machine, are reached by IP address in their `baseUrl`, since `localhost` in compose's container is the container itself.
 - `compose.yaml` passes an explicit env list, so a new variable, like `ELEVENLABS_API_KEY`, has to be added to it. Optional ones are written `${VAR:-}`, so they're blank without a warning when `.env` doesn't set them, and the code ignores blank values.
 - No API route has authentication, so `compose.yaml` publishes port 3000 on localhost only, unless `BIND_ADDRESS` says otherwise.

@@ -1,5 +1,33 @@
 import { Feature, TimeFeatureConfig } from "../types";
-import { getLocale } from "@/lib/app";
+import { getLocale, type Locale } from "@/lib/app";
+
+type Part = (type: Intl.DateTimeFormatPartTypes) => string;
+
+interface TimeText {
+  /** The locale the date is written in, and whether on a 12-hour clock */
+  dateLocale: string;
+  hour12: boolean;
+  /** The date and time, from the parts of the date in that locale */
+  format(part: Part): string;
+  label: string;
+}
+
+const TEXT: Record<Locale, TimeText> = {
+  en: {
+    dateLocale: "en-US",
+    hour12: true,
+    format: (part) =>
+      `${part("weekday")}, ${part("month")} ${part("day")}, ${part("year")} ${part("hour")}:${part("minute")} ${part("dayPeriod")}`,
+    label: "Current time",
+  },
+  ja: {
+    dateLocale: "ja-JP",
+    hour12: false,
+    format: (part) =>
+      `${part("year")}年${part("month")}月${part("day")}日（${part("weekday")}） ${part("hour")}時${part("minute")}分`,
+    label: "現在時刻",
+  },
+};
 
 export class TimeFeature implements Feature {
   name = "time";
@@ -16,12 +44,10 @@ export class TimeFeature implements Feature {
 
     const now = new Date();
     const timezone = this.config.timezone || "Asia/Tokyo";
-    const locale = getLocale();
-    const isJapanese = locale === "ja";
+    const text = TEXT[getLocale()];
 
     // Format date and time in the specified timezone
-    const localeCode = isJapanese ? "ja-JP" : "en-US";
-    const formatter = new Intl.DateTimeFormat(localeCode, {
+    const formatter = new Intl.DateTimeFormat(text.dateLocale, {
       timeZone: timezone,
       year: "numeric",
       month: "long",
@@ -29,39 +55,14 @@ export class TimeFeature implements Feature {
       hour: "2-digit",
       minute: "2-digit",
       weekday: "short",
-      hour12: !isJapanese,
+      hour12: text.hour12,
     });
 
     const parts = formatter.formatToParts(now);
-    const getPart = (type: string) => parts.find((p) => p.type === type)?.value || "";
+    const dateAndTime = text.format((type) => parts.find((p) => p.type === type)?.value || "");
 
-    let timeStr: string;
-    let dateStr: string;
+    console.log(`[Time] Current time: ${dateAndTime}`);
 
-    if (isJapanese) {
-      const year = getPart("year");
-      const month = getPart("month");
-      const day = getPart("day");
-      const weekday = getPart("weekday");
-      const hour = getPart("hour");
-      const minute = getPart("minute");
-      timeStr = `${hour}時${minute}分`;
-      dateStr = `${year}年${month}月${day}日（${weekday}）`;
-    } else {
-      const weekday = getPart("weekday");
-      const month = getPart("month");
-      const day = getPart("day");
-      const year = getPart("year");
-      const hour = getPart("hour");
-      const minute = getPart("minute");
-      const dayPeriod = getPart("dayPeriod");
-      timeStr = `${hour}:${minute} ${dayPeriod}`;
-      dateStr = `${weekday}, ${month} ${day}, ${year}`;
-    }
-
-    console.log(`[Time] Current time: ${dateStr} ${timeStr}`);
-
-    const label = isJapanese ? "現在時刻" : "Current time";
-    return `${label}: ${dateStr} ${timeStr}`;
+    return `${text.label}: ${dateAndTime}`;
   }
 }

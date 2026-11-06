@@ -34,13 +34,19 @@ describe("WeatherFeature", () => {
     vi.unstubAllEnvs();
   });
 
-  it("reports the location, temperature and wind speed", async () => {
+  it("reports the location, weather, temperature and wind speed", async () => {
     const context = await new WeatherFeature(config).getContext();
 
     expect(mocks.fetchWeather).toHaveBeenCalledWith(40.7, -74);
-    expect(context).toContain("New York");
-    expect(context).toContain("21°C");
-    expect(context).toContain("10km/h");
+    expect(context.split("\n")[0]).toBe("Current weather in New York: clear sky, 21°C, wind 10 km/h");
+  });
+
+  it("reports them in Japanese in Japanese mode", async () => {
+    vi.stubEnv("LOCALE", "ja");
+
+    const context = await new WeatherFeature({ ...config, locations: [{ ...config.locations[0], name: "東京" }], defaultLocation: "東京" }).getContext();
+
+    expect(context.split("\n")[0]).toBe("現在の東京の天気: 快晴、気温21°C、風速10km/h");
   });
 
   // Without it, the LLM gave the current weather as tomorrow's
@@ -101,9 +107,7 @@ describe("WeatherFeature", () => {
     expect(await new WeatherFeature({ ...config, enabled: false }).getContext()).toBe("");
   });
 
-  // Known bug: the sentence and weather descriptions are always Japanese. Remove
-  // .fails when they follow the locale.
-  it.fails("has no Japanese in English mode", async () => {
+  it("has no Japanese in English mode", async () => {
     expect(await new WeatherFeature(config).getContext()).not.toMatch(JAPANESE);
   });
 });

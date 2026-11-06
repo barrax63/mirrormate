@@ -71,6 +71,20 @@ describe("Google Calendar", () => {
     });
   });
 
+  it("names an event without a title in the locale's language", async () => {
+    mocks.list.mockResolvedValue({
+      data: { items: [{ start: { dateTime: "2026-11-05T10:00:00Z" }, end: { dateTime: "2026-11-05T11:00:00Z" } }] },
+    });
+
+    vi.stubEnv("LOCALE", "en");
+    const [english] = await fetchUpcomingEvents("me@example.com", 5, "UTC");
+    vi.stubEnv("LOCALE", "ja");
+    const [japanese] = await fetchUpcomingEvents("me@example.com", 5, "UTC");
+
+    expect(english.summary).toBe("Untitled event");
+    expect(japanese.summary).toBe("無題の予定");
+  });
+
   it("marks all-day events among the upcoming ones", async () => {
     vi.setSystemTime(new Date("2026-11-04T23:30:00Z"));
     mocks.list.mockResolvedValue({

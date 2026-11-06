@@ -7,13 +7,19 @@ import { executeRule, formatRuleContext } from "@/lib/rules";
 import { loadProvidersConfig, getEmbeddingProvider } from "@/lib/providers";
 import { RAGService, getSimpleContext, MemoryService } from "@/lib/memory";
 import { getUserRepository, getUserSettingsRepository } from "@/lib/repositories";
-import { getLocale } from "@/lib/app";
+import { getLocale, type Locale } from "@/lib/app";
 import { historyLimitFrom, trimHistory } from "@/lib/chat/history";
 import { serviceErrorResponse } from "@/lib/errors/classify";
 import type { Service } from "@/lib/errors/service-error";
 
 const MAX_TOOL_ITERATIONS = 3;
 const DEFAULT_USER_ID = "default-user";
+
+// Added to the system prompt when a camera frame comes with the question
+const CAMERA_HINT: Record<Locale, string> = {
+  en: "User's camera image is available. If asked about the user's appearance or what they're holding, use the see_camera tool. Do not use web_search.",
+  ja: "ユーザーのカメラ画像が利用可能です。ユーザーの外見や持っているものについて聞かれた場合は、see_cameraツールを使ってください。web_searchは使わないでください。",
+};
 
 // RAG service cache
 let ragService: RAGService | null = null;
@@ -107,11 +113,8 @@ export async function POST(request: NextRequest) {
 
     // Add tool usage hint when camera image is available
     if (image) {
-      const isJapanese = getLocale() === "ja";
       contexts.push("[Tool Usage]");
-      contexts.push(isJapanese
-        ? "ユーザーのカメラ画像が利用可能です。ユーザーの外見や持っているものについて聞かれた場合は、see_cameraツールを使ってください。web_searchは使わないでください。"
-        : "User's camera image is available. If asked about the user's appearance or what they're holding, use the see_camera tool. Do not use web_search.");
+      contexts.push(CAMERA_HINT[getLocale()]);
     }
 
     // Get RAG context

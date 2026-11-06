@@ -43,12 +43,70 @@ export interface CharacterConfig {
   };
 }
 
-// Replies are spoken, and the page shows their text as it is, so markdown would be read out
-// or shown. Added to every character's prompt.
-function spokenTextRule(isJapanese: boolean): string {
-  return isJapanese
-    ? "あなたの返答は音声で読み上げられます。話し言葉のプレーンテキストだけを書いてください。Markdown、箇条書き、絵文字は使わないでください。"
-    : "Your replies are read aloud by a speech engine. Write plain spoken text only: no markdown, no lists, no emoji.";
+/** What a character's prompt is built from */
+type PromptCharacter = Pick<
+  CharacterPreset,
+  "name" | "description" | "appearance" | "personality" | "speech_style" | "examples" | "behaviors" | "background"
+>;
+
+interface PromptText {
+  intro(character: PromptCharacter): string[];
+  personality: string;
+  speechStyle: string;
+  examples: string;
+  example(text: string): string;
+  behaviors: string;
+  /**
+   * Replies are spoken, and the page shows their text as it is, so markdown would be read out
+   * or shown. Added to every character's prompt.
+   */
+  spokenText: string;
+}
+
+const PROMPT_TEXT: Record<Locale, PromptText> = {
+  en: {
+    intro: (c) => [`You are ${c.description}.`, `Your name is "${c.name}". You have ${c.appearance.join(", ")}.`],
+    personality: "Personality:",
+    speechStyle: "Speech style:",
+    examples: "Examples:",
+    example: (text) => `- "${text}"`,
+    behaviors: "Behaviors:",
+    spokenText:
+      "Your replies are read aloud by a speech engine. Write plain spoken text only: no markdown, no lists, no emoji.",
+  },
+  ja: {
+    intro: (c) => [`あなたは${c.description}です。`, `名前は「${c.name}」。${c.appearance.join("、")}をしています。`],
+    personality: "性格:",
+    speechStyle: "話し方:",
+    examples: "例:",
+    example: (text) => `- 「${text}」`,
+    behaviors: "行動指針:",
+    spokenText:
+      "あなたの返答は音声で読み上げられます。話し言葉のプレーンテキストだけを書いてください。Markdown、箇条書き、絵文字は使わないでください。",
+  },
+};
+
+function buildPrompt(c: PromptCharacter, locale: Locale): string {
+  const text = PROMPT_TEXT[locale];
+  const sections = [
+    ...text.intro(c),
+    "",
+    text.personality,
+    ...c.personality.map((p) => `- ${p}`),
+    "",
+    text.speechStyle,
+    ...c.speech_style.map((s) => `- ${s}`),
+    "",
+    text.examples,
+    ...c.examples.map((e) => text.example(e)),
+  ];
+
+  if (c.behaviors && c.behaviors.length > 0) {
+    sections.push("", text.behaviors, ...c.behaviors.map((b) => `- ${b}`));
+  }
+
+  sections.push("", c.background.trim(), "", text.spokenText);
+  return sections.join("\n");
 }
 
 let cachedConfig: CharacterConfig | null = null;
@@ -141,52 +199,7 @@ export function getSystemPrompt(): string {
     return cachedPrompt;
   }
 
-  const config = loadCharacterConfig();
-  const c = config.character;
-
-  const isJapanese = locale === "ja";
-
-  const sections = isJapanese
-    ? [
-        `あなたは${c.description}です。`,
-        `名前は「${c.name}」。${c.appearance.join("、")}をしています。`,
-        "",
-        "性格:",
-        ...c.personality.map((p) => `- ${p}`),
-        "",
-        "話し方:",
-        ...c.speech_style.map((s) => `- ${s}`),
-        "",
-        "例:",
-        ...c.examples.map((e) => `- 「${e}」`),
-      ]
-    : [
-        `You are ${c.description}.`,
-        `Your name is "${c.name}". You have ${c.appearance.join(", ")}.`,
-        "",
-        "Personality:",
-        ...c.personality.map((p) => `- ${p}`),
-        "",
-        "Speech style:",
-        ...c.speech_style.map((s) => `- ${s}`),
-        "",
-        "Examples:",
-        ...c.examples.map((e) => `- "${e}"`),
-      ];
-
-  // Add behaviors if defined
-  if (c.behaviors && c.behaviors.length > 0) {
-    sections.push("");
-    sections.push(isJapanese ? "行動指針:" : "Behaviors:");
-    sections.push(...c.behaviors.map((b) => `- ${b}`));
-  }
-
-  sections.push("");
-  sections.push(c.background.trim());
-  sections.push("");
-  sections.push(spokenTextRule(isJapanese));
-
-  cachedPrompt = sections.join("\n");
+  cachedPrompt = buildPrompt(loadCharacterConfig().character, locale);
   return cachedPrompt;
 }
 
@@ -306,48 +319,7 @@ export function getSystemPromptForCharacter(characterId: string): string {
     return getSystemPrompt();
   }
 
-  const isJapanese = locale === "ja";
-
-  const sections = isJapanese
-    ? [
-        `あなたは${character.description}です。`,
-        `名前は「${character.name}」。${character.appearance.join("、")}をしています。`,
-        "",
-        "性格:",
-        ...character.personality.map((p) => `- ${p}`),
-        "",
-        "話し方:",
-        ...character.speech_style.map((s) => `- ${s}`),
-        "",
-        "例:",
-        ...character.examples.map((e) => `- 「${e}」`),
-      ]
-    : [
-        `You are ${character.description}.`,
-        `Your name is "${character.name}". You have ${character.appearance.join(", ")}.`,
-        "",
-        "Personality:",
-        ...character.personality.map((p) => `- ${p}`),
-        "",
-        "Speech style:",
-        ...character.speech_style.map((s) => `- ${s}`),
-        "",
-        "Examples:",
-        ...character.examples.map((e) => `- "${e}"`),
-      ];
-
-  if (character.behaviors && character.behaviors.length > 0) {
-    sections.push("");
-    sections.push(isJapanese ? "行動指針:" : "Behaviors:");
-    sections.push(...character.behaviors.map((b) => `- ${b}`));
-  }
-
-  sections.push("");
-  sections.push(character.background.trim());
-  sections.push("");
-  sections.push(spokenTextRule(isJapanese));
-
-  const prompt = sections.join("\n");
+  const prompt = buildPrompt(character, locale);
   cachedCharacterPrompts.set(cacheKey, prompt);
   return prompt;
 }

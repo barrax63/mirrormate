@@ -6,20 +6,49 @@ import { getLocale, type Locale } from "@/lib/app";
 // Cache settings
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-// Said instead of nothing when there's no schedule to read. Otherwise the LLM guessed at one,
-// such as calling tomorrow clear.
-const NOT_CONNECTED: Record<Locale, string> = {
-  en: "Calendar: not connected, so today's and tomorrow's schedules are unknown.",
-  ja: "カレンダー: 未接続のため、今日と明日の予定はわかりません。",
-};
-const NOT_LOADED: Record<Locale, string> = {
-  en: "Calendar: couldn't be loaded, so today's and tomorrow's schedules are unknown.",
-  ja: "カレンダー: 読み込めなかったため、今日と明日の予定はわかりません。",
-};
-// In place of a time, for an event with only a date
-const ALL_DAY: Record<Locale, string> = {
-  en: "all day",
-  ja: "終日",
+interface CalendarText {
+  /** The locale times are written in, and whether on a 12-hour clock */
+  timeLocale: string;
+  hour12: boolean;
+  /** In place of a time, for an event with only a date */
+  allDay: string;
+  /** Each event is its start and summary */
+  today(events: string[]): string;
+  next(event: string, relative: string): string;
+  inProgress: string;
+  inMinutes(minutes: number): string;
+  inHours(hours: number): string;
+  // Said instead of nothing when there's no schedule to read. Otherwise the LLM guessed at one,
+  // such as calling tomorrow clear.
+  notConnected: string;
+  notLoaded: string;
+}
+
+const TEXT: Record<Locale, CalendarText> = {
+  en: {
+    timeLocale: "en-US",
+    hour12: true,
+    allDay: "all day",
+    today: (events) => `Today's schedule: ${events.length > 0 ? events.join(", ") : "none"}`,
+    next: (event, relative) => `Next event: ${event}${relative ? ` (${relative})` : ""}`,
+    inProgress: "in progress",
+    inMinutes: (minutes) => `in ${minutes} min`,
+    inHours: (hours) => `in ${hours} hr`,
+    notConnected: "Calendar: not connected, so today's and tomorrow's schedules are unknown.",
+    notLoaded: "Calendar: couldn't be loaded, so today's and tomorrow's schedules are unknown.",
+  },
+  ja: {
+    timeLocale: "ja-JP",
+    hour12: false,
+    allDay: "終日",
+    today: (events) => `今日の予定: ${events.length > 0 ? events.join("、") : "なし"}`,
+    next: (event, relative) => `次の予定: ${event}${relative ? `（${relative}）` : ""}`,
+    inProgress: "進行中",
+    inMinutes: (minutes) => `あと${minutes}分`,
+    inHours: (hours) => `あと${hours}時間`,
+    notConnected: "カレンダー: 未接続のため、今日と明日の予定はわかりません。",
+    notLoaded: "カレンダー: 読み込めなかったため、今日と明日の予定はわかりません。",
+  },
 };
 
 interface CacheEntry {
@@ -41,67 +70,49 @@ export class CalendarFeature implements Feature {
     return Date.now() - this.cache.timestamp < CACHE_TTL_MS;
   }
 
-  private isJapanese(): boolean {
-    return getLocale() === "ja";
+  // Its start and summary. Times are in the timezone the app tells times in: the server's can
+  // differ, and is UTC in Docker.
+  private formatEvent(event: CalendarEvent, text: CalendarText): string {
+    const start = event.allDay
+      ? text.allDay
+      : event.start.toLocaleTimeString(text.timeLocale, {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: text.hour12,
+          timeZone: getTimezone(),
+        });
+    return `${start} ${event.summary}`;
   }
 
-  // In the timezone the app tells times in. The server's can differ, and is UTC in Docker.
-  private formatStart(event: CalendarEvent): string {
-    if (event.allDay) {
-      return ALL_DAY[getLocale()];
-    }
-    const isJa = this.isJapanese();
-    return event.start.toLocaleTimeString(isJa ? "ja-JP" : "en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: !isJa,
-      timeZone: getTimezone(),
-    });
-  }
-
-  private formatRelativeTime(date: Date): string {
+  private formatRelativeTime(date: Date, text: CalendarText): string {
     const now = new Date();
     const diffMs = date.getTime() - now.getTime();
     const diffMins = Math.round(diffMs / 60000);
-    const isJa = this.isJapanese();
 
     if (diffMins < 0) {
-      return isJa ? "進行中" : "in progress";
+      return text.inProgress;
     }
     if (diffMins < 60) {
-      return isJa ? `あと${diffMins}分` : `in ${diffMins} min`;
+      return text.inMinutes(diffMins);
     }
     const diffHours = Math.round(diffMins / 60);
     if (diffHours < 24) {
-      return isJa ? `あと${diffHours}時間` : `in ${diffHours} hr`;
+      return text.inHours(diffHours);
     }
     return "";
   }
 
-  private formatTodayEvents(events: CalendarEvent[]): string {
-    const isJa = this.isJapanese();
-    if (events.length === 0) {
-      return isJa ? "今日の予定: なし" : "Today's schedule: none";
-    }
-
-    const separator = isJa ? "、" : ", ";
-    const formatted = events
-      .map((e) => `${this.formatStart(e)} ${e.summary}`)
-      .join(separator);
-    return isJa ? `今日の予定: ${formatted}` : `Today's schedule: ${formatted}`;
+  private formatTodayEvents(events: CalendarEvent[], text: CalendarText): string {
+    return text.today(events.map((e) => this.formatEvent(e, text)));
   }
 
-  private formatNextEvent(events: CalendarEvent[]): string {
+  private formatNextEvent(events: CalendarEvent[], text: CalendarText): string {
     if (events.length === 0) {
       return "";
     }
 
-    const isJa = this.isJapanese();
     const next = events[0];
-    const relative = this.formatRelativeTime(next.start);
-    const relativeStr = relative ? (isJa ? `（${relative}）` : ` (${relative})`) : "";
-    const label = isJa ? "次の予定" : "Next event";
-    return `${label}: ${this.formatStart(next)} ${next.summary}${relativeStr}`;
+    return text.next(this.formatEvent(next, text), this.formatRelativeTime(next.start, text));
   }
 
   async getContext(): Promise<string> {
@@ -124,7 +135,7 @@ export class CalendarFeature implements Feature {
       !process.env.GOOGLE_PRIVATE_KEY ||
       !calendarId
     ) {
-      return NOT_CONNECTED[getLocale()];
+      return TEXT[getLocale()].notConnected;
     }
 
     try {
@@ -136,10 +147,11 @@ export class CalendarFeature implements Feature {
 
       console.log("[Calendar] Fetched:", todayEvents.length, "today,", upcomingEvents.length, "upcoming");
 
+      const text = TEXT[getLocale()];
       const parts: string[] = [];
-      parts.push(this.formatTodayEvents(todayEvents));
+      parts.push(this.formatTodayEvents(todayEvents, text));
 
-      const nextEventStr = this.formatNextEvent(upcomingEvents);
+      const nextEventStr = this.formatNextEvent(upcomingEvents, text);
       if (nextEventStr) {
         parts.push(nextEventStr);
       }
@@ -160,7 +172,7 @@ export class CalendarFeature implements Feature {
         console.log("[Calendar] Returning stale cache due to error");
         return this.cache.data;
       }
-      return NOT_LOADED[getLocale()];
+      return TEXT[getLocale()].notLoaded;
     }
   }
 }

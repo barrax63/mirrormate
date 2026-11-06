@@ -1,5 +1,6 @@
-import { Tool, ToolExecuteResult } from "./types";
+import { Tool, ToolDefinition, ToolExecuteResult } from "./types";
 import { sendSearchResults, isAutoShareEnabled } from "../discord";
+import { getLocale, type Locale } from "@/lib/app";
 import { searchOllama, isOllamaSearchEnabled, type OllamaSearchResult } from "../search/ollama-search";
 
 // Unified search result interface
@@ -88,20 +89,37 @@ export function isSearchEnabled(): boolean {
   return isOllamaSearchEnabled();
 }
 
+// The LLM reads these in the language of the rest of its prompt
+const TEXT: Record<Locale, { description: string; query: string }> = {
+  en: {
+    description:
+      "Searches the internet for up-to-date information. Always use it for news, today's events, things you don't know, and whenever accurate information is needed. If you're not sure of what you know, always call this tool.",
+    query: "Search query",
+  },
+  ja: {
+    description:
+      "インターネットで最新情報を検索します。必ず使うべき場面: ニュース、今日の出来事、知らない事柄、正確な情報が必要なとき。自分の知識に自信がないときは必ずこのツールを呼び出してください。",
+    query: "検索クエリ",
+  },
+};
+
 export const webSearchTool: Tool = {
-  definition: {
-    name: "web_search",
-    description: "インターネットで最新情報を検索します。必ず使うべき場面: ニュース、今日の出来事、知らない事柄、正確な情報が必要なとき。自分の知識に自信がないときは必ずこのツールを呼び出してください。",
-    parameters: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description: "検索クエリ",
+  get definition(): ToolDefinition {
+    const text = TEXT[getLocale()];
+    return {
+      name: "web_search",
+      description: text.description,
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: text.query,
+          },
         },
+        required: ["query"],
       },
-      required: ["query"],
-    },
+    };
   },
 
   async execute(args: Record<string, unknown>): Promise<ToolExecuteResult> {

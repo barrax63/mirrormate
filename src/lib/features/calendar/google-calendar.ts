@@ -1,5 +1,12 @@
 import { google, calendar_v3 } from "googleapis";
+import { getLocale, type Locale } from "@/lib/app";
 import { localDateIn, midnightIn, parseLocalDate } from "./zones";
+
+// For an event without a title, in the calendar context and the reminders
+const UNTITLED: Record<Locale, string> = {
+  en: "Untitled event",
+  ja: "無題の予定",
+};
 
 export interface CalendarEvent {
   summary: string;
@@ -43,7 +50,7 @@ function parseEventDate(
 
 function toCalendarEvent(event: calendar_v3.Schema$Event, timeZone: string): CalendarEvent {
   return {
-    summary: event.summary || "無題の予定",
+    summary: event.summary || UNTITLED[getLocale()],
     start: parseEventDate(event.start, timeZone),
     end: parseEventDate(event.end, timeZone),
     allDay: !event.start?.dateTime && !!event.start?.date,

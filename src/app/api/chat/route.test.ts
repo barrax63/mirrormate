@@ -538,15 +538,33 @@ describe("POST /api/chat", () => {
     });
   });
 
-  describe("known bugs", () => {
-    // The show_effect and web_search tool descriptions are always Japanese. Remove
-    // .fails when they follow the locale.
-    it.fails("sends no Japanese to the LLM in English mode", async () => {
+  describe("languages", () => {
+    // The system prompt with the camera hint, the tool definitions, and a rule's labels
+    it("sends no Japanese to the LLM in English mode", async () => {
       scriptLLM(text("Hi"));
 
-      await say("hello");
+      await say("hello", { image: "data:image/jpeg;base64,AAAA" });
+      await say("good night");
 
-      expect(JSON.stringify(llmRequests[0])).not.toMatch(JAPANESE);
+      expect(systemPrompt(llmRequests[0])).toContain("User's camera image is available.");
+      expect(llmRequests[0].tools?.length).toBeGreaterThan(0);
+      expect(systemPrompt(llmRequests[1])).toContain("[Information from Rule]");
+      for (const request of llmRequests) {
+        expect(JSON.stringify(request)).not.toMatch(JAPANESE);
+      }
+    });
+
+    it("sends the same in Japanese in Japanese mode", async () => {
+      vi.stubEnv("LOCALE", "ja");
+      scriptLLM(text("こんにちは"));
+
+      await say("こんにちは", { image: "data:image/jpeg;base64,AAAA" });
+
+      expect(systemPrompt()).toContain("ユーザーのカメラ画像が利用可能です。");
+      expect(systemPrompt()).toContain("性格:");
+      expect(llmRequests[0].tools?.find((tool) => tool.name === "show_effect")?.description).toMatch(
+        /^画面にエフェクトを表示します。/
+      );
     });
   });
 });
