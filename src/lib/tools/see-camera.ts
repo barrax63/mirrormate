@@ -16,6 +16,12 @@ const TEXT: Record<Locale, { noImage: string; noVlm: string; failed: string; lan
     failed: "画像の分析中にエラーが発生しました。",
     language: "Japanese",
   },
+  de: {
+    noImage: "Kein Kamerabild verfügbar. Die Kamera der Person ist vielleicht aus.",
+    noVlm: "Der Dienst zur Bildanalyse ist nicht verfügbar.",
+    failed: "Die Analyse des Bildes ist fehlgeschlagen.",
+    language: "German",
+  },
 };
 
 /**

@@ -34,6 +34,14 @@ const TEXT: Record<Locale, { description: string; effect: string; reason: string
     effect: "表示するエフェクトの種類",
     reason: "エフェクトを表示する理由（内部ログ用）",
   },
+  de: {
+    description: `Zeigt einen Effekt auf dem Bildschirm. Benutze ihn, um ein Gefühl auszudrücken, etwa wenn du dich freust, etwas feierst oder gerührt bist.
+- confetti: Konfetti (Feiern, gute Nachrichten, Erfolge)
+- hearts: Herzen (Zuneigung, Dank, Ermutigung)
+- sparkles: Glitzer (Überraschungen, Entdeckungen, schöne Dinge)`,
+    effect: "Welcher Effekt gezeigt wird",
+    reason: "Warum der Effekt gezeigt wird (fürs Log)",
+  },
 };
 
 export const effectTool: Tool = {

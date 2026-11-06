@@ -23,8 +23,9 @@ describe("tool definitions", () => {
     vi.unstubAllEnvs();
   });
 
-  it("have no Japanese in English mode", () => {
+  it("have no Japanese in English or German mode", () => {
     expect(JSON.stringify(definitionsIn("en"))).not.toMatch(JAPANESE);
+    expect(JSON.stringify(definitionsIn("de"))).not.toMatch(JAPANESE);
   });
 
   it("describe show_effect and web_search in Japanese in Japanese mode", () => {
@@ -37,6 +38,7 @@ describe("tool definitions", () => {
 
   it("are the same tools in every locale, apart from the descriptions", () => {
     expect(shape(definitionsIn("ja"))).toEqual(shape(definitionsIn("en")));
+    expect(shape(definitionsIn("de"))).toEqual(shape(definitionsIn("en")));
   });
 
   it("are found by name in every locale", () => {

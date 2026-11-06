@@ -2,7 +2,14 @@ import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "js-yaml";
 
-export type Locale = "ja" | "en";
+/** Every language the app has text for */
+export const LOCALES = ["en", "ja", "de"] as const;
+
+export type Locale = (typeof LOCALES)[number];
+
+export function isLocale(value: unknown): value is Locale {
+  return (LOCALES as readonly unknown[]).includes(value);
+}
 
 export interface AppConfig {
   app: {
@@ -42,13 +49,20 @@ export function loadAppConfig(): AppConfig {
   const fileContents = fs.readFileSync(configPath, "utf8");
   cachedConfig = yaml.load(fileContents) as AppConfig;
 
+  // Every table of text has an entry per locale, so an unknown one would fail everywhere
+  const locale: unknown = cachedConfig.app?.locale;
+  if (!isLocale(locale)) {
+    console.warn(`[App] Unknown app.locale ${JSON.stringify(locale)}, using ja. Known: ${LOCALES.join(", ")}`);
+    cachedConfig = { ...cachedConfig, app: { ...cachedConfig.app, locale: "ja" } };
+  }
+
   return cachedConfig;
 }
 
 export function getLocale(): Locale {
   // Environment variable takes precedence
   const envLocale = process.env.LOCALE;
-  if (envLocale === "ja" || envLocale === "en") {
+  if (isLocale(envLocale)) {
     return envLocale;
   }
 

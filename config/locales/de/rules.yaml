@@ -1,0 +1,84 @@
+rules:
+  # Keywords match anywhere in what's said, ignoring case, and a match turns the LLM's tools off.
+  # So they are whole phrases: "morgen" alone, or even "morgen mira", would also catch "Wie wird
+  # das Wetter morgen Mira?", and "nachrichten" alone "Schick mir die Nachrichten an Discord".
+
+  # Morning greeting
+  morning_greeting:
+    description: Mit einem Morgengruß die Infos des Tages teilen
+    triggers:
+      keywords:
+        - guten morgen
+    actions:
+      - module: time
+      - module: today_info
+      - module: weather
+      - module: calendar
+      - module: web_search
+        params:
+          query: "aktuelle Nachrichten Deutschland"
+    response_hint: |
+      Fasse als Morgengruß freundlich zusammen:
+      - Das heutige Datum und den Wochentag
+      - Was für ein Tag heute ist (Gedenktage, Ereignisse)
+      - Das heutige Wetter
+      - Die heutigen Termine
+      - Die wichtigsten Nachrichten des Tages (nur 1–2 ganz kurz)
+
+  # Coming home greeting
+  coming_home:
+    description: Begrüßung beim Nachhausekommen
+    triggers:
+      keywords:
+        - bin zu hause
+        - bin zuhause
+        - bin daheim
+        - wieder zu hause
+        - wieder zuhause
+        - wieder daheim
+    actions:
+      - module: time
+      - module: calendar
+    response_hint: |
+      Als Begrüßung beim Nachhausekommen:
+      - Wenn heute noch Termine anstehen, erwähne sie
+      - Wenn nicht, sag etwas Warmes wie „Gut gemacht heute“
+
+  # Good night greeting
+  good_night:
+    description: Vor dem Schlafen die Termine für morgen nennen
+    triggers:
+      keywords:
+        - gute nacht
+        - gehe schlafen
+        - geh schlafen
+        - gehe ins bett
+        - geh ins bett
+    actions:
+      - module: calendar
+      - module: weather
+    response_hint: |
+      Als Gute-Nacht-Gruß:
+      - Erwähne kurz die Termine für morgen
+      - Erzähl vom Wetter für morgen
+      - Sag etwas Warmes wie „Schlaf gut“
+
+  # News request
+  news_request:
+    description: Die heutigen Nachrichten suchen und teilen
+    triggers:
+      keywords:
+        - nachrichten von heute
+        - heutigen nachrichten
+        - aktuelle nachrichten
+        - neuesten nachrichten
+        - was gibt es neues
+        - was gibt's neues
+        - was gibt’s neues
+    actions:
+      - module: web_search
+        params:
+          query: "aktuelle Nachrichten Deutschland"
+    response_hint: |
+      Wähle 2–3 wichtige Nachrichten aus den Suchergebnissen aus
+      und erzähle kurz davon

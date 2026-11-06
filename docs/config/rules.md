@@ -17,15 +17,18 @@ flowchart TD
 
 Rules and modules are locale-specific. Edit the files for your language:
 
-- **Japanese**: `config/locales/ja/rules.yaml`, `config/locales/ja/modules.yaml`
 - **English**: `config/locales/en/rules.yaml`, `config/locales/en/modules.yaml`
+- **Japanese**: `config/locales/ja/rules.yaml`, `config/locales/ja/modules.yaml`
+- **German**: `config/locales/de/rules.yaml`, `config/locales/de/modules.yaml`
 
 Set the locale in `config/app.yaml`:
 
 ```yaml
 app:
-  locale: "en"  # or "ja"
+  locale: "en"  # or "ja", "de"
 ```
+
+Keywords match anywhere in what's said, ignoring case, and a match turns the LLM's tools off. So make them whole phrases. German has `guten morgen`, not `morgen`, which also means "tomorrow": "Wie wird das Wetter morgen?" would otherwise get the morning greeting, with no tools.
 
 ## Rules Configuration
 

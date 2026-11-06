@@ -49,6 +49,18 @@ const TEXT: Record<Locale, CalendarText> = {
     notConnected: "カレンダー: 未接続のため、今日と明日の予定はわかりません。",
     notLoaded: "カレンダー: 読み込めなかったため、今日と明日の予定はわかりません。",
   },
+  de: {
+    timeLocale: "de-DE",
+    hour12: false,
+    allDay: "ganztägig",
+    today: (events) => `Heutige Termine: ${events.length > 0 ? events.join(", ") : "keine"}`,
+    next: (event, relative) => `Nächster Termin: ${event}${relative ? ` (${relative})` : ""}`,
+    inProgress: "läuft gerade",
+    inMinutes: (minutes) => `in ${minutes} Min.`,
+    inHours: (hours) => `in ${hours} Std.`,
+    notConnected: "Kalender: nicht verbunden, daher sind die heutigen und morgigen Termine unbekannt.",
+    notLoaded: "Kalender: konnte nicht geladen werden, daher sind die heutigen und morgigen Termine unbekannt.",
+  },
 };
 
 interface CacheEntry {

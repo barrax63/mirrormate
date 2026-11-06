@@ -93,6 +93,19 @@ Default settings for English (US) users:
 | Clock | locale | en-US |
 | STT | language | en |
 
+### German (de)
+
+Default settings for German users:
+
+| Category | Setting | Value |
+|----------|---------|-------|
+| Time | timezone | Europe/Berlin |
+| Weather | locations | Berlin, München |
+| Weather | defaultLocation | Berlin |
+| Clock | format24h | true |
+| Clock | locale | de-DE |
+| STT | language | de |
+
 ## Customizing Presets
 
 You can customize preset files to match your specific needs:
@@ -158,44 +171,43 @@ To add support for a new locale:
 1. Create a new preset file:
 
 ```yaml
-# config/presets/de.yaml (German example)
+# config/presets/fr.yaml (French example)
 
 time:
-  timezone: "Europe/Berlin"
+  timezone: "Europe/Paris"
 
 weather:
   locations:
-    - name: "Berlin"
-      latitude: 52.5200
-      longitude: 13.4050
-    - name: "Munich"
-      latitude: 48.1351
-      longitude: 11.5820
-  defaultLocation: "Berlin"
+    - name: "Paris"
+      latitude: 48.8566
+      longitude: 2.3522
+  defaultLocation: "Paris"
 
 clock:
-  timezone: "Europe/Berlin"
+  timezone: "Europe/Paris"
   format24h: true
-  locale: "de-DE"
+  locale: "fr-FR"
 
 stt:
-  language: "de"
+  language: "fr"
 ```
 
-2. Add the locale to `src/lib/app/index.ts`, in the type and in the `LOCALE` check in `getLocale()`:
+2. Add the locale to `LOCALES` in `src/lib/app/index.ts`:
 
 ```typescript
-export type Locale = "ja" | "en" | "de";
+export const LOCALES = ["en", "ja", "de", "fr"] as const;
 ```
 
-3. Add a `de` entry to every table of server text keyed by locale (`Record<Locale, ...>`). `bun run build` fails, naming each one, until they all have it:
+3. Add an `fr` entry to every table of server text keyed by locale (`Record<Locale, ...>`). `bun run build` fails, naming each one, until they all have it:
    - `defaultPresets` in `src/lib/presets/index.ts`
    - the character prompt in `src/lib/character/index.ts`, and the camera hint in `src/app/api/chat/route.ts`
    - the time, weather and calendar text in `src/lib/features/`
    - the tool descriptions and results in `src/lib/tools/`
    - `contextLabels` in `src/lib/rules/engine.ts` and `wikipediaSettings` in `src/lib/rules/modules.ts`
 
-4. Create locale-specific character and message files in `config/locales/de/` and `messages/de.json`
+4. Create locale-specific character and message files in `config/locales/fr/` and `messages/fr.json`, and add the messages to `src/i18n/messages.test.ts`. That test and `src/lib/app/locales.test.ts` check that they have the same keys, files, rules, modules and characters as English.
+
+5. Choose rule keywords as whole phrases: they match anywhere in what's said, and a match turns the LLM's tools off. Test the wake phrase in that language with local Whisper first, as German's "Hey Mira" came back as "Herr Emira".
 
 ## Related Configuration
 

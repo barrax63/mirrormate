@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { WeatherFeature } from "./index";
 
-const mocks = vi.hoisted(() => ({ fetchWeather: vi.fn() }));
+const mocks = vi.hoisted(() => ({ fetchWeather: vi.fn(), getTimezone: vi.fn() }));
 
 vi.mock("./open-meteo", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./open-meteo")>()),
   fetchWeather: mocks.fetchWeather,
 }));
+
+vi.mock("../config-loader", () => ({ getTimezone: mocks.getTimezone }));
 
 const JAPANESE = /[぀-ヿ㐀-鿿]/;
 
@@ -27,6 +29,7 @@ describe("WeatherFeature", () => {
     mocks.fetchWeather.mockResolvedValue({
       current_weather: { weathercode: 0, temperature: 21.4, windspeed: 9.6 },
     });
+    mocks.getTimezone.mockReturnValue("America/New_York");
   });
 
   afterEach(() => {
@@ -37,7 +40,7 @@ describe("WeatherFeature", () => {
   it("reports the location, weather, temperature and wind speed", async () => {
     const context = await new WeatherFeature(config).getContext();
 
-    expect(mocks.fetchWeather).toHaveBeenCalledWith(40.7, -74);
+    expect(mocks.fetchWeather).toHaveBeenCalledWith(40.7, -74, "America/New_York");
     expect(context.split("\n")[0]).toBe("Current weather in New York: clear sky, 21°C, wind 10 km/h");
   });
 
@@ -105,6 +108,16 @@ describe("WeatherFeature", () => {
 
   it("returns nothing when disabled", async () => {
     expect(await new WeatherFeature({ ...config, enabled: false }).getContext()).toBe("");
+  });
+
+  it("reports them in German in German mode", async () => {
+    vi.stubEnv("LOCALE", "de");
+
+    const context = await new WeatherFeature(config).getContext();
+
+    expect(context).toBe(
+      "Aktuelles Wetter in New York: klarer Himmel, 21 °C, Wind 10 km/h\nVorhersage: keine, daher ist das Wetter für später und morgen unbekannt."
+    );
   });
 
   it("has no Japanese in English mode", async () => {

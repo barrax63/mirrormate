@@ -123,6 +123,16 @@ describe("CalendarFeature", () => {
       );
     });
 
+    it("tells them in German, on a 24-hour clock, in German mode", async () => {
+      vi.stubEnv("LOCALE", "de");
+      mocks.fetchTodayEvents.mockResolvedValue([holiday, dentist]);
+      mocks.fetchUpcomingEvents.mockResolvedValue([dentist]);
+
+      expect(await new CalendarFeature(config).getContext()).toBe(
+        "Heutige Termine: ganztägig Holiday, 10:00 Dentist\nNächster Termin: 10:00 Dentist (in 30 Min.)"
+      );
+    });
+
     it("says all day in Japanese in Japanese mode", async () => {
       vi.stubEnv("LOCALE", "ja");
       mocks.fetchTodayEvents.mockResolvedValue([holiday]);

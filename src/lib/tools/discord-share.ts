@@ -29,6 +29,14 @@ const TEXT: Record<Locale, ShareText> = {
     failed: "Discordへの送信に失敗した。設定を確認するよう伝えて。",
     error: (message) => `Discordエラー: ${message}`,
   },
+  de: {
+    missing: "Für Discord braucht es einen Titel oder einen Inhalt.",
+    sentResults: (query, count, titles) =>
+      `An Discord gesendet! ${count} Links zu „${query}“ geteilt (${titles.join(", ")} und mehr). Sag der Person kurz: „Gesendet! Die Links sind auch dabei.“`,
+    sentText: (title) => `An Discord gesendet! „${title}“ geteilt. Sag der Person kurz: „Gesendet!“`,
+    failed: "Senden an Discord fehlgeschlagen. Sag der Person, sie soll die Einstellungen prüfen.",
+    error: (message) => `Discord-Fehler: ${message}`,
+  },
 };
 
 export const discordShareTool: Tool = {

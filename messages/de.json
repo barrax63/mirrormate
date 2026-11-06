@@ -1,0 +1,68 @@
+{
+  "mic": {
+    "off": "Mikro aus",
+    "listening": "Hört zu",
+    "paused": "Pausiert",
+    "wakeWordPrompt": "Sag „{phrase}“",
+    "inConversation": "Im Gespräch",
+    "firstRunNotice": "Schalte das Mikro ein, um per Sprache zu reden"
+  },
+  "control": {
+    "title": "Steuerung",
+    "placeholder": "Nachricht eingeben...",
+    "send": "Senden",
+    "micOn": "Mikro an",
+    "micOff": "Mikro aus",
+    "effects": "Effekte",
+    "confetti": "Konfetti",
+    "hearts": "Herzen",
+    "sparkles": "Glitzer",
+    "voice": "Stimme",
+    "character": "Charakter",
+    "preview": "Anhören",
+    "selectVoice": "Stimme wählen...",
+    "voicesUnavailable": "Stimmen nicht verfügbar",
+    "previewText": "Hallo, so klingt meine Stimme.",
+    "visionOn": "Kamera AN",
+    "visionOff": "Kamera AUS",
+    "visionOnTitle": "Kamera an: Mit jeder Frage geht ein Bild mit, das sich die KI bei Bedarf ansieht",
+    "visionOffTitle": "Kamera aus: Nichts wird aufgenommen oder gesendet",
+    "selectCharacter": "Charakter wählen..."
+  },
+  "status": {
+    "thinking": "Denkt nach...",
+    "speaking": "Spricht...",
+    "ready": "Bereit"
+  },
+  "reminder": {
+    "timeText": "in {minutes} Minuten",
+    "title": "Du hast {timeText} einen Termin",
+    "message": "Du hast {timeText} „{summary}“."
+  },
+  "errors": {
+    "line": "{route}: {message}",
+    "routes": {
+      "wakeWord": "Aktivierungswort",
+      "speech": "Spracheingabe",
+      "chat": "Antworten",
+      "tts": "Sprachausgabe"
+    },
+    "services": {
+      "openai": "OpenAI",
+      "elevenlabs": "ElevenLabs",
+      "localWhisper": "Lokales Whisper",
+      "ollama": "Ollama",
+      "app": "Der Server"
+    },
+    "codes": {
+      "missing_key": "{service} hat keinen API-Schlüssel. Trag ihn in .env ein und starte neu.",
+      "invalid_key": "{service} hat den API-Schlüssel abgelehnt.",
+      "missing_permissions": "Dem API-Schlüssel von {service} fehlt eine Berechtigung, die dafür nötig ist.",
+      "quota_exceeded": "{service} hat kein Guthaben mehr.",
+      "spend_limit_reached": "{service} hat das dafür festgelegte monatliche Ausgabenlimit erreicht.",
+      "rate_limited": "{service} begrenzt die Anfragen. Neuer Versuch später.",
+      "unavailable": "{service} ist nicht erreichbar.",
+      "failed": "{service} hat einen Fehler gemeldet. Details stehen im Server-Log."
+    }
+  }
+}

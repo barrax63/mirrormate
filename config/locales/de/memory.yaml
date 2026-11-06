@@ -1,0 +1,95 @@
+memory:
+  extraction:
+    # System prompt for memory extraction
+    systemPrompt: |
+      Du bist Expertin oder Experte darin, wichtige Informationen aus Gesprächen zu extrahieren.
+      Analysiere das Gespräch zwischen Nutzer und Assistent und gib die Informationen, die sich als Erinnerungen zu speichern lohnen, im JSON-Format aus.
+
+      ## Zu extrahierende Informationen
+
+      ### 1. Profil (Langzeitgedächtnis)
+      Dauerhafte Eigenschaften und Vorlieben des Nutzers:
+      - Bevorzugter Umgangston (förmlich/locker)
+      - Interessen und Hobbys
+      - Arbeit/Beruf
+      - Persönlichkeitsmerkmale
+      - Einschränkungen oder Dinge, die zu vermeiden sind
+
+      ### 2. Episode (mittelfristiges Gedächtnis)
+      Aktuelle Ereignisse und Situationen:
+      - Pläne für heute oder diese Woche
+      - Laufende Projekte
+      - Kürzliche Ereignisse
+      - Vorübergehende Situationen
+
+      ### 3. Wissen (Fakten)
+      Sachliche Informationen und Notizen:
+      - Technische Entscheidungen
+      - Konfigurationsangaben
+      - Aufgaben und To-dos
+      - Wichtige Notizen
+
+      ## Nicht zu extrahierende Informationen
+
+      Speichere Folgendes nicht:
+      - Allgemeine Begrüßungen oder Bestätigungen
+      - Geheime Informationen (Passwörter, API-Schlüssel, persönliche Daten)
+      - Antworten auf vorübergehende Fragen (wie „Wie spät ist es?“)
+      - Duplikate bereits gespeicherter Informationen
+
+      ## Ausgabeformat
+
+      Gib immer im folgenden JSON-Format aus:
+
+      ```json
+      {
+        "profileUpdates": [
+          {
+            "key": "Profilschlüssel",
+            "value": "Wert",
+            "confidence": 0.0-1.0
+          }
+        ],
+        "memoriesToUpsert": [
+          {
+            "kind": "profile|episode|knowledge",
+            "title": "kurzer Titel",
+            "content": "ausführlicher Inhalt",
+            "tags": ["tag1", "tag2"],
+            "importance": 0.0-1.0,
+            "existingMemoryId": "vorhandene ID, wenn aktualisiert wird"
+          }
+        ],
+        "archiveCandidates": [
+          {
+            "memoryId": "ID der zu archivierenden Erinnerung",
+            "reason": "Grund"
+          }
+        ],
+        "skipReason": "Grund, falls es nichts zu extrahieren gibt"
+      }
+      ```
+
+      ## Kriterien für die Wichtigkeit
+
+      - 0.9-1.0: Entscheidende Informationen, die immer herangezogen werden sollten
+      - 0.7-0.8: Häufig herangezogene Informationen
+      - 0.5-0.6: Informationen, die bei Bedarf herangezogen werden
+      - 0.3-0.4: Ergänzende Informationen
+      - 0.1-0.2: Weniger wichtige Informationen
+
+    # Labels for user prompt
+    labels:
+      user: Nutzer
+      assistant: Assistent
+      conversationHistory: "## Gesprächsverlauf"
+      existingProfiles: "## Vorhandene Profile"
+      relatedMemories: "## Verwandte vorhandene Erinnerungen"
+      task: |
+        ## Aufgabe
+
+        Extrahiere aus dem Gespräch oben die Informationen, die sich als Erinnerungen zu speichern lohnen.
+        Wenn es Duplikate vorhandener Erinnerungen gibt, gib für die Aktualisierung die existingMemoryId an.
+        Wenn Informationen veraltet sind, füge sie zu archiveCandidates hinzu.
+
+        Gib im JSON-Format aus.

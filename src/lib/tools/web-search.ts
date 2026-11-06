@@ -101,6 +101,11 @@ const TEXT: Record<Locale, { description: string; query: string }> = {
       "インターネットで最新情報を検索します。必ず使うべき場面: ニュース、今日の出来事、知らない事柄、正確な情報が必要なとき。自分の知識に自信がないときは必ずこのツールを呼び出してください。",
     query: "検索クエリ",
   },
+  de: {
+    description:
+      "Sucht im Internet nach aktuellen Informationen. Benutze es immer bei Nachrichten, heutigen Ereignissen, Dingen, die du nicht weißt, und wann immer genaue Informationen gebraucht werden. Wenn du dir bei deinem Wissen nicht sicher bist, ruf dieses Tool immer auf.",
+    query: "Suchanfrage",
+  },
 };
 
 export const webSearchTool: Tool = {
