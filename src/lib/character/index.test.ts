@@ -43,6 +43,21 @@ describe("character prompts", () => {
     }
   });
 
+  it("are in German in German mode, for every character", () => {
+    vi.stubEnv("LOCALE", "de");
+
+    const prompts = [getSystemPrompt(), ...getCharacterPresets().map((preset) => getSystemPromptForCharacter(preset.id))];
+
+    for (const prompt of prompts) {
+      expect(prompt).toMatch(/^Du bist .+\.\nDein Name ist „.+“\. Du hast .+\.\n\nPersönlichkeit:\n- /);
+      expect(prompt).toContain("\n\nSprechweise:\n- ");
+      expect(prompt).toContain("\n\nBeispiele:\n- „");
+      expect(prompt).toContain("\n\nVerhalten:\n- ");
+      expect(prompt).toMatch(/Schreib nur gesprochenen Klartext: kein Markdown, keine Listen, keine Emojis\.$/);
+      expect(prompt).not.toMatch(JAPANESE);
+    }
+  });
+
   it("list the behaviors under their heading", () => {
     vi.stubEnv("LOCALE", "en");
 

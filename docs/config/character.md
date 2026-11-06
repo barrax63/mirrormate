@@ -6,14 +6,15 @@ The character configuration defines the AI's personality, speech style, and beha
 
 Character settings are locale-specific. Edit the file for your language:
 
-- **Japanese**: `config/locales/ja/character.yaml`
 - **English**: `config/locales/en/character.yaml`
+- **Japanese**: `config/locales/ja/character.yaml`
+- **German**: `config/locales/de/character.yaml`
 
 Set the locale in `config/app.yaml`:
 
 ```yaml
 app:
-  locale: "en"  # or "ja"
+  locale: "en"  # or "ja", "de"
 ```
 
 ## Example Configuration

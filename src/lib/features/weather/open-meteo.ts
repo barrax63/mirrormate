@@ -78,11 +78,42 @@ const WEATHER_CODES: Record<Locale, Record<number, string>> = {
     96: "雹を伴う雷雨",
     99: "激しい雹を伴う雷雨",
   },
+  de: {
+    0: "klarer Himmel",
+    1: "überwiegend klar",
+    2: "teilweise bewölkt",
+    3: "bedeckt",
+    45: "Nebel",
+    48: "Nebel mit Raureif",
+    51: "leichter Nieselregen",
+    53: "Nieselregen",
+    55: "starker Nieselregen",
+    56: "gefrierender Nieselregen",
+    57: "starker gefrierender Nieselregen",
+    61: "leichter Regen",
+    63: "Regen",
+    65: "starker Regen",
+    66: "gefrierender Regen",
+    67: "starker gefrierender Regen",
+    71: "leichter Schneefall",
+    73: "Schneefall",
+    75: "starker Schneefall",
+    77: "Schneegriesel",
+    80: "leichte Regenschauer",
+    81: "Regenschauer",
+    82: "heftige Regenschauer",
+    85: "leichte Schneeschauer",
+    86: "starke Schneeschauer",
+    95: "Gewitter",
+    96: "Gewitter mit leichtem Hagel",
+    99: "Gewitter mit starkem Hagel",
+  },
 };
 
 const UNKNOWN: Record<Locale, string> = {
   en: "unknown",
   ja: "不明",
+  de: "unbekannt",
 };
 
 export function getWeatherDescription(code: number, locale: Locale): string {
@@ -118,9 +149,11 @@ async function fetchWeatherOnce(
   });
 }
 
+/** The weather now, with its times and any day boundaries in timeZone */
 export async function fetchWeather(
   latitude: number,
   longitude: number,
+  timeZone: string,
   timeoutMs: number = 10000,
   retries: number = 2
 ): Promise<OpenMeteoResponse> {
@@ -128,7 +161,7 @@ export async function fetchWeather(
   url.searchParams.set("latitude", latitude.toString());
   url.searchParams.set("longitude", longitude.toString());
   url.searchParams.set("current_weather", "true");
-  url.searchParams.set("timezone", "Asia/Tokyo");
+  url.searchParams.set("timezone", timeZone);
 
   let lastError: Error | null = null;
 

@@ -55,7 +55,7 @@ Ollama has no authentication, so only let it listen on a trusted network.
 
 Local Whisper only hears the room until the wake word. To keep what's said after it local too, set `stt.provider: local` in `config/providers.yaml`. Otherwise it goes to OpenAI, which needs `OPENAI_API_KEY`.
 
-Open http://localhost:3000 in Chrome or Brave. Say **"Hey Mira"** (English) or **"OK ミラ"** (Japanese) to start talking!
+Open http://localhost:3000 in Chrome or Brave. Say **"Hey Mira"** (English), **"OK ミラ"** (Japanese) or **"Hallo Mira"** (German) to start talking!
 
 ## Pages
 
@@ -86,7 +86,7 @@ Mirror Mate supports multiple languages with automatic locale presets. Set the l
 
 ```yaml
 app:
-  locale: "en"  # or "ja" for Japanese
+  locale: "en"  # or "ja" for Japanese, "de" for German
 ```
 
 This single setting automatically configures:
@@ -99,15 +99,18 @@ This single setting automatically configures:
 
 | Locale | Timezone | Weather | STT | Clock |
 |--------|----------|---------|-----|-------|
-| `ja` | Asia/Tokyo | Tokyo, Osaka | Japanese | 24h |
 | `en` | America/Los_Angeles | San Francisco, New York | English | 12h |
+| `ja` | Asia/Tokyo | Tokyo, Osaka | Japanese | 24h |
+| `de` | Europe/Berlin | Berlin, München | German | 24h |
+
+The wake word is "Hey Mira" in English, "OK ミラ" in Japanese and "Hallo Mira" in German.
 
 You can customize these defaults by editing `config/presets/[lang].yaml`. See [Locale Presets](/config/presets) for details.
 
 You can also set the locale via environment variable (overrides config file), such as in `.env`. With Docker, run `docker compose up -d` afterwards to restart the app with it:
 
 ```bash
-LOCALE=en  # or ja
+LOCALE=en  # or ja, de
 ```
 
 ## Local Development

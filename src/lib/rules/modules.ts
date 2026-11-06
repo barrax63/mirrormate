@@ -51,6 +51,9 @@ function loadModulesConfig(): ModulesConfig {
   return cachedConfig;
 }
 
+const GERMAN_MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni",
+  "Juli", "August", "September", "Oktober", "November", "Dezember"];
+
 interface WikipediaSettings {
   domain: string;
   formatDate(month: number, day: number): string;
@@ -77,6 +80,12 @@ const wikipediaSettings: Record<Locale, WikipediaSettings> = {
         "July", "August", "September", "October", "November", "December"];
       return `Today, ${months[month - 1]} ${day}, is the day when "${text}" happened in ${year}.`;
     },
+  },
+  de: {
+    domain: "de.wikipedia.org",
+    formatDate: (month: number, day: number) => `${day}. ${GERMAN_MONTHS[month - 1]}`,
+    formatEvent: (month: number, day: number, year: string, text: string) =>
+      `Heute ist der ${day}. ${GERMAN_MONTHS[month - 1]}. An diesem Tag im Jahr ${year}: „${text}“`,
   },
 };
 

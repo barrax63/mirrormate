@@ -56,6 +56,17 @@ const defaultPresets: Record<Locale, LocalePreset> = {
     clock: { timezone: "America/Los_Angeles", format24h: false, locale: "en-US" },
     stt: { language: "en" },
   },
+  de: {
+    time: { timezone: "Europe/Berlin" },
+    weather: {
+      locations: [
+        { name: "Berlin", latitude: 52.52, longitude: 13.405 },
+      ],
+      defaultLocation: "Berlin",
+    },
+    clock: { timezone: "Europe/Berlin", format24h: true, locale: "de-DE" },
+    stt: { language: "de" },
+  },
 };
 
 /**

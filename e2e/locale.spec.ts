@@ -1,4 +1,4 @@
-import { test, expect, EN_URL, JA_URL, JAPANESE } from "./fixtures";
+import { test, expect, EN_URL, JA_URL, DE_URL, JAPANESE } from "./fixtures";
 
 test.describe("English server", () => {
   test("serves English UI text", async ({ page }) => {
@@ -115,5 +115,102 @@ test.describe("Japanese server", () => {
     const response = await request.get("/api/stt/config");
 
     expect(await response.json()).toMatchObject({ provider: "openai", language: "ja" });
+  });
+});
+
+test.describe("German server", () => {
+  test.use({ baseURL: DE_URL });
+
+  test("uses the German wake word", async ({ request }) => {
+    const response = await request.get("/api/wakeword");
+
+    expect(await response.json()).toMatchObject({ enabled: true, phrase: "Hallo Mira" });
+  });
+
+  test("wakes on a transcript with punctuation, and transcribes in German", async ({ avatar, mock }) => {
+    await avatar.hear("Hallo, Mira!");
+
+    await expect(avatar.page.getByText("Im Gespräch")).toBeVisible();
+    const [wakeWord] = await mock.localTranscriptions();
+    expect(wakeWord.language).toBe("de");
+
+    await avatar.hear("Wie spät ist es");
+    const [speech] = await mock.transcriptions();
+    expect(speech.languages).toEqual(["de"]);
+    expect(speech.keywords).toContain("Mira");
+  });
+
+  test("gives the LLM a German system prompt and rules, with no Japanese", async ({ request, mock }) => {
+    const message = "Ich bin zu Hause";
+    const response = await request.post("/api/chat", {
+      data: { messages: [{ role: "user", content: message }] },
+    });
+    expect(response.status()).toBe(200);
+
+    const [llm] = await mock.llmRequestsFor(message);
+    expect(llm.body.messages[0].content).toContain("Du bist ein kleines Lichtwesen");
+    expect(llm.body.messages[0].content).toContain("von einer Sprachausgabe vorgelesen");
+    expect(llm.body.messages[0].content).toContain("[Informationen aus der Regel]");
+    expect(llm.body.messages[0].content).toContain("Aktuelle Uhrzeit");
+    expect(llm.body.tools ?? []).toEqual([]);
+    expect(JSON.stringify(llm.body)).not.toMatch(JAPANESE);
+  });
+
+  // "morgen" also means "tomorrow", and a rule match would turn the tools off
+  test("doesn't take a question about tomorrow for the morning greeting", async ({ request, mock }) => {
+    const message = "Wie wird das Wetter morgen Mira";
+    await request.post("/api/chat", { data: { messages: [{ role: "user", content: message }] } });
+
+    const [llm] = await mock.llmRequestsFor(message);
+    expect(llm.body.tools?.length).toBeGreaterThan(0);
+    expect(JSON.stringify(llm.body)).not.toMatch(JAPANESE);
+  });
+
+  test("keeps its own database, and stores memories from German conversations", async ({ request }) => {
+    await request.post(`${EN_URL}/api/memories`, {
+      data: { kind: "knowledge", title: "english only", content: "stored on the English server" },
+    });
+    await request.post("/api/chat", { data: { messages: [{ role: "user", content: "Ich trinke gern REMEMBER_tee" }] } });
+
+    await expect
+      .poll(async () => {
+        const { memories } = await (await request.get("/api/memories")).json();
+        return memories.map((memory: { title: string }) => memory.title);
+      })
+      .toContain("mock memory tee");
+    const { memories } = await (await request.get("/api/memories")).json();
+    expect(memories.map((memory: { title: string }) => memory.title)).not.toContain("english only");
+  });
+
+  test("serves German UI text, with <html lang=\"de\">, in the HTML itself", async ({ request, page }) => {
+    const html = await (await request.get("/control")).text();
+    expect(html).toContain('<html lang="de"');
+    expect(html).toContain('placeholder="Nachricht eingeben..."');
+
+    await page.goto("/control");
+    await expect(page.locator("html")).toHaveAttribute("lang", "de");
+    await expect(page.getByText("Steuerung")).toBeVisible();
+  });
+
+  test("replies with the German character's line when the LLM gives no text", async ({ request }) => {
+    const response = await request.post("/api/chat", {
+      data: { messages: [{ role: "user", content: "EMPTY_REPLY bitte" }] },
+    });
+
+    expect((await response.json()).message).toBe("Hmm … jetzt hab ich den Faden verloren! Sagst du das noch mal?");
+  });
+
+  test("/api/tts asks ElevenLabs for German", async ({ request, mock }) => {
+    const response = await request.post("/api/tts", { data: { text: "Guten Morgen" } });
+
+    expect(response.status()).toBe(200);
+    const [speech] = await mock.speech();
+    expect(speech.body).toMatchObject({ text: "Guten Morgen", language_code: "de" });
+  });
+
+  test("/api/stt/config reports German", async ({ request }) => {
+    const response = await request.get("/api/stt/config");
+
+    expect(await response.json()).toMatchObject({ provider: "openai", language: "de" });
   });
 });

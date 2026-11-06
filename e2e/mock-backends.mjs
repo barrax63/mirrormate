@@ -85,7 +85,7 @@ function classifyChat(messages) {
   const hasImage = (message) => Array.isArray(message.content) && message.content.some((part) => part.type === "image_url");
   if (messages.some(hasImage)) return "vlm";
   // Only the extraction prompts open by talking about extracting
-  if (/extract|抽出/i.test(messages[0]?.content?.slice(0, 200) ?? "")) return "extraction";
+  if (/extract|extrahier|抽出/i.test(messages[0]?.content?.slice(0, 200) ?? "")) return "extraction";
   return "llm";
 }
 

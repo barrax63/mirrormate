@@ -111,6 +111,10 @@ const contextLabels: Record<Locale, { ruleInfo: string; responseHint: string }> 
     ruleInfo: "[Information from Rule]",
     responseHint: "[Response Hint]",
   },
+  de: {
+    ruleInfo: "[Informationen aus der Regel]",
+    responseHint: "[Hinweis zur Antwort]",
+  },
 };
 
 export function formatRuleContext(result: RuleExecutionResult): string {
