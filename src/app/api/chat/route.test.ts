@@ -125,6 +125,7 @@ describe("POST /api/chat", () => {
 
   describe("keyword rules", () => {
     it("offers tools and adds feature context when no rule matches", async () => {
+      vi.stubEnv("OLLAMA_API_KEY", "test-key");
       scriptLLM(text("Hi"));
 
       const { status, body } = await say("hello");
@@ -139,6 +140,15 @@ describe("POST /api/chat", () => {
       ]);
       expect(systemPrompt()).toContain("[Current Information]\nMOCK FEATURES");
       expect(systemPrompt()).not.toContain("[Information from Rule]");
+    });
+
+    it("doesn't offer web search without its key", async () => {
+      vi.stubEnv("OLLAMA_API_KEY", "");
+      scriptLLM(text("Hi"));
+
+      await say("Who wrote Romeo and Juliet?");
+
+      expect(llmRequests[0].tools?.map((tool) => tool.name)).toEqual(["see_camera", "show_effect", "share_to_discord"]);
     });
 
     it("disables tools and skips feature context when a rule matches", async () => {

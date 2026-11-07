@@ -74,6 +74,8 @@ Allows the AI to search the internet for current information using Ollama Web Se
 OLLAMA_API_KEY=your-ollama-api-key-here
 ```
 
+Without the key, the LLM isn't offered the tool. Otherwise it would try to search for most factual questions, get an error, and ask again, which took 1 to 1.8 s more per reply in testing.
+
 ### Usage
 
 The LLM will automatically call this tool when it needs to search for information:

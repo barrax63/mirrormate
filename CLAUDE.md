@@ -119,7 +119,7 @@ Drizzle is used for queries, not migrations. Tables are created by raw SQL when 
 ### Extension points
 
 - **Plugin:** add an entry in `config/plugins.yaml` and a static import plus map entry in `src/components/PluginRenderer.tsx`, keyed by the manifest `name`. Local plugins live in `plugins/<name>/` with a `manifest.yaml`. GitHub and npm plugins declare their manifest under `mirrormate` in `package.json`, and the Dockerfile needs a `COPY` for that file.
-- **LLM tool:** register in the `tools` array in `src/lib/tools/index.ts`.
+- **LLM tool:** register in the `tools` array in `src/lib/tools/index.ts`. Give it `isAvailable()` if it needs a key or config, so the LLM isn't offered a tool that can only fail.
 - **Feature (prompt context):** register in `initializeFeatures` in `src/lib/features/registry.ts` and configure in `config/features.yaml`.
 - **Provider:** LLM, STT, VLM and embedding each have `types.ts` and implementations under `src/lib/<kind>/`, with config types in `src/lib/providers/types.ts`. TTS has no abstraction: `src/app/api/tts/route.ts` calls ElevenLabs, with shared helpers in `src/lib/tts/elevenlabs.ts`.
 

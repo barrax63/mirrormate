@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getToolDefinitions, getTool, executeTool } from "./index";
 import type { ToolDefinition } from "./types";
 
@@ -19,8 +19,21 @@ function shape(definitions: ToolDefinition[]) {
 }
 
 describe("tool definitions", () => {
+  beforeEach(() => {
+    // web_search is only offered with a key
+    vi.stubEnv("OLLAMA_API_KEY", "test-key");
+  });
+
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  it("leave out web_search without OLLAMA_API_KEY", () => {
+    vi.stubEnv("OLLAMA_API_KEY", "");
+
+    expect(definitionsIn("en").map((definition) => definition.name)).toEqual(["see_camera", "show_effect", "share_to_discord"]);
+    // The LLM wasn't offered it, but a call still gets an answer
+    expect(getTool("web_search")?.definition.name).toBe("web_search");
   });
 
   it("have no Japanese in English or German mode", () => {

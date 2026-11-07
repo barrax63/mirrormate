@@ -134,6 +134,10 @@ const TEXT: Record<Locale, SearchText> = {
 };
 
 export const webSearchTool: Tool = {
+  // Its description says to search whenever accuracy matters, so without a key the LLM would
+  // call it for most factual questions, get an error, and ask again
+  isAvailable: isSearchEnabled,
+
   get definition(): ToolDefinition {
     const text = TEXT[getLocale()];
     return {
