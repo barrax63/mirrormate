@@ -68,6 +68,14 @@ test.describe("Voice flow", () => {
     await expect(avatar.page.locator(".glass-card")).toHaveCount(1);
   });
 
+  test("shows the effect the reply asked for", async ({ avatar }) => {
+    await avatar.wakeUp();
+
+    await avatar.hear("CALL_EFFECT please");
+
+    await avatar.waitForLog("[Effect] Showing confetti");
+  });
+
   test("keeps listening and sends the history on the next turn", async ({ avatar }) => {
     await avatar.wakeUp();
     await avatar.hear("first question");

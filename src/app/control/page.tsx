@@ -24,7 +24,7 @@ interface Message {
 }
 
 interface BroadcastMessage {
-  type: "speaking_start" | "speaking_end" | "thinking_start" | "thinking_end" | "response" | "audio" | "user_message" | "play_audio" | "info_cards" | "mic_start" | "mic_stop" | "mic_status" | "mic_request_status" | "settings_changed" | "vision_toggle" | "camera_capture_request" | "camera_capture_response" | "service_error" | "service_errors_request";
+  type: "speaking_start" | "speaking_end" | "thinking_start" | "thinking_end" | "response" | "audio" | "user_message" | "play_audio" | "info_cards" | "effect" | "mic_start" | "mic_stop" | "mic_status" | "mic_request_status" | "settings_changed" | "vision_toggle" | "camera_capture_request" | "camera_capture_response" | "service_error" | "service_errors_request";
   payload?: string | boolean | null;
 }
 
@@ -215,6 +215,10 @@ export default function ControlPage() {
         broadcast({ type: "response", payload: data.message });
         if (Array.isArray(data.infoCards) && data.infoCards.length > 0) {
           broadcast({ type: "info_cards", payload: JSON.stringify(data.infoCards) });
+        }
+        // The effect show_effect asked for, which the avatar page shows
+        if (typeof data.effect === "string") {
+          broadcast({ type: "effect", payload: data.effect });
         }
 
         // Request audio playback (avatar will fetch TTS with the voice)

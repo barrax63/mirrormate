@@ -139,6 +139,12 @@ test.describe("Control page", () => {
     await expect(avatar.page.locator(".glass-card")).toHaveCount(0);
   });
 
+  test("has the avatar page show the effect the reply asked for", async ({ avatar, control }) => {
+    await control.send("CALL_EFFECT please");
+
+    await avatar.waitForLog("[Effect] Showing confetti");
+  });
+
   test("shows the whole conversation, but sends only the latest messages", async ({ control }) => {
     for (const question of ["question 1", "question 2", "question 3"]) {
       await control.send(question);
