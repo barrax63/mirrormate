@@ -95,6 +95,7 @@ export default function Confetti({ isActive, effectType = "confetti", onComplete
   useEffect(() => {
     if (isActive && !hasTriggered.current) {
       hasTriggered.current = true;
+      console.log(`[Effect] Showing ${effectType}`);
 
       switch (effectType) {
         case "hearts":
