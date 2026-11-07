@@ -2,6 +2,8 @@
 
 Mirror Mate includes a memory system that enables persistent user context through RAG (Retrieval-Augmented Generation). The system stores user information, extracts memories from conversations, and provides relevant context to the AI.
 
+By default it needs nothing beyond `OPENAI_API_KEY`: OpenAI's `gpt-6-luna` extracts the memories and `text-embedding-3-small` embeds them. The memories themselves stay in the SQLite database on your machine.
+
 ## Overview
 
 ```mermaid
@@ -59,7 +61,9 @@ providers:
       minConfidence: 0.5     # Minimum confidence threshold
 ```
 
-> **Note**: To keep embeddings on your own hardware, use Ollama with `bge-m3`, which handles Japanese as well as English. See [Embedding Providers](/config/providers#embedding-providers).
+> **Note**: To keep embeddings on your own hardware, use Ollama with `bge-m3`, which handles German and Japanese as well as English. See [Embedding Providers](/config/providers#embedding-providers).
+
+Each vector is stored with the name of the model that made it. After changing the embedding model, the next chat request embeds every memory again with the new one, in batches. Until then, search skips them, since vectors from different models can't be compared.
 
 ## Memory Types
 
@@ -106,7 +110,7 @@ The RAG system retrieves relevant memories to provide context-aware responses.
 
 ### How It Works
 
-1. **Embed Query**: Convert user input to a vector using Ollama embedding
+1. **Embed Query**: Convert user input to a vector with the embedding provider, OpenAI by default
 2. **Semantic Search**: Find similar memories using cosine similarity
 3. **Rank Results**: Sort by similarity score and filter by threshold
 4. **Format Context**: Combine profiles and relevant memories into a prompt
@@ -122,7 +126,7 @@ The RAG system retrieves relevant memories to provide context-aware responses.
 
 ```
 [User Profile]
-- Preferred language: Japanese
+- Preferred language: English
 - Interests: programming, music
 
 [Related Information]
@@ -157,21 +161,22 @@ Extraction prompts are configured in `config/locales/[lang]/memory.yaml`:
 ```yaml
 memory:
   extraction:
-    # System prompt for LLM
+    # System prompt for memory extraction
     systemPrompt: |
-      あなたは会話から重要な情報を抽出する専門家です。
+      You are an expert at extracting important information from conversations.
       ...
 
     # Labels for user prompt
     labels:
-      user: ユーザー
-      assistant: アシスタント
-      conversationHistory: "## 会話履歴"
-      existingProfiles: "## 既存の Profile"
-      relatedMemories: "## 関連する既存の記憶"
+      user: User
+      assistant: Assistant
+      conversationHistory: "## Conversation History"
+      existingProfiles: "## Existing Profiles"
+      relatedMemories: "## Related Existing Memories"
       task: |
-        ## タスク
-        上記の会話から、記憶として保存すべき情報を抽出してください。
+        ## Task
+
+        Extract information worth saving as memories from the conversation above.
         ...
 ```
 
@@ -200,7 +205,7 @@ Mirror Mate uses SQLite with Drizzle ORM for persistence.
 | `messages` | Chat messages |
 | `memories` | Stored memories |
 | `memory_embeddings` | Vector embeddings for semantic search |
-| `user_settings` | Selected speaker and character per user |
+| `user_settings` | Selected voice, character and Vision setting per user |
 
 ### Memory Fields
 
@@ -304,15 +309,11 @@ providers:
       minConfidence: 0.5
 ```
 
+Restart the app after changing it: `docker compose restart mirrormate`.
+
 ### 3. Verify Setup
 
-```bash
-# Start the development server
-bun run dev
-
-# Open memory management
-open http://localhost:3000/control/memory
-```
+Tell the avatar something about yourself, such as "My favorite drink is green tea", then open http://localhost:3000/control/memory. The memory shows up a few seconds after the reply.
 
 ---
 
@@ -339,7 +340,9 @@ Inside the container, `localhost` is the container itself, so Ollama's `baseUrl`
 
 ### Embedding Service Not Available
 
-**Error**: `Ollama embed API error: 404` or connection refused
+**Error**: an OpenAI error in the app's log, or `Ollama embed API error: 404` or connection refused
+
+**Solution (OpenAI)**: check that `OPENAI_API_KEY` is set in `.env`, and that the replies work. The page shows why they don't, since replies use the same key.
 
 **Solution (Ollama/bge-m3)**:
 1. Ensure Ollama is running: `ollama serve`
@@ -388,6 +391,7 @@ Inside the container, `localhost` is the container itself, so Ollama's `baseUrl`
 
 ### Privacy Considerations
 
-1. **Review extracted memories**: Check what the LLM is storing
-2. **Manual cleanup**: Remove sensitive information if needed
-3. **User-specific memories**: Memories are scoped to user IDs
+1. **Where memories go**: they're stored on your machine, but with OpenAI as the provider, the conversation goes to OpenAI for extraction, and memories go to it for embedding and as context for each reply
+2. **Review extracted memories**: Check what the LLM is storing at `/control/memory`
+3. **Manual cleanup**: Remove sensitive information if needed
+4. **One database per language**: each locale keeps its own memories, so switching languages doesn't carry them over

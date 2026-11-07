@@ -4,7 +4,7 @@ import { withMermaid } from "vitepress-plugin-mermaid";
 export default withMermaid(
   defineConfig({
     title: "Mirror Mate",
-    description: "Self-hosted personalized AI in a mirror",
+    description: "A personalized AI in a mirror",
     base: "/mirrormate/",
 
     head: [
