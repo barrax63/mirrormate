@@ -248,6 +248,14 @@ interface LoggedLocalTranscription {
   text: string;
 }
 
+interface LoggedSpeechCheck {
+  threshold: string;
+  minSilenceDurationMs: string;
+  maxSpeechDurationS: string;
+  speechPadMs: string;
+  text: string;
+}
+
 export class MockBackends {
   constructor(private readonly request: APIRequestContext) {}
 
@@ -286,6 +294,13 @@ export class MockBackends {
     const response = await this.request.get(`${MOCK_URL}/__log`);
     const log: (LoggedLocalTranscription & { kind: string })[] = await response.json();
     return log.filter((entry) => entry.kind === "local-stt");
+  }
+
+  /** Recordings that the fake local Whisper's VAD was asked about, oldest first */
+  async localSpeechChecks(): Promise<LoggedSpeechCheck[]> {
+    const response = await this.request.get(`${MOCK_URL}/__log`);
+    const log: (LoggedSpeechCheck & { kind: string })[] = await response.json();
+    return log.filter((entry) => entry.kind === "local-vad");
   }
 
   /** Makes the fake local Whisper drop every connection, or take this long to answer */
