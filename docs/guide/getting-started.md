@@ -18,7 +18,7 @@ cp .env.example .env    # set OPENAI_API_KEY and ELEVENLABS_API_KEY in it
 docker compose up -d
 ```
 
-This builds the app and starts it with local Whisper. The first start also downloads the Whisper model, about half a gigabyte, and the app only starts once Whisper is ready, so give it a few minutes. `docker compose ps` shows both running when it's done.
+This downloads the app's image, `ghcr.io/barrax63/mirrormate`, and starts it with local Whisper. The first start also downloads the Whisper model, about half a gigabyte, and the app only starts once Whisper is ready, so give it a few minutes. `docker compose ps` shows both running when it's done.
 
 Then:
 
@@ -42,8 +42,10 @@ Open http://localhost:3000/control in the same browser to type instead, turn the
 
 ```bash
 git pull
-docker compose up -d --build
+docker compose up -d
 ```
+
+`compose.yaml` names the image of its version, so this downloads the new one. To build the image from your own changes instead, run `docker compose up -d --build`.
 
 ## What Leaves This Machine
 

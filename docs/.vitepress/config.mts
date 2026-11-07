@@ -19,7 +19,7 @@ export default withMermaid(
       nav: [
         { text: "Guide", link: "/guide/getting-started" },
         { text: "Config", link: "/config/providers" },
-        { text: "GitHub", link: "https://github.com/orangekame3/mirrormate" },
+        { text: "GitHub", link: "https://github.com/barrax63/mirrormate" },
       ],
 
       sidebar: {
@@ -58,11 +58,11 @@ export default withMermaid(
       },
 
       socialLinks: [
-        { icon: "github", link: "https://github.com/orangekame3/mirrormate" },
+        { icon: "github", link: "https://github.com/barrax63/mirrormate" },
       ],
 
       footer: {
-        message: "Released under the MIT License.",
+        message: "Released under the MIT License. A cloud-first fork of orangekame3/mirrormate.",
         copyright: "Copyright © 2024-2025 orangekame3",
       },
 

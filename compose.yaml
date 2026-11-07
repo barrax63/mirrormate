@@ -8,6 +8,9 @@
 
 services:
   mirrormate:
+    # The published image of this version, for amd64 and arm64. Compose builds it from this
+    # checkout instead with --build, or when it can't be downloaded.
+    image: ghcr.io/barrax63/mirrormate:0.2.0
     build:
       context: .
       dockerfile: Dockerfile

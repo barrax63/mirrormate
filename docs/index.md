@@ -17,7 +17,7 @@ hero:
       link: /guide/docker
     - theme: alt
       text: View on GitHub
-      link: https://github.com/orangekame3/mirrormate
+      link: https://github.com/barrax63/mirrormate
 
 features:
   - icon: 🎙️

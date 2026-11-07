@@ -31,7 +31,8 @@ bun audit --prod --audit-level=high             # the dependency check CI runs
 
 bun run docs:dev                                # VitePress site in docs/
 
-docker compose up -d                            # app and local Whisper; needs both keys in .env
+docker compose up -d                            # published app image and local Whisper; needs both keys in .env
+docker compose up -d --build                    # the same, with the app built from this checkout
 ```
 
 Use `bun run test`, not `bun test`: the latter starts Bun's own runner instead of Vitest.
@@ -128,4 +129,4 @@ The Dockerfile's runner stage contains only the standalone output and explicitly
 
 - PRs target `develop`. Commits follow Conventional Commits, and the prefixes drive PR labels.
 - CI runs lint, test, build, e2e and a production dependency audit on PRs into `develop` and pushes to it, but only when `src/**`, `config/**`, `plugins/**`, `messages/**`, `package.json`, `bun.lock`, `tsconfig.json`, `next.config.ts`, `vitest.config.ts`, `e2e/**`, `playwright.config.ts`, `Dockerfile` or the CI workflow change. Changes confined to `docs/` don't trigger it.
-- Pushes to `develop` deploy `docs/**` changes to GitHub Pages. `vX.Y.Z` tags publish multi-arch images to GHCR. `package.json`'s version matches the latest tag, so bump it in the same change as a new tag. The fork has no tags yet: `0.1.13` is upstream's latest.
+- Pushes to `develop` deploy `docs/**` changes to GitHub Pages. `vX.Y.Z` tags publish multi-arch images to GHCR. `package.json`'s version and the app image in `compose.yaml` match the latest tag, so bump both in the change that a new tag goes on. Compose downloads the image `compose.yaml` names, and builds it only with `--build` or when the download fails.
