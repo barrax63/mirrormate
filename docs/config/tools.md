@@ -153,10 +153,6 @@ No configuration required. The tool is always available.
         type: "string",
         description: "表示するエフェクトの種類",
         enum: ["confetti", "hearts", "sparkles"]
-      },
-      reason: {
-        type: "string",
-        description: "エフェクトを表示する理由（内部ログ用）"
       }
     },
     required: ["effect"]
