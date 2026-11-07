@@ -80,9 +80,8 @@ describe("loadProvidersConfig", () => {
     const { providers } = loadProvidersConfig();
 
     expect(providers?.llm?.provider).toBe("openai");
-    expect(providers?.tts).toMatchObject({
-      provider: "elevenlabs",
-      elevenlabs: { voiceId: "EXAVITQu4vr4xnSDxMaL", model: "eleven_v4_turbo" },
-    });
+    expect(providers?.tts).toMatchObject({ provider: "elevenlabs", elevenlabs: { model: "eleven_v4_turbo" } });
+    // So the locale preset's voice speaks
+    expect(providers?.tts?.elevenlabs?.voiceId).toBeUndefined();
   });
 });

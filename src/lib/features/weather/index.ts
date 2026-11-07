@@ -1,4 +1,5 @@
 import { Feature, WeatherFeatureConfig } from "../types";
+import { getTimezone } from "../config-loader";
 import { fetchWeather, getWeatherDescription } from "./open-meteo";
 import { getLocale, type Locale } from "@/lib/app";
 
@@ -26,6 +27,10 @@ const TEXT: Record<Locale, WeatherText> = {
   ja: {
     current: (w) => `現在の${w.location}の天気: ${w.description}、気温${w.temperature}°C、風速${w.windSpeed}km/h`,
     noForecast: "天気予報: なし。このあとや明日の天気はわかりません。",
+  },
+  de: {
+    current: (w) => `Aktuelles Wetter in ${w.location}: ${w.description}, ${w.temperature} °C, Wind ${w.windSpeed} km/h`,
+    noForecast: "Vorhersage: keine, daher ist das Wetter für später und morgen unbekannt.",
   },
 };
 
@@ -71,7 +76,7 @@ export class WeatherFeature implements Feature {
     }
 
     try {
-      const weather = await fetchWeather(location.latitude, location.longitude);
+      const weather = await fetchWeather(location.latitude, location.longitude, getTimezone());
       const locale = getLocale();
       const text = TEXT[locale];
       const description = getWeatherDescription(weather.current_weather.weathercode, locale);

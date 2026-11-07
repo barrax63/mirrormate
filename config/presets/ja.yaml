@@ -25,3 +25,8 @@ clock:
 # Speech-to-Text settings
 stt:
   language: "ja"
+
+# Text-to-Speech settings: the ElevenLabs voice until one is picked on /control, unless
+# providers.yaml sets tts.elevenlabs.voiceId
+tts:
+  voiceId: "EXAVITQu4vr4xnSDxMaL"  # Sarah

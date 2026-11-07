@@ -55,6 +55,23 @@ const TEXT: Record<Locale, ShareText> = {
     cardTitle: "Discordに送信しました",
     sharedCount: (count) => `${count}件を共有`,
   },
+  de: {
+    description:
+      "Teilt Informationen im Discord der Person. Benutze es, wenn die Person Suchergebnisse, Links oder wichtige Informationen auf ihr Handy schicken, speichern oder teilen möchte. Beim Teilen der letzten Suchergebnisse werden die URLs automatisch mitgeschickt.",
+    title: "Titel des geteilten Inhalts",
+    content: "Der Inhalt, der geteilt wird (Text, Zusammenfassung oder Information)",
+    url: "Optionale URL, die mitgeschickt wird",
+    includeSearchResults: "Auf 'true' setzen, um die letzten Suchergebnisse mit ihren Quell-URLs mitzuschicken",
+    notConfigured: "Die Discord-Anbindung ist nicht eingerichtet. Bitte die Umgebungsvariable DISCORD_WEBHOOK_URL setzen.",
+    missing: "Für Discord braucht es einen Titel oder einen Inhalt.",
+    sentResults: (query, count, titles) =>
+      `An Discord gesendet! ${count} Links zu „${query}“ geteilt (${titles.join(", ")} und mehr). Sag der Person kurz: „Gesendet! Die Links sind auch dabei.“`,
+    sentText: (title) => `An Discord gesendet! „${title}“ geteilt. Sag der Person kurz: „Gesendet!“`,
+    failed: "Senden an Discord fehlgeschlagen. Sag der Person, sie soll die Einstellungen prüfen.",
+    error: (message) => `Discord-Fehler: ${message}`,
+    cardTitle: "An Discord gesendet",
+    sharedCount: (count) => (count === 1 ? "1 Eintrag geteilt" : `${count} Einträge geteilt`),
+  },
 };
 
 export const discordShareTool: Tool = {

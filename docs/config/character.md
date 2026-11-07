@@ -6,14 +6,15 @@ The character configuration defines the AI's personality, speech style, and beha
 
 Character settings are locale-specific. Edit the file for your language:
 
-- **Japanese**: `config/locales/ja/character.yaml`
 - **English**: `config/locales/en/character.yaml`
+- **Japanese**: `config/locales/ja/character.yaml`
+- **German**: `config/locales/de/character.yaml`
 
 Set the locale in `config/app.yaml`:
 
 ```yaml
 app:
-  locale: "en"  # or "ja"
+  locale: "en"  # or "ja", "de"
 ```
 
 ## Example Configuration
@@ -136,7 +137,7 @@ characters:
 
 Whether the wake word is on, and its timeout, always come from `character.yaml`, so picking a character can't turn the wake word off. With no character picked, or one without a phrase, `character.yaml`'s phrase wakes it.
 
-Pick phrases that local Whisper writes the way you spell them. In English it writes "OK" as "Okay", so "OK Luna" never matched in testing, and "Hey Luna" always did. Matching ignores case and punctuation.
+Pick phrases that local Whisper writes the way you spell them. In English it writes "OK" as "Okay", so "OK Luna" never matched in testing, and "Hey Luna" always did. In German it wrote "Hey Mira" as "Herr Emira", so the German phrases start with "Hallo". Matching ignores case and punctuation.
 
 ## How It Works
 

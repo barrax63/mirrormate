@@ -2,6 +2,7 @@
 
 app:
   # Language setting
-  # "ja" - Japanese (default): Uses config/locales/ja/
   # "en" - English: Uses config/locales/en/
+  # "ja" - Japanese: Uses config/locales/ja/, and the default without this file
+  # "de" - German: Uses config/locales/de/
   locale: "en"

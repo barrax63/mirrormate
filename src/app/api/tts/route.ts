@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { loadProvidersConfig } from "@/lib/providers/config-loader";
 import type { TTSProviderConfig } from "@/lib/providers/types";
 import { getLocale } from "@/lib/app";
+import { getTTSPreset } from "@/lib/presets";
 import { serviceErrorResponse } from "@/lib/errors/classify";
 import {
   ELEVENLABS_MODEL,
-  ELEVENLABS_VOICE_ID,
   elevenLabsError,
   getElevenLabsApiKey,
   getElevenLabsBaseUrl,
@@ -82,8 +82,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ audio: null });
     }
 
-    // The voice picked on /control, then the configured one
-    const voiceId = (typeof voice === "string" && voice) || ttsConfig?.elevenlabs?.voiceId || ELEVENLABS_VOICE_ID;
+    // The voice picked on /control, then the configured one, then the locale's
+    const voiceId = (typeof voice === "string" && voice) || ttsConfig?.elevenlabs?.voiceId || getTTSPreset().voiceId;
     console.log(`[TTS] Using ElevenLabs (voice: ${voiceId})`);
     const audioBase64 = await generateElevenLabsTTS(spokenText, voiceId, ttsConfig?.elevenlabs);
 

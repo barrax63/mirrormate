@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-function appServer(locale: "en" | "ja", port: number) {
+function appServer(locale: "en" | "ja" | "de", port: number) {
   return {
     command: `node node_modules/next/dist/bin/next start -H 127.0.0.1 -p ${port}`,
     url: `http://127.0.0.1:${port}`,
@@ -59,5 +59,6 @@ export default defineConfig({
     },
     appServer("en", 3100),
     appServer("ja", 3101),
+    appServer("de", 3102),
   ],
 });

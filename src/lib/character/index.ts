@@ -85,6 +85,16 @@ const PROMPT_TEXT: Record<Locale, PromptText> = {
     spokenText:
       "あなたの返答は音声で読み上げられます。話し言葉のプレーンテキストだけを書いてください。Markdown、箇条書き、絵文字は使わないでください。",
   },
+  de: {
+    intro: (c) => [`Du bist ${c.description}.`, `Dein Name ist „${c.name}“. Du hast ${c.appearance.join(", ")}.`],
+    personality: "Persönlichkeit:",
+    speechStyle: "Sprechweise:",
+    examples: "Beispiele:",
+    example: (text) => `- „${text}“`,
+    behaviors: "Verhalten:",
+    spokenText:
+      "Deine Antworten werden von einer Sprachausgabe vorgelesen. Schreib nur gesprochenen Klartext: kein Markdown, keine Listen, keine Emojis.",
+  },
 };
 
 function buildPrompt(c: PromptCharacter, locale: Locale): string {

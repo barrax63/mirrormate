@@ -23,8 +23,9 @@ describe("tool definitions", () => {
     vi.unstubAllEnvs();
   });
 
-  it("have no Japanese in English mode", () => {
+  it("have no Japanese in English or German mode", () => {
     expect(JSON.stringify(definitionsIn("en"))).not.toMatch(JAPANESE);
+    expect(JSON.stringify(definitionsIn("de"))).not.toMatch(JAPANESE);
   });
 
   it("describe every tool and parameter in Japanese in Japanese mode", () => {
@@ -46,6 +47,20 @@ describe("tool definitions", () => {
 
   it("are the same tools in every locale, apart from the descriptions", () => {
     expect(shape(definitionsIn("ja"))).toEqual(shape(definitionsIn("en")));
+    expect(shape(definitionsIn("de"))).toEqual(shape(definitionsIn("en")));
+  });
+
+  it("describe every tool and parameter in German in German mode", () => {
+    const english = definitionsIn("en");
+    const german = definitionsIn("de");
+
+    expect(german.map((definition) => definition.name)).toEqual(english.map((definition) => definition.name));
+    german.forEach(({ name, description, parameters }, i) => {
+      expect(description, name).not.toBe(english[i].description);
+      for (const [key, property] of Object.entries(parameters.properties)) {
+        expect(property.description, `${name}.${key}`).not.toBe(english[i].parameters.properties[key].description);
+      }
+    });
   });
 
   it("answer in the locale's language", async () => {
@@ -59,6 +74,14 @@ describe("tool definitions", () => {
     });
     expect(await executeTool({ id: "3", name: "web_search", arguments: {} })).toMatchObject({
       result: "検索クエリがありません。",
+    });
+
+    vi.stubEnv("LOCALE", "de");
+    expect(await executeTool({ id: "4", name: "show_effect", arguments: { effect: "hearts" } })).toMatchObject({
+      result: "Effekt hearts wird angezeigt",
+    });
+    expect(await executeTool({ id: "5", name: "no_such_tool", arguments: {} })).toMatchObject({
+      result: "Tool „no_such_tool“ nicht gefunden.",
     });
   });
 

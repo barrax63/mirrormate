@@ -4,8 +4,6 @@ import { ServiceError, type ServiceErrorCode } from "../errors/service-error";
 type ElevenLabsConfig = TTSProviderConfig["elevenlabs"];
 
 export const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io";
-// Sarah, a premade voice that every account has
-export const ELEVENLABS_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 export const ELEVENLABS_MODEL = "eleven_v4_turbo";
 
 export interface Voice {

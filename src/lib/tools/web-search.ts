@@ -121,6 +121,16 @@ const TEXT: Record<Locale, SearchText> = {
     error: (message) => `検索中にエラーが発生しました: ${message}`,
     cardTitle: (query) => `検索: ${query}`,
   },
+  de: {
+    description:
+      "Sucht im Internet nach aktuellen Informationen. Benutze es immer bei Nachrichten, heutigen Ereignissen, Dingen, die du nicht weißt, und wann immer genaue Informationen gebraucht werden. Wenn du dir bei deinem Wissen nicht sicher bist, ruf dieses Tool immer auf.",
+    query: "Suchanfrage",
+    noQuery: "Keine Suchanfrage angegeben.",
+    noResults: (query) => `Keine Ergebnisse für „${query}“ gefunden.`,
+    results: (formatted) => `Suchergebnisse:\n\n${formatted}`,
+    error: (message) => `Fehler bei der Suche: ${message}`,
+    cardTitle: (query) => `Suche: ${query}`,
+  },
 };
 
 export const webSearchTool: Tool = {

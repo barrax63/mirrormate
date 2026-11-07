@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest";
 import en from "../../messages/en.json";
 import ja from "../../messages/ja.json";
+import de from "../../messages/de.json";
+import { LOCALES, type Locale } from "@/lib/app";
 import { SERVICES, SERVICE_ERROR_CODES } from "@/lib/errors/service-error";
 import { VOICE_ROUTES } from "@/lib/errors/service-errors";
+
+const MESSAGES: Record<Locale, object> = { en, ja, de };
 
 /** Every key path in a messages file, such as "errors.codes.failed" */
 function keys(messages: object, prefix = ""): string[] {
@@ -12,8 +16,8 @@ function keys(messages: object, prefix = ""): string[] {
 }
 
 describe("messages", () => {
-  it("has the same keys in every language", () => {
-    expect(keys(ja).sort()).toEqual(keys(en).sort());
+  it.each(LOCALES)("has the same keys in %s as in English", (locale) => {
+    expect(keys(MESSAGES[locale]).sort()).toEqual(keys(en).sort());
   });
 
   it("has a text for every error code, route and service the pages can show", () => {

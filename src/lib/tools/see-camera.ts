@@ -32,6 +32,16 @@ const TEXT: Record<Locale, CameraText> = {
     failed: "画像の分析中にエラーが発生しました。",
     language: "Japanese",
   },
+  de: {
+    description:
+      "WICHTIG: Benutze dieses Tool ZUERST, wenn die Person etwas über ihr Aussehen fragt: was sie trägt, hält oder zeigt, wie sie aussieht, was vor der Kamera ist und so weiter. Diese Kamera zeigt DIR, wie die PERSON gerade aussieht. Benutze web_search NICHT für Fragen zum Aussehen der Person. Beispiele: „Was habe ich an?“, „Was halte ich in der Hand?“, „Wie sehe ich aus?“, „Welche Farbe hat das?“, „Siehst du das?“, „Was für Kleidung trage ich?“",
+    focus:
+      "Worauf du bei der Bildanalyse achten sollst. Zum Beispiel „was die Person in der Hand hält“, „ihre Kleidung“, „ihr Gesichtsausdruck“, „Dinge im Bild“",
+    noImage: "Kein Kamerabild verfügbar. Die Kamera der Person ist vielleicht aus.",
+    noVlm: "Der Dienst zur Bildanalyse ist nicht verfügbar.",
+    failed: "Die Analyse des Bildes ist fehlgeschlagen.",
+    language: "German",
+  },
 };
 
 /**

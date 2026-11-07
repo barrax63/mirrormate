@@ -7,6 +7,7 @@ import {
   clearCharacterCache,
   clearCharactersCache,
 } from "./index";
+import { LOCALES } from "../app";
 
 const JAPANESE = /[぀-ヿ㐀-鿿]/;
 
@@ -50,6 +51,21 @@ describe("character prompts", () => {
     }
   });
 
+  it("are in German in German mode, for every character", () => {
+    vi.stubEnv("LOCALE", "de");
+
+    const prompts = [getSystemPrompt(), ...getCharacterPresets().map((preset) => getSystemPromptForCharacter(preset.id))];
+
+    for (const prompt of prompts) {
+      expect(prompt).toMatch(/^Du bist .+\.\nDein Name ist „.+“\. Du hast .+\.\n\nPersönlichkeit:\n- /);
+      expect(prompt).toContain("\n\nSprechweise:\n- ");
+      expect(prompt).toContain("\n\nBeispiele:\n- „");
+      expect(prompt).toContain("\n\nVerhalten:\n- ");
+      expect(prompt).toMatch(/Schreib nur gesprochenen Klartext: kein Markdown, keine Listen, keine Emojis\.$/);
+      expect(prompt).not.toMatch(JAPANESE);
+    }
+  });
+
   it("list the behaviors under their heading", () => {
     vi.stubEnv("LOCALE", "en");
 
@@ -80,7 +96,7 @@ describe("getWakeWordConfig", () => {
   });
 
   it("gives every character a phrase in every locale", () => {
-    for (const locale of ["en", "ja"]) {
+    for (const locale of LOCALES) {
       vi.stubEnv("LOCALE", locale);
       clearCharactersCache();
 
@@ -88,6 +104,14 @@ describe("getWakeWordConfig", () => {
         expect(preset.wakeWord?.phrase, `${locale} ${preset.id}`).toBeTruthy();
       }
     }
-    expect(getWakeWordConfig("luna").phrase).toBe("OK ルナ");
+    for (const [locale, phrase] of [
+      ["ja", "OK ルナ"],
+      ["de", "Hallo Luna"],
+    ]) {
+      vi.stubEnv("LOCALE", locale);
+      clearCharacterCache();
+      clearCharactersCache();
+      expect(getWakeWordConfig("luna")).toEqual({ enabled: true, phrase, timeout: 60 });
+    }
   });
 });

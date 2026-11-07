@@ -5,6 +5,7 @@ export { expect };
 
 export const EN_URL = "http://127.0.0.1:3100";
 export const JA_URL = "http://127.0.0.1:3101";
+export const DE_URL = "http://127.0.0.1:3102";
 export const JAPANESE = /[぀-ヿ㐀-鿿]/;
 export const JPEG_DATA_URL = /^data:image\/jpeg;base64,/;
 

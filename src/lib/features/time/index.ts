@@ -27,6 +27,13 @@ const TEXT: Record<Locale, TimeText> = {
       `${part("year")}年${part("month")}月${part("day")}日（${part("weekday")}） ${part("hour")}時${part("minute")}分`,
     label: "現在時刻",
   },
+  de: {
+    dateLocale: "de-DE",
+    hour12: false,
+    format: (part) =>
+      `${part("weekday")}, ${part("day")}. ${part("month")} ${part("year")}, ${part("hour")}:${part("minute")} Uhr`,
+    label: "Aktuelle Uhrzeit",
+  },
 };
 
 export class TimeFeature implements Feature {

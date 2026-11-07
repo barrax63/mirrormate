@@ -19,6 +19,7 @@ const DEFAULT_USER_ID = "default-user";
 const CAMERA_HINT: Record<Locale, string> = {
   en: "User's camera image is available. If asked about the user's appearance or what they're holding, use the see_camera tool. Do not use web_search.",
   ja: "ユーザーのカメラ画像が利用可能です。ユーザーの外見や持っているものについて聞かれた場合は、see_cameraツールを使ってください。web_searchは使わないでください。",
+  de: "Das Kamerabild der Person ist verfügbar. Wirst du nach ihrem Aussehen gefragt oder danach, was sie in der Hand hält, benutze das Tool see_camera. Benutze nicht web_search.",
 };
 
 // RAG service cache

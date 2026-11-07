@@ -28,6 +28,13 @@ describe("TimeFeature", () => {
     expect(await feature.getContext()).toBe("現在時刻: 2026年10月31日（土） 21時34分");
   });
 
+  it("formats the time in German, on a 24-hour clock, in German mode", async () => {
+    vi.stubEnv("LOCALE", "de");
+    const feature = new TimeFeature({ enabled: true, timezone: "Europe/Berlin" });
+
+    expect(await feature.getContext()).toBe("Aktuelle Uhrzeit: Sa., 31. Oktober 2026, 13:34 Uhr");
+  });
+
   it("returns nothing when disabled", async () => {
     vi.stubEnv("LOCALE", "en");
     const feature = new TimeFeature({ enabled: false });

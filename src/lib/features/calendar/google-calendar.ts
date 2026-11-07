@@ -6,6 +6,7 @@ import { localDateIn, midnightIn, parseLocalDate } from "./zones";
 const UNTITLED: Record<Locale, string> = {
   en: "Untitled event",
   ja: "無題の予定",
+  de: "Termin ohne Titel",
 };
 
 export interface CalendarEvent {

@@ -1,6 +1,6 @@
 # Locale Presets
 
-Mirror Mate supports locale-based configuration presets that automatically apply region-specific settings when you switch languages. This allows you to change just one setting (`app.locale`) and have time zones, weather locations, speech recognition language, and clock settings all update accordingly.
+Mirror Mate supports locale-based configuration presets that automatically apply region-specific settings when you switch languages. This allows you to change just one setting (`app.locale`) and have time zones, weather locations, speech recognition language, clock settings and the voice all update accordingly.
 
 ## How It Works
 
@@ -31,6 +31,7 @@ That's it! The following settings are automatically applied:
 | Weather Locations | Tokyo, Osaka | San Francisco, New York |
 | Clock Format | 24-hour | 12-hour |
 | STT Language | ja / ja-JP | en / en-US |
+| Voice | Sarah | Sarah |
 
 ## Preset File Structure
 
@@ -63,6 +64,11 @@ clock:
 # Speech-to-Text settings
 stt:
   language: "en"  # ISO 639-1
+
+# Text-to-Speech settings: the ElevenLabs voice until one is picked on /control, unless
+# providers.yaml sets tts.elevenlabs.voiceId
+tts:
+  voiceId: "EXAVITQu4vr4xnSDxMaL"  # Sarah
 ```
 
 ## Available Presets
@@ -79,6 +85,7 @@ Default settings for Japanese users:
 | Clock | format24h | true |
 | Clock | locale | ja-JP |
 | STT | language | ja |
+| TTS | voiceId | `EXAVITQu4vr4xnSDxMaL` (Sarah) |
 
 ### English (en)
 
@@ -92,6 +99,23 @@ Default settings for English (US) users:
 | Clock | format24h | false |
 | Clock | locale | en-US |
 | STT | language | en |
+| TTS | voiceId | `EXAVITQu4vr4xnSDxMaL` (Sarah) |
+
+### German (de)
+
+Default settings for German users:
+
+| Category | Setting | Value |
+|----------|---------|-------|
+| Time | timezone | Europe/Berlin |
+| Weather | locations | Berlin, München |
+| Weather | defaultLocation | Berlin |
+| Clock | format24h | true |
+| Clock | locale | de-DE |
+| STT | language | de |
+| TTS | voiceId | `XrExE9yKIg1WjnnlVkGX` (Matilda) |
+
+German uses Matilda because ElevenLabs hasn't verified Sarah for German. `GET /v2/voices` lists the languages each voice is verified for under `verified_languages`.
 
 ## Customizing Presets
 
@@ -130,7 +154,8 @@ Preset values serve as defaults that can be overridden in individual config file
 
 1. **features.yaml** - If you explicitly set `timezone` in `features.time`, it takes precedence over the preset
 2. **plugins.yaml** - If you explicitly set clock settings, they take precedence
-3. **providers.yaml** - If you explicitly set STT language, it takes precedence
+3. **providers.yaml** - If you explicitly set STT language or `tts.elevenlabs.voiceId`, it takes precedence
+4. **`/control`** - A voice picked there takes precedence over both the preset and `providers.yaml`
 
 ### Example: Override Weather Location
 
@@ -158,44 +183,46 @@ To add support for a new locale:
 1. Create a new preset file:
 
 ```yaml
-# config/presets/de.yaml (German example)
+# config/presets/fr.yaml (French example)
 
 time:
-  timezone: "Europe/Berlin"
+  timezone: "Europe/Paris"
 
 weather:
   locations:
-    - name: "Berlin"
-      latitude: 52.5200
-      longitude: 13.4050
-    - name: "Munich"
-      latitude: 48.1351
-      longitude: 11.5820
-  defaultLocation: "Berlin"
+    - name: "Paris"
+      latitude: 48.8566
+      longitude: 2.3522
+  defaultLocation: "Paris"
 
 clock:
-  timezone: "Europe/Berlin"
+  timezone: "Europe/Paris"
   format24h: true
-  locale: "de-DE"
+  locale: "fr-FR"
 
 stt:
-  language: "de"
+  language: "fr"
+
+tts:
+  voiceId: "..."  # a voice that GET /v2/voices lists French for under verified_languages
 ```
 
-2. Add the locale to `src/lib/app/index.ts`, in the type and in the `LOCALE` check in `getLocale()`:
+2. Add the locale to `LOCALES` in `src/lib/app/index.ts`:
 
 ```typescript
-export type Locale = "ja" | "en" | "de";
+export const LOCALES = ["en", "ja", "de", "fr"] as const;
 ```
 
-3. Add a `de` entry to every table of server text keyed by locale (`Record<Locale, ...>`). `bun run build` fails, naming each one, until they all have it:
+3. Add an `fr` entry to every table of server text keyed by locale (`Record<Locale, ...>`). `bun run build` fails, naming each one, until they all have it:
    - `defaultPresets` in `src/lib/presets/index.ts`
    - the character prompt in `src/lib/character/index.ts`, and the camera hint in `src/app/api/chat/route.ts`
    - the time, weather and calendar text in `src/lib/features/`
    - the tool descriptions and results in `src/lib/tools/`
    - `contextLabels` in `src/lib/rules/engine.ts` and `wikipediaSettings` in `src/lib/rules/modules.ts`
 
-4. Create locale-specific character and message files in `config/locales/de/` and `messages/de.json`
+4. Create locale-specific character and message files in `config/locales/fr/` and `messages/fr.json`, and add the messages to `src/i18n/messages.test.ts`. That test and `src/lib/app/locales.test.ts` check that they have the same keys, files, rules, modules and characters as English.
+
+5. Choose rule keywords as whole phrases: they match anywhere in what's said, and a match turns the LLM's tools off. Test the wake phrase in that language with local Whisper first, as German's "Hey Mira" came back as "Herr Emira".
 
 ## Related Configuration
 

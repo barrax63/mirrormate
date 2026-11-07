@@ -62,6 +62,7 @@ const JAPANESE = /[぀-ヿ㐀-鿿]/;
 // character.fallbackReply in config/locales/*/character.yaml
 const FALLBACK_EN = "Hmm... I lost my train of thought! Could you say that again?";
 const FALLBACK_JA = "うーん、考えがまとまらなかったみたい。もう一回言ってくれる？";
+const FALLBACK_DE = "Hmm … jetzt hab ich den Faden verloren! Sagst du das noch mal?";
 
 const text = (content: string): ChatCompletionResult => ({ content, finishReason: "stop" });
 
@@ -310,6 +311,15 @@ describe("POST /api/chat", () => {
       const { body } = await say("こんにちは");
 
       expect(body.message).toBe(FALLBACK_JA);
+    });
+
+    it("falls back to the German line in German mode", async () => {
+      vi.stubEnv("LOCALE", "de");
+      scriptLLM(text(""));
+
+      const { body } = await say("Hallo");
+
+      expect(body.message).toBe(FALLBACK_DE);
     });
 
     it("reports a failure of the call without tools", async () => {
@@ -588,6 +598,33 @@ describe("POST /api/chat", () => {
       for (const request of llmRequests) {
         expect(JSON.stringify(request)).not.toMatch(JAPANESE);
       }
+    });
+
+    it("sends German and no Japanese in German mode", async () => {
+      vi.stubEnv("LOCALE", "de");
+      scriptLLM(text("Hallo!"));
+
+      await say("Hallo", { image: "data:image/jpeg;base64,AAAA" });
+      await say("Gute Nacht, Mira");
+
+      expect(systemPrompt(llmRequests[0])).toContain("Das Kamerabild der Person ist verfügbar.");
+      expect(systemPrompt(llmRequests[0])).toContain("Persönlichkeit:");
+      expect(systemPrompt(llmRequests[1])).toContain("[Informationen aus der Regel]");
+      expect(llmRequests[1].tools).toBeUndefined();
+      for (const request of llmRequests) {
+        expect(JSON.stringify(request)).not.toMatch(JAPANESE);
+      }
+    });
+
+    // Rules match by substring, and "morgen" also means "tomorrow"
+    it("doesn't take a question about tomorrow for the morning greeting in German", async () => {
+      vi.stubEnv("LOCALE", "de");
+      scriptLLM(text("Morgen wird es sonnig."));
+
+      await say("Wie wird das Wetter morgen Mira");
+
+      expect(llmRequests[0].tools?.length).toBeGreaterThan(0);
+      expect(systemPrompt()).not.toContain("[Informationen aus der Regel]");
     });
 
     it("sends the same in Japanese in Japanese mode", async () => {

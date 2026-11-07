@@ -54,6 +54,15 @@ describe("web_search", () => {
     });
   });
 
+  it("returns them in German, in German mode", async () => {
+    vi.stubEnv("LOCALE", "de");
+
+    expect(await search("Zebrastreifen")).toMatchObject({
+      result: expect.stringMatching(/^Suchergebnisse:\n\n1\. Crossing rules\n/),
+      infoCard: { type: "search", title: "Suche: Zebrastreifen", items: ["Crossing rules", "Stripes"] },
+    });
+  });
+
   it("says in Japanese when nothing was found, or the search failed", async () => {
     vi.stubEnv("LOCALE", "ja");
     vi.mocked(fetch).mockResolvedValueOnce(Response.json({ results: [] }));
