@@ -42,6 +42,34 @@ export class LocalWhisperProvider implements STTProvider {
     return ["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm", "ogg"];
   }
 
+  /**
+   * Whether speaches' VAD finds no speech in the audio, with the settings it transcribes with
+   * (DEFAULT_VAD_OPTIONS in its routers/stt.py). speaches 0.9.0-rc.3 answers a recording of 30 s
+   * or more without speech with a 500, where it should return no text, and only this tells that
+   * apart from a real failure. A server without this route counts as having found speech.
+   */
+  private async hearsNoSpeech(audio: Blob): Promise<boolean> {
+    const formData = new FormData();
+    formData.append("file", audio, "audio.webm");
+    formData.append("threshold", "0.5");
+    formData.append("min_silence_duration_ms", "160");
+    formData.append("max_speech_duration_s", "30");
+    formData.append("speech_pad_ms", "400");
+    try {
+      const response = await fetch(`${this.baseUrl}/v1/audio/speech/timestamps`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        return false;
+      }
+      const segments: unknown = await response.json();
+      return Array.isArray(segments) && segments.length === 0;
+    } catch {
+      return false;
+    }
+  }
+
   async transcribe(
     audio: Buffer,
     options?: TranscribeOptions
@@ -79,6 +107,10 @@ export class LocalWhisperProvider implements STTProvider {
 
       if (!response.ok) {
         const errorText = await response.text();
+        if (response.status === 500 && (await this.hearsNoSpeech(blob))) {
+          console.log("[LocalWhisperProvider] No speech in the recording");
+          return { transcript: "" };
+        }
         throw new ServiceError(
           response.status >= 502 && response.status <= 504 ? "unavailable" : "failed",
           "localWhisper",
