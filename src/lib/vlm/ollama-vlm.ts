@@ -59,7 +59,7 @@ export class OllamaVLMProvider implements VLMProvider {
 
     const data = (await response.json()) as OllamaVLMResponse;
     const content = data.message?.content || "";
-    console.log(`[VLM] Response: ${content.substring(0, 100)}...`);
+    console.log(`[VLM] Response: ${content.length} characters`);
 
     return content;
   }
@@ -68,7 +68,6 @@ export class OllamaVLMProvider implements VLMProvider {
     try {
       const response = await this.analyzeImage(imageBase64, WAVING_PROMPT);
 
-      console.log("[VLM] Raw response:", response);
       return parseWavingResponse(response);
     } catch (error) {
       console.error("[VLM] checkWaving error:", error);

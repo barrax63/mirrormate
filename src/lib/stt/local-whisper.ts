@@ -123,9 +123,7 @@ export class LocalWhisperProvider implements STTProvider {
       // Handle different response formats
       const transcript = data.text || data.transcript || "";
 
-      console.log(
-        `[LocalWhisperProvider] Transcription complete: "${transcript.substring(0, 50)}${transcript.length > 50 ? "..." : ""}"`
-      );
+      console.log(`[LocalWhisperProvider] Transcription complete: ${transcript.length} characters`);
 
       return {
         transcript,

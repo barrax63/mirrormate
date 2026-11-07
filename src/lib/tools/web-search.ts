@@ -129,8 +129,6 @@ export const webSearchTool: Tool = {
       return { result: "No search query provided." };
     }
 
-    console.log(`[WebSearch] Searching for: ${query}`);
-
     try {
       const results = await performSearch(query, 5);
 

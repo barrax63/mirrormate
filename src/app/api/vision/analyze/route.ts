@@ -29,9 +29,7 @@ export async function POST(request: NextRequest) {
     console.log("[Vision Analyze] Checking for waving gesture...");
     const result = await vlmProvider.checkWaving(body.image);
 
-    console.log(
-      `[Vision Analyze] Result: waving=${result.waving}, confidence=${result.confidence}, reason=${result.reason}`
-    );
+    console.log(`[Vision Analyze] Result: waving=${result.waving}, confidence=${result.confidence}`);
 
     return NextResponse.json({
       waving: result.waving,

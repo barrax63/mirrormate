@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { LocalWhisperProvider } from "./local-whisper";
 import { ServiceError } from "../errors/service-error";
+import { consoleOutput } from "../testing/console";
 
 const BASE = "http://whisper:8000";
 
@@ -48,6 +49,8 @@ describe("LocalWhisperProvider", () => {
     expect(await transcribe()).toMatchObject({ transcript: "Hallo Mira" });
     expect(requests[0].form.get("model")).toBe("Systran/faster-whisper-small");
     expect(requests[0].form.get("language")).toBe("de");
+    expect(consoleOutput()).toContain("[LocalWhisperProvider] Transcription complete: 10 characters");
+    expect(consoleOutput()).not.toContain("Mira");
   });
 
   // speaches 0.9.0-rc.3 does this for 30 s or more of sound without speech
