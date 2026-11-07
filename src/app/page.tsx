@@ -17,7 +17,8 @@ import { routeErrorFrom } from "@/lib/errors/service-errors";
 import { DEFAULT_HISTORY_LIMIT, historyLimitFrom, trimHistory } from "@/lib/chat/history";
 import { FloatingInfo, InfoCard, infoCardsFrom } from "@/components/FloatingInfo";
 import PluginRenderer from "@/components/PluginRenderer";
-import { mapBroadcastToEvent, type BroadcastMessage } from "@/lib/animation/broadcast-adapter";
+import { mapBroadcastToEvent } from "@/lib/animation/broadcast-adapter";
+import type { BroadcastMessage } from "@/lib/broadcast";
 
 export default function AvatarPage() {
   const t = useTranslations("mic");
@@ -85,7 +86,7 @@ export default function AvatarPage() {
       pendingCaptureRef.current = { resolve, timeout };
 
       // Request capture
-      channelRef.current.postMessage({ type: "camera_capture_request" });
+      channelRef.current.postMessage({ type: "camera_capture_request" } satisfies BroadcastMessage);
     });
   }, []);
 
@@ -555,7 +556,7 @@ export default function AvatarPage() {
   const broadcastMicStatus = useCallback((enabled: boolean, listening: boolean) => {
     const status = !enabled ? "off" : listening ? "listening" : "paused";
     try {
-      channelRef.current?.postMessage({ type: "mic_status", payload: status });
+      channelRef.current?.postMessage({ type: "mic_status", payload: status } satisfies BroadcastMessage);
     } catch {
       // Channel is closed - ignore
     }
@@ -645,13 +646,6 @@ export default function AvatarPage() {
               // Invalid JSON
             }
           }
-          break;
-        case "speaking_start":
-          setIsSpeaking(true);
-          break;
-        case "speaking_end":
-          setIsSpeaking(false);
-          setMouthOpenness(0);
           break;
         case "mic_start":
           setSpeechEnabled(true);

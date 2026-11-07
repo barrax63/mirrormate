@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { BroadcastMessage } from "@/lib/broadcast";
 
 export interface CharacterPreset {
   id: string;
@@ -101,7 +102,7 @@ export function useCharacterSelector(): UseCharacterSelectorReturn {
       channel.postMessage({
         type: "settings_changed",
         payload: JSON.stringify({ characterId: id }),
-      });
+      } satisfies BroadcastMessage);
       channel.close();
     } catch {
       // BroadcastChannel not supported

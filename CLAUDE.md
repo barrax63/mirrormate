@@ -50,7 +50,7 @@ Use `bun audit fix` to patch dependencies, and don't delete entries from `bun.lo
 
 - `/` (`src/app/page.tsx`) is the avatar page and the main client orchestrator: mic, wake word, chat calls, audio playback, lip sync, info cards.
 - `/control` is a separate operator page, with `/control/memory` and `/control/vision` beneath it. It must run in the same browser as the avatar page because the two talk over `BroadcastChannel("mirror-channel")`.
-- `BroadcastMessage` is defined twice, in `src/lib/animation/broadcast-adapter.ts` and `src/app/control/page.tsx`. Update both when adding a message type. `mapBroadcastToEvent` turns messages into events for the avatar's animation state machine in `src/lib/animation/`.
+- `BroadcastMessage` in `src/lib/broadcast.ts` lists every message type, and each sender checks its message with `satisfies BroadcastMessage`. Add a new type there. `mapBroadcastToEvent` in `src/lib/animation/broadcast-adapter.ts` turns the mic and thinking messages into events for the avatar's animation state machine.
 - Both pages call `/api/chat` themselves. Only the avatar page plays replies: it fetches `/api/tts`, and `/control` asks it to with a `play_audio` message. `/control` calls `/api/tts` itself only for voice preview.
 - Info cards come only from tools (`infoCard` in a tool's result, returned as `infoCards`) and reminders, never from reading the reply text. `/control` forwards its replies' cards to the avatar page as `info_cards`.
 - The avatar page keeps one `BroadcastChannel` and one `AudioContext` for its whole life, and its channel handler reads current state through a ref. Don't tie either to state: recognition stops during every reply, so closing the `AudioContext` on a state change cuts the reply off.
@@ -127,4 +127,4 @@ The Dockerfile's runner stage contains only the standalone output and explicitly
 
 - PRs target `develop`. Commits follow Conventional Commits, and the prefixes drive PR labels.
 - CI runs lint, test, build, e2e and a production dependency audit on PRs into `develop` and pushes to it, but only when `src/**`, `config/**`, `plugins/**`, `messages/**`, `package.json`, `bun.lock`, `tsconfig.json`, `next.config.ts`, `vitest.config.ts`, `e2e/**`, `playwright.config.ts`, `Dockerfile` or the CI workflow change. Changes confined to `docs/` don't trigger it.
-- Pushes to `develop` deploy `docs/**` changes to GitHub Pages. `vX.Y.Z` tags publish multi-arch images to GHCR.
+- Pushes to `develop` deploy `docs/**` changes to GitHub Pages. `vX.Y.Z` tags publish multi-arch images to GHCR. `package.json`'s version matches the latest tag, so bump it in the same change as a new tag. The fork has no tags yet: `0.1.13` is upstream's latest.

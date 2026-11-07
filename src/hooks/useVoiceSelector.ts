@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { BroadcastMessage } from "@/lib/broadcast";
 import { routeErrorFrom, type ServiceErrorReporter } from "@/lib/errors/service-errors";
 
 export interface Voice {
@@ -106,7 +107,7 @@ export function useVoiceSelector({ serviceErrors }: UseVoiceSelectorOptions = {}
       channel.postMessage({
         type: "settings_changed",
         payload: JSON.stringify({ voice: id }),
-      });
+      } satisfies BroadcastMessage);
       channel.close();
     } catch {
       // BroadcastChannel not supported

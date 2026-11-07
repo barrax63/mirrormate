@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import type { BroadcastMessage } from "@/lib/broadcast";
 
 const STORAGE_KEY = "mirrormate:vision";
 
@@ -77,7 +78,7 @@ export function useVisionEnabled(): {
     // Notify the avatar page and its camera
     try {
       const channel = new BroadcastChannel("mirror-channel");
-      channel.postMessage({ type: "vision_toggle", payload: enabled ? "on" : "off" });
+      channel.postMessage({ type: "vision_toggle", payload: enabled ? "on" : "off" } satisfies BroadcastMessage);
       channel.close();
     } catch {
       // BroadcastChannel not supported

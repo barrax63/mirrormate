@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import type { BroadcastMessage } from "@/lib/broadcast";
 import {
   ServiceErrors,
   isVoiceRoute,
@@ -43,7 +44,7 @@ export function useServiceErrors(): { errors: RouteErrorEntry[]; reporter: Servi
     channelRef.current = channel;
 
     const send = (route: VoiceRoute, state: RouteState | null) =>
-      channel.postMessage({ type: "service_error", payload: JSON.stringify({ route, state }) });
+      channel.postMessage({ type: "service_error", payload: JSON.stringify({ route, state }) } satisfies BroadcastMessage);
 
     channel.onmessage = (event: MessageEvent<{ type?: string; payload?: unknown }>) => {
       const { type, payload } = event.data ?? {};
@@ -63,7 +64,7 @@ export function useServiceErrors(): { errors: RouteErrorEntry[]; reporter: Servi
     };
 
     // A page opened later learns what already failed
-    channel.postMessage({ type: "service_errors_request" });
+    channel.postMessage({ type: "service_errors_request" } satisfies BroadcastMessage);
 
     return () => {
       channel.close();
@@ -73,7 +74,10 @@ export function useServiceErrors(): { errors: RouteErrorEntry[]; reporter: Servi
 
   const reporter = useMemo<ServiceErrorReporter>(() => {
     const send = (route: VoiceRoute, state: RouteState | null) =>
-      channelRef.current?.postMessage({ type: "service_error", payload: JSON.stringify({ route, state }) });
+      channelRef.current?.postMessage({
+        type: "service_error",
+        payload: JSON.stringify({ route, state }),
+      } satisfies BroadcastMessage);
     return {
       isBackingOff: (route) => tracker.isBackingOff(route),
       failed: (route, error) => send(route, tracker.failed(route, error)),

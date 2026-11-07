@@ -42,15 +42,7 @@ export interface DiscordFeatureConfig extends FeatureConfig {
   webhookUrl?: string; // Can also be set via DISCORD_WEBHOOK_URL env var
   autoShare?: {
     searchResults?: boolean;
-    weather?: boolean;
-    calendar?: boolean;
   };
-}
-
-export interface VisionFeatureConfig extends FeatureConfig {
-  eyeContactTtlSeconds: number;
-  greetCooldownSeconds: number;
-  minConfidence: number;
 }
 
 export interface FeaturesConfig {
@@ -60,7 +52,6 @@ export interface FeaturesConfig {
     time?: TimeFeatureConfig;
     reminder?: ReminderFeatureConfig;
     discord?: DiscordFeatureConfig;
-    vision?: VisionFeatureConfig;
     [key: string]: FeatureConfig | undefined;
   };
 }

@@ -34,8 +34,6 @@ features:
     webhookUrl: "https://discord.com/api/webhooks/123456789/abcdefg..."
     autoShare:
       searchResults: true  # Auto-share web search results
-      weather: false       # Auto-share weather updates
-      calendar: false      # Auto-share calendar events
 ```
 
 ### Alternative: Environment Variable
@@ -64,8 +62,6 @@ Automatic sharing is off by default and is opt-in through `autoShare`:
 | Option | Trigger | What's Shared |
 |--------|---------|---------------|
 | `autoShare.searchResults` | Any search query | Search results with links |
-
-`autoShare.weather` and `autoShare.calendar` are accepted in the config, but nothing reads them yet.
 
 ### Manual Sharing via LLM
 
@@ -110,24 +106,6 @@ await sendSearchResults("query", [
 ]);
 ```
 
-### sendWeatherInfo
-
-Sends weather information to Discord.
-
-```typescript
-await sendWeatherInfo("Tokyo", "Sunny", 25, "Clear skies expected");
-```
-
-### sendCalendarEvents
-
-Sends upcoming calendar events to Discord.
-
-```typescript
-await sendCalendarEvents([
-  { title: "Meeting", time: "14:00", description: "Team sync" },
-]);
-```
-
 ### sendTextMessage
 
 Sends a simple text message to Discord.
@@ -136,25 +114,12 @@ Sends a simple text message to Discord.
 await sendTextMessage("Title", "Content", "https://optional-url.com");
 ```
 
-### sendConversationSummary
-
-Sends a conversation exchange to Discord.
-
-```typescript
-await sendConversationSummary("User message", "Assistant response");
-```
-
 ## Embed Colors
 
 | Type | Color | Hex |
 |------|-------|-----|
 | Info | Blurple | `#5865F2` |
-| Success | Green | `#57F287` |
-| Warning | Yellow | `#FEE75C` |
-| Error | Red | `#ED4245` |
 | Search | Blue | `#3498DB` |
-| Weather | Orange | `#F39C12` |
-| Calendar | Purple | `#9B59B6` |
 
 ## Architecture
 
