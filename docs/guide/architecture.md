@@ -118,7 +118,7 @@ src/
 │   ├── SimpleAvatar.tsx   # Avatar with lip-sync
 │   ├── AvatarAura.tsx
 │   ├── Confetti.tsx       # Visual effects
-│   ├── FloatingInfo.tsx   # Info cards (weather, calendar)
+│   ├── FloatingInfo.tsx   # Info cards from tools and reminders
 │   ├── PluginRenderer.tsx # Loads and renders enabled plugins
 │   ├── PluginContainer.tsx
 │   ├── SettingsDropdown.tsx

@@ -52,6 +52,30 @@ test.describe("Voice flow", () => {
     expect(avatar.logs.filter((log) => log.includes("joke"))).toEqual([]);
   });
 
+  test("shows the cards tools returned with the reply", async ({ avatar }) => {
+    // No tool returns a card against the mocks, so the reply gets one
+    await avatar.page.route("**/api/chat", async (route) => {
+      const response = await route.fetch();
+      const infoCards = [{ type: "search", title: "Search: zebra crossings", items: ["Crossing rules"] }];
+      await route.fulfill({ response, json: { ...(await response.json()), infoCards } });
+    });
+    await avatar.wakeUp();
+
+    await avatar.hear("how do zebra crossings work");
+
+    await expect(avatar.page.getByText("Search: zebra crossings")).toBeVisible();
+    await expect(avatar.page.getByText("Crossing rules")).toBeVisible();
+    await expect(avatar.page.locator(".glass-card")).toHaveCount(1);
+  });
+
+  test("shows the effect the reply asked for", async ({ avatar }) => {
+    await avatar.wakeUp();
+
+    await avatar.hear("CALL_EFFECT please");
+
+    await avatar.waitForLog("[Effect] Showing confetti");
+  });
+
   test("keeps listening and sends the history on the next turn", async ({ avatar }) => {
     await avatar.wakeUp();
     await avatar.hear("first question");

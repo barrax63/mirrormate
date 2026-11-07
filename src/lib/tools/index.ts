@@ -1,4 +1,5 @@
 import { Tool, ToolDefinition, ToolCall, ToolResult, ToolInfoCard, ToolContext } from "./types";
+import { getLocale, type Locale } from "@/lib/app";
 import { webSearchTool } from "./web-search";
 import { effectTool, getPendingEffect, clearPendingEffect } from "./effects";
 import { discordShareTool } from "./discord-share";
@@ -9,6 +10,12 @@ export { getPendingEffect, clearPendingEffect };
 
 // Note: see_camera is first to prioritize visual queries about the user
 const tools: Tool[] = [seeCameraTool, webSearchTool, effectTool, discordShareTool];
+
+// For the LLM, when it calls a tool that doesn't exist
+const NOT_FOUND: Record<Locale, (name: string) => string> = {
+  en: (name) => `Tool "${name}" not found.`,
+  ja: (name) => `ツール「${name}」が見つかりません。`,
+};
 
 export function getToolDefinitions(): ToolDefinition[] {
   return tools.map((t) => t.definition);
@@ -24,7 +31,7 @@ export async function executeTool(call: ToolCall, context?: ToolContext): Promis
   if (!tool) {
     return {
       name: call.name,
-      result: `Tool "${call.name}" not found.`,
+      result: NOT_FOUND[getLocale()](call.name),
     };
   }
 

@@ -16,6 +16,8 @@ export interface BroadcastMessage {
     | "thinking_end"
     | "response"
     | "play_audio"
+    // The cards tools returned with a reply to /control, as JSON
+    | "info_cards"
     | "user_message"
     | "mic_start"
     | "mic_stop"
@@ -95,6 +97,7 @@ export function mapBroadcastToEvent(message: BroadcastMessage): AvatarEvent | nu
     // These messages don't map to state events
     case "response":
     case "play_audio":
+    case "info_cards":
     case "user_message":
     case "mic_status":
     case "mic_request_status":
