@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useVisionEnabled } from "@/hooks/useVisionEnabled";
+import type { BroadcastMessage } from "@/lib/broadcast";
 
 export interface VisionCompanionConfig {
   cameraWidth?: number;
@@ -65,13 +66,13 @@ export function VisionCompanion({ config }: VisionCompanionProps) {
           channel.postMessage({
             type: "camera_capture_response",
             payload: image,
-          });
+          } satisfies BroadcastMessage);
         } else {
           console.warn("[VisionCompanion] Camera capture failed - no image available");
           channel.postMessage({
             type: "camera_capture_response",
             payload: null,
-          });
+          } satisfies BroadcastMessage);
         }
       }
     };

@@ -7,6 +7,7 @@ import { useVoiceSelector, type Voice } from "@/hooks/useVoiceSelector";
 import { useCharacterSelector, type CharacterPreset } from "@/hooks/useCharacterSelector";
 import { useVisionEnabled } from "@/hooks/useVisionEnabled";
 import { useServiceErrors } from "@/hooks/useServiceErrors";
+import type { BroadcastMessage } from "@/lib/broadcast";
 import { ServiceErrorList, useServiceErrorText } from "@/components/ServiceErrorList";
 import { routeErrorFrom } from "@/lib/errors/service-errors";
 import { DEFAULT_HISTORY_LIMIT, historyLimitFrom, trimHistory } from "@/lib/chat/history";
@@ -21,11 +22,6 @@ interface Message {
   hasImage?: boolean;
   /** A notice shown when a request failed, which the LLM never wrote */
   isError?: boolean;
-}
-
-interface BroadcastMessage {
-  type: "speaking_start" | "speaking_end" | "thinking_start" | "thinking_end" | "response" | "audio" | "user_message" | "play_audio" | "info_cards" | "effect" | "mic_start" | "mic_stop" | "mic_status" | "mic_request_status" | "settings_changed" | "vision_toggle" | "camera_capture_request" | "camera_capture_response" | "service_error" | "service_errors_request";
-  payload?: string | boolean | null;
 }
 
 export default function ControlPage() {
@@ -87,7 +83,7 @@ export default function ControlPage() {
     };
 
     // Request status from avatar page on connect
-    channelRef.current.postMessage({ type: "mic_request_status" });
+    channelRef.current.postMessage({ type: "mic_request_status" } satisfies BroadcastMessage);
 
     return () => {
       channelRef.current?.close();
@@ -125,7 +121,7 @@ export default function ControlPage() {
       pendingCaptureRef.current = { resolve, timeout };
 
       // Request capture
-      channelRef.current.postMessage({ type: "camera_capture_request" });
+      channelRef.current.postMessage({ type: "camera_capture_request" } satisfies BroadcastMessage);
     });
   }, []);
 

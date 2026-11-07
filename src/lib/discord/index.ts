@@ -33,12 +33,7 @@ export interface DiscordMessage {
 // Embed colors
 export const DISCORD_COLORS = {
   info: 0x5865f2, // Discord blurple
-  success: 0x57f287, // Green
-  warning: 0xfee75c, // Yellow
-  error: 0xed4245, // Red
   search: 0x3498db, // Blue
-  weather: 0xf39c12, // Orange
-  calendar: 0x9b59b6, // Purple
 } as const;
 
 /**
@@ -97,7 +92,7 @@ export function isDiscordEnabled(): boolean {
 /**
  * Check if auto-share is enabled for a specific type
  */
-export function isAutoShareEnabled(type: "searchResults" | "weather" | "calendar"): boolean {
+export function isAutoShareEnabled(type: "searchResults"): boolean {
   if (!isDiscordEnabled()) {
     return false;
   }
@@ -249,66 +244,6 @@ export async function sendSearchResults(
 }
 
 /**
- * Send weather info to Discord
- */
-export async function sendWeatherInfo(
-  location: string,
-  weather: string,
-  temperature: number,
-  forecast?: string
-): Promise<boolean> {
-  if (!isDiscordEnabled()) {
-    return false;
-  }
-
-  const fields = [
-    { name: "Current Weather", value: weather, inline: true },
-    { name: "Temperature", value: `${temperature}°C`, inline: true },
-  ];
-
-  if (forecast) {
-    fields.push({ name: "Forecast", value: forecast, inline: false });
-  }
-
-  const embed: DiscordEmbed = {
-    title: `Weather: ${location}`,
-    color: DISCORD_COLORS.weather,
-    fields,
-    footer: { text: "Mirror Mate Weather" },
-    timestamp: new Date().toISOString(),
-  };
-
-  return sendDiscordMessage({ embeds: [embed] });
-}
-
-/**
- * Send calendar events to Discord
- */
-export async function sendCalendarEvents(
-  events: Array<{ title: string; time: string; description?: string }>
-): Promise<boolean> {
-  if (!isDiscordEnabled() || events.length === 0) {
-    return false;
-  }
-
-  const fields = events.slice(0, 10).map((e) => ({
-    name: e.title,
-    value: e.description ? `${e.time}\n${e.description}` : e.time,
-    inline: false,
-  }));
-
-  const embed: DiscordEmbed = {
-    title: "Upcoming Events",
-    color: DISCORD_COLORS.calendar,
-    fields,
-    footer: { text: "Mirror Mate Calendar" },
-    timestamp: new Date().toISOString(),
-  };
-
-  return sendDiscordMessage({ embeds: [embed] });
-}
-
-/**
  * Send a simple text message to Discord
  */
 export async function sendTextMessage(
@@ -326,31 +261,6 @@ export async function sendTextMessage(
     url,
     color: DISCORD_COLORS.info,
     footer: { text: "Mirror Mate" },
-    timestamp: new Date().toISOString(),
-  };
-
-  return sendDiscordMessage({ embeds: [embed] });
-}
-
-/**
- * Send a conversation summary to Discord
- */
-export async function sendConversationSummary(
-  userMessage: string,
-  assistantResponse: string
-): Promise<boolean> {
-  if (!isDiscordEnabled()) {
-    return false;
-  }
-
-  const embed: DiscordEmbed = {
-    title: "Conversation",
-    color: DISCORD_COLORS.info,
-    fields: [
-      { name: "You", value: userMessage.slice(0, 1024), inline: false },
-      { name: "Mirror Mate", value: assistantResponse.slice(0, 1024), inline: false },
-    ],
-    footer: { text: "Mirror Mate Conversation" },
     timestamp: new Date().toISOString(),
   };
 
