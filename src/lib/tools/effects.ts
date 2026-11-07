@@ -17,13 +17,14 @@ export function clearPendingEffect(): void {
 }
 
 // The LLM reads these in the language of the rest of its prompt
-const TEXT: Record<Locale, { description: string; effect: string }> = {
+const TEXT: Record<Locale, { description: string; effect: string; shown(effect: EffectType): string }> = {
   en: {
     description: `Shows an effect on the screen. Use it to express a feeling, such as when you're happy, celebrating or moved.
 - confetti: confetti (celebrations, good news, achievements)
 - hearts: hearts (affection, thanks, encouragement)
 - sparkles: sparkles (surprises, discoveries, lovely things)`,
     effect: "Which effect to show",
+    shown: (effect) => `Displaying ${effect} effect`,
   },
   ja: {
     description: `画面にエフェクトを表示します。嬉しいとき、お祝いのとき、感動したときなど、感情を表現したいときに使ってください。
@@ -31,6 +32,7 @@ const TEXT: Record<Locale, { description: string; effect: string }> = {
 - hearts: ハート（愛情、感謝、応援）
 - sparkles: キラキラ（驚き、発見、素敵なこと）`,
     effect: "表示するエフェクトの種類",
+    shown: (effect) => `${effect}エフェクトを表示中`,
   },
 };
 
@@ -61,6 +63,6 @@ export const effectTool: Tool = {
 
     pendingEffect = effect;
 
-    return `Displaying ${effect} effect`;
+    return TEXT[getLocale()].shown(effect);
   },
 };

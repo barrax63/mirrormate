@@ -89,17 +89,37 @@ export function isSearchEnabled(): boolean {
   return isOllamaSearchEnabled();
 }
 
-// The LLM reads these in the language of the rest of its prompt
-const TEXT: Record<Locale, { description: string; query: string }> = {
+// The LLM reads these in the language of the rest of its prompt, and the card is shown on the mirror
+interface SearchText {
+  description: string;
+  query: string;
+  noQuery: string;
+  noResults(query: string): string;
+  results(formatted: string): string;
+  error(message: string): string;
+  cardTitle(query: string): string;
+}
+
+const TEXT: Record<Locale, SearchText> = {
   en: {
     description:
       "Searches the internet for up-to-date information. Always use it for news, today's events, things you don't know, and whenever accurate information is needed. If you're not sure of what you know, always call this tool.",
     query: "Search query",
+    noQuery: "No search query provided.",
+    noResults: (query) => `No results found for "${query}".`,
+    results: (formatted) => `Search results:\n\n${formatted}`,
+    error: (message) => `Error during search: ${message}`,
+    cardTitle: (query) => `Search: ${query}`,
   },
   ja: {
     description:
       "インターネットで最新情報を検索します。必ず使うべき場面: ニュース、今日の出来事、知らない事柄、正確な情報が必要なとき。自分の知識に自信がないときは必ずこのツールを呼び出してください。",
     query: "検索クエリ",
+    noQuery: "検索クエリがありません。",
+    noResults: (query) => `「${query}」の検索結果は見つかりませんでした。`,
+    results: (formatted) => `検索結果:\n\n${formatted}`,
+    error: (message) => `検索中にエラーが発生しました: ${message}`,
+    cardTitle: (query) => `検索: ${query}`,
   },
 };
 
@@ -124,16 +144,17 @@ export const webSearchTool: Tool = {
 
   async execute(args: Record<string, unknown>): Promise<ToolExecuteResult> {
     const query = args.query as string;
+    const text = TEXT[getLocale()];
 
     if (!query) {
-      return { result: "No search query provided." };
+      return { result: text.noQuery };
     }
 
     try {
       const results = await performSearch(query, 5);
 
       if (results.length === 0) {
-        return { result: `No results found for "${query}".` };
+        return { result: text.noResults(query) };
       }
 
       // Store in search history for later sharing
@@ -156,16 +177,16 @@ export const webSearchTool: Tool = {
 
       // Return result with info card for UI display
       return {
-        result: `Search results:\n\n${formatted}`,
+        result: text.results(formatted),
         infoCard: {
           type: "search",
-          title: `Search: ${query}`,
+          title: text.cardTitle(query),
           items: results.slice(0, 3).map((r) => r.title),
         },
       };
     } catch (error) {
       console.error("[WebSearch] Error:", error);
-      return { result: `Error during search: ${(error as Error).message}` };
+      return { result: text.error((error as Error).message) };
     }
   },
 };
