@@ -19,7 +19,7 @@ const NOT_FOUND: Record<Locale, (name: string) => string> = {
 };
 
 export function getToolDefinitions(): ToolDefinition[] {
-  return tools.map((t) => t.definition);
+  return tools.filter((t) => t.isAvailable?.() ?? true).map((t) => t.definition);
 }
 
 export function getTool(name: string): Tool | undefined {

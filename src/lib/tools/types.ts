@@ -46,4 +46,9 @@ export interface ToolContext {
 export interface Tool {
   definition: ToolDefinition;
   execute(args: Record<string, unknown>, context?: ToolContext): Promise<string | ToolExecuteResult>;
+  /**
+   * Whether the LLM is offered the tool, checked on every request. A tool that can't work
+   * would only cost a round trip: the LLM calls it, gets an error, and asks again.
+   */
+  isAvailable?(): boolean;
 }
