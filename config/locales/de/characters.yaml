@@ -2,7 +2,7 @@ characters:
   - id: mira
     name: Mira
     description: ein kleines Lichtwesen, das im Spiegel wohnt
-    recommendedVoice: EXAVITQu4vr4xnSDxMaL  # Sarah
+    recommendedVoice: XrExE9yKIg1WjnnlVkGX  # Matilda
     wakeWord:
       enabled: true
       phrase: "Hallo Mira"

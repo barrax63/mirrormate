@@ -23,6 +23,10 @@ export interface LocalePreset {
   stt: {
     language: string;
   };
+  tts: {
+    /** The ElevenLabs voice until one is picked on /control, unless providers.yaml sets one */
+    voiceId: string;
+  };
 }
 
 let cachedPreset: LocalePreset | null = null;
@@ -33,6 +37,7 @@ function getPresetPath(locale: Locale): string {
   return path.join(configDir, `${locale}.yaml`);
 }
 
+// The voices are premade ones, which every ElevenLabs account has
 const defaultPresets: Record<Locale, LocalePreset> = {
   ja: {
     time: { timezone: "Asia/Tokyo" },
@@ -44,6 +49,7 @@ const defaultPresets: Record<Locale, LocalePreset> = {
     },
     clock: { timezone: "Asia/Tokyo", format24h: true, locale: "ja-JP" },
     stt: { language: "ja" },
+    tts: { voiceId: "EXAVITQu4vr4xnSDxMaL" }, // Sarah
   },
   en: {
     time: { timezone: "America/Los_Angeles" },
@@ -55,6 +61,7 @@ const defaultPresets: Record<Locale, LocalePreset> = {
     },
     clock: { timezone: "America/Los_Angeles", format24h: false, locale: "en-US" },
     stt: { language: "en" },
+    tts: { voiceId: "EXAVITQu4vr4xnSDxMaL" }, // Sarah
   },
   de: {
     time: { timezone: "Europe/Berlin" },
@@ -66,6 +73,8 @@ const defaultPresets: Record<Locale, LocalePreset> = {
     },
     clock: { timezone: "Europe/Berlin", format24h: true, locale: "de-DE" },
     stt: { language: "de" },
+    // Matilda: ElevenLabs hasn't verified Sarah for German
+    tts: { voiceId: "XrExE9yKIg1WjnnlVkGX" },
   },
 };
 
@@ -100,6 +109,7 @@ export function loadLocalePreset(): LocalePreset {
       weather: { ...defaultPresets[locale].weather, ...preset.weather },
       clock: { ...defaultPresets[locale].clock, ...preset.clock },
       stt: { ...defaultPresets[locale].stt, ...preset.stt },
+      tts: { ...defaultPresets[locale].tts, ...preset.tts },
     };
     cachedLocale = locale;
 
@@ -138,6 +148,13 @@ export function getClockPreset() {
  */
 export function getSTTPreset() {
   return loadLocalePreset().stt;
+}
+
+/**
+ * Get TTS settings from preset
+ */
+export function getTTSPreset() {
+  return loadLocalePreset().tts;
 }
 
 /**

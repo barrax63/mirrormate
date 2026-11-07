@@ -173,17 +173,16 @@ providers:
     enabled: true
     provider: elevenlabs
     elevenlabs:
-      voiceId: EXAVITQu4vr4xnSDxMaL  # Sarah, until a voice is picked on /control
       model: eleven_v4_turbo
 ```
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `voiceId` | ElevenLabs voice ID, used until one is picked on `/control` | `EXAVITQu4vr4xnSDxMaL` (Sarah) |
+| `voiceId` | ElevenLabs voice ID, used in every locale until one is picked on `/control` | The locale preset's `tts.voiceId` |
 | `model` | ElevenLabs model ID | `eleven_v4_turbo` |
 | `baseUrl` | API address | `https://api.elevenlabs.io` |
 
-Speech follows the app's locale. Emoji and markdown are removed before speaking, though the reply on screen keeps them.
+Speech follows the app's locale. Without a `voiceId`, each locale's preset picks the voice: Sarah (`EXAVITQu4vr4xnSDxMaL`) in English and Japanese, and Matilda (`XrExE9yKIg1WjnnlVkGX`) in German, since ElevenLabs hasn't verified Sarah for German. See [Locale Presets](./presets.md). Emoji and markdown are removed before speaking, though the reply on screen keeps them.
 
 The voice selector on `/control` lists the account's voices, the default ones and any you've added, as they were when the app started. Restart it to see voices added since. A character's `recommendedVoice` in `characters.yaml` is a voice ID from that list, and picking the character picks its voice.
 

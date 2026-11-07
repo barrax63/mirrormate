@@ -1,6 +1,6 @@
 # Locale Presets
 
-Mirror Mate supports locale-based configuration presets that automatically apply region-specific settings when you switch languages. This allows you to change just one setting (`app.locale`) and have time zones, weather locations, speech recognition language, and clock settings all update accordingly.
+Mirror Mate supports locale-based configuration presets that automatically apply region-specific settings when you switch languages. This allows you to change just one setting (`app.locale`) and have time zones, weather locations, speech recognition language, clock settings and the voice all update accordingly.
 
 ## How It Works
 
@@ -31,6 +31,7 @@ That's it! The following settings are automatically applied:
 | Weather Locations | Tokyo, Osaka | San Francisco, New York |
 | Clock Format | 24-hour | 12-hour |
 | STT Language | ja / ja-JP | en / en-US |
+| Voice | Sarah | Sarah |
 
 ## Preset File Structure
 
@@ -63,6 +64,11 @@ clock:
 # Speech-to-Text settings
 stt:
   language: "en"  # ISO 639-1
+
+# Text-to-Speech settings: the ElevenLabs voice until one is picked on /control, unless
+# providers.yaml sets tts.elevenlabs.voiceId
+tts:
+  voiceId: "EXAVITQu4vr4xnSDxMaL"  # Sarah
 ```
 
 ## Available Presets
@@ -79,6 +85,7 @@ Default settings for Japanese users:
 | Clock | format24h | true |
 | Clock | locale | ja-JP |
 | STT | language | ja |
+| TTS | voiceId | `EXAVITQu4vr4xnSDxMaL` (Sarah) |
 
 ### English (en)
 
@@ -92,6 +99,7 @@ Default settings for English (US) users:
 | Clock | format24h | false |
 | Clock | locale | en-US |
 | STT | language | en |
+| TTS | voiceId | `EXAVITQu4vr4xnSDxMaL` (Sarah) |
 
 ### German (de)
 
@@ -105,6 +113,9 @@ Default settings for German users:
 | Clock | format24h | true |
 | Clock | locale | de-DE |
 | STT | language | de |
+| TTS | voiceId | `XrExE9yKIg1WjnnlVkGX` (Matilda) |
+
+German uses Matilda because ElevenLabs hasn't verified Sarah for German. `GET /v2/voices` lists the languages each voice is verified for under `verified_languages`.
 
 ## Customizing Presets
 
@@ -143,7 +154,8 @@ Preset values serve as defaults that can be overridden in individual config file
 
 1. **features.yaml** - If you explicitly set `timezone` in `features.time`, it takes precedence over the preset
 2. **plugins.yaml** - If you explicitly set clock settings, they take precedence
-3. **providers.yaml** - If you explicitly set STT language, it takes precedence
+3. **providers.yaml** - If you explicitly set STT language or `tts.elevenlabs.voiceId`, it takes precedence
+4. **`/control`** - A voice picked there takes precedence over both the preset and `providers.yaml`
 
 ### Example: Override Weather Location
 
@@ -190,6 +202,9 @@ clock:
 
 stt:
   language: "fr"
+
+tts:
+  voiceId: "..."  # a voice that GET /v2/voices lists French for under verified_languages
 ```
 
 2. Add the locale to `LOCALES` in `src/lib/app/index.ts`:

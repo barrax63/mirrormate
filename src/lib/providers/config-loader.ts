@@ -31,8 +31,8 @@ const defaultConfig: ProvidersConfig = {
     tts: {
       enabled: true,
       provider: "elevenlabs",
+      // No voiceId, so the locale preset's voice is used
       elevenlabs: {
-        voiceId: "EXAVITQu4vr4xnSDxMaL",
         model: "eleven_v4_turbo",
       },
     },

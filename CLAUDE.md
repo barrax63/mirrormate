@@ -81,7 +81,7 @@ How the layers resolve:
 
 - **Locale:** `LOCALE` env, then `config/app.yaml`, then `ja` if that file is missing or names a locale that `LOCALES` in `src/lib/app/index.ts` doesn't list.
 - **`config/locales/{en,ja,de}/`:** `character`, `characters`, `memory`, `modules`, `rules`.
-- **`config/presets/{locale}.yaml`:** fills timezone, weather locations, clock and STT language where `features.yaml`, `plugins.yaml` or `providers.yaml` leave them unset.
+- **`config/presets/{locale}.yaml`:** fills timezone, weather locations, clock, STT language and the ElevenLabs voice where `features.yaml`, `plugins.yaml` or `providers.yaml` leave them unset. The voice picked on `/control` beats both.
 - **`messages/{locale}.json`:** next-intl UI strings. There is no locale routing.
 - **Env overrides:** `LLM_PROVIDER` and `STT_PROVIDER` change the provider. `APP_CONFIG`, `PROVIDERS_CONFIG`, `FEATURES_CONFIG`, `PLUGINS_CONFIG` and `CHARACTER_CONFIG` select a different file under `config/`.
 - **Production:** `features.docker.yaml` and `plugins.docker.yaml` take priority if they exist.

@@ -19,7 +19,9 @@ providers:
     enabled: true
     provider: elevenlabs
     elevenlabs:
-      voiceId: EXAVITQu4vr4xnSDxMaL  # Sarah, until a voice is picked on /control
+      # Until a voice is picked on /control, the locale preset's voice (tts.voiceId in
+      # config/presets/*.yaml) speaks. A voiceId here replaces it for every locale.
+      # voiceId: EXAVITQu4vr4xnSDxMaL  # Sarah
       model: eleven_v4_turbo
 
   stt:

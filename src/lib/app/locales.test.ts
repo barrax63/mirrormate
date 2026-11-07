@@ -30,6 +30,12 @@ describe.each(LOCALES)("config for %s", (locale) => {
     expect(ids(locale)).toEqual(ids("en"));
   });
 
+  it("gives the preset a voice", () => {
+    const { tts } = load("presets", `${locale}.yaml`) as { tts?: { voiceId?: string } };
+
+    expect(tts?.voiceId).toMatch(/^\w{20}$/);
+  });
+
   it("gives the character a wake phrase and a fallback line", () => {
     const { character } = load("locales", locale, "character.yaml") as {
       character: { wakeWord?: { phrase?: string }; fallbackReply?: string };

@@ -57,6 +57,25 @@ describe("POST /api/tts with ElevenLabs", () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
+  // config/presets/de.yaml. ElevenLabs hasn't verified Sarah for German.
+  it("asks for Matilda by default in German", async () => {
+    vi.stubEnv("LOCALE", "de");
+
+    await speak("Hallo");
+
+    expect(sent().url).toBe("https://api.elevenlabs.io/v1/text-to-speech/XrExE9yKIg1WjnnlVkGX?output_format=mp3_44100_128");
+    expect(sent().body.language_code).toBe("de");
+  });
+
+  it("uses the configured voice over the locale's", async () => {
+    vi.stubEnv("LOCALE", "de");
+    mocks.tts = { enabled: true, provider: "elevenlabs", elevenlabs: { voiceId: "configured-voice" } };
+
+    await speak("Hallo");
+
+    expect(sent().url).toBe("https://api.elevenlabs.io/v1/text-to-speech/configured-voice?output_format=mp3_44100_128");
+  });
+
   it("uses the configured voice, model and base URL", async () => {
     mocks.tts = {
       enabled: true,
