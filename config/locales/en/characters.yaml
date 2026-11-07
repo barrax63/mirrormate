@@ -3,10 +3,10 @@ characters:
     name: Mira
     description: A tiny spirit of light living in the mirror
     recommendedVoice: EXAVITQu4vr4xnSDxMaL  # Sarah
+    # The phrase that wakes the avatar while this character is picked on /control. Whether the
+    # wake word is on, and its timeout, stay character.yaml's.
     wakeWord:
-      enabled: true
       phrase: "Hey Mira"
-      timeout: 60
     appearance:
       - round white eyes
       - simple cute form with a small mouth
@@ -42,9 +42,7 @@ characters:
     description: A mysterious moon spirit descended from the night sky
     recommendedVoice: pFZP5JQG7iQjIQuC4Bku  # Lily
     wakeWord:
-      enabled: true
-      phrase: "OK Luna"
-      timeout: 60
+      phrase: "Hey Luna"
     appearance:
       - elegant crescent-shaped eyes
       - calm atmosphere with a quiet glow
@@ -79,9 +77,7 @@ characters:
     description: An energetic wind spirit racing through the blue sky
     recommendedVoice: cgSgspJ2msm6clMCkdW9  # Jessica
     wakeWord:
-      enabled: true
-      phrase: "OK Sora"
-      timeout: 60
+      phrase: "Hey Sora"
     appearance:
       - big sparkling eyes
       - fluffy, active form that bounces around

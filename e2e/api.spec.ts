@@ -274,6 +274,14 @@ test.describe("other APIs", () => {
     expect(await response.json()).toMatchObject({ enabled: true, phrase: "Hey Mira" });
   });
 
+  test("/api/wakeword returns the phrase of the character asked for", async ({ request }) => {
+    const luna = await request.get("/api/wakeword?characterId=luna");
+    const unknown = await request.get("/api/wakeword?characterId=nobody");
+
+    expect(await luna.json()).toEqual({ enabled: true, phrase: "Hey Luna", timeout: 60 });
+    expect(await unknown.json()).toEqual({ enabled: true, phrase: "Hey Mira", timeout: 60 });
+  });
+
   test("/api/stt transcribes speech with OpenAI", async ({ request, mock }) => {
     const response = await request.post("/api/stt", {
       multipart: {

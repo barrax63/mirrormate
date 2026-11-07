@@ -133,7 +133,7 @@ export default function AvatarPage() {
     checkForWakeWord,
     resetTimeout: resetWakeWordTimeout,
     endConversation,
-  } = useWakeWord();
+  } = useWakeWord({ characterId: currentCharacter });
 
   // Override avatar state to SLEEP when waiting for wake word
   const effectiveAvatarState = useMemo(() => {
