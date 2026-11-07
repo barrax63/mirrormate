@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import { ServiceError } from "@/lib/errors/service-error";
+import { consoleOutput } from "@/lib/testing/console";
 import type { ChatCompletionOptions, ChatCompletionResult } from "@/lib/llm";
 import { POST } from "./route";
 
@@ -119,6 +120,7 @@ describe("POST /api/chat", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   describe("keyword rules", () => {
@@ -514,6 +516,40 @@ describe("POST /api/chat", () => {
 
       const [, conversation] = mocks.processConversation.mock.calls[0];
       expect(conversation.at(-1)).toEqual({ role: "assistant", content: "Hi there!" });
+    });
+  });
+
+  describe("logs", () => {
+    it("hold nothing that was said, searched for or replied", async () => {
+      vi.stubEnv("OLLAMA_API_KEY", "test-key");
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          Response.json({ results: [{ title: "Zebra crossings", url: "https://zebra.example", content: "Stripes" }] })
+        )
+      );
+      scriptLLM(
+        toolCalls(
+          ["web_search", { query: "zebra crossing rules" }],
+          ["show_effect", { effect: "hearts", reason: "they love zebras" }]
+        ),
+        text("Zebras have the right of way!")
+      );
+
+      const { body } = await say("Do zebras have the right of way?");
+
+      expect(body.message).toBe("Zebras have the right of way!");
+      expect(consoleOutput()).toContain("[WebSearch] Found 1 results");
+      expect(consoleOutput()).not.toMatch(/zebra|stripes|right of way/i);
+    });
+
+    it("say which rule matched, but not the words that matched it", async () => {
+      scriptLLM(text("Sleep well"));
+
+      await say("Well, GOOD NIGHT Mira");
+
+      expect(consoleOutput()).toContain("[RuleEngine] Matched rule: good_night");
+      expect(consoleOutput()).not.toMatch(/good night|sleep well/i);
     });
   });
 

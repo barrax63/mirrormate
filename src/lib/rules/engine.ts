@@ -57,7 +57,7 @@ export function matchRule(userMessage: string): RuleMatch | null {
 
     for (const keyword of rule.triggers.keywords) {
       if (normalizedMessage.includes(keyword.toLowerCase())) {
-        console.log(`[RuleEngine] Matched rule: ${ruleName} (keyword: ${keyword})`);
+        console.log(`[RuleEngine] Matched rule: ${ruleName}`);
         return {
           rule,
           ruleName,

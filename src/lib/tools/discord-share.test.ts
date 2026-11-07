@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { discordShareTool } from "./discord-share";
+import { consoleOutput } from "../testing/console";
 
 const mocks = vi.hoisted(() => ({
   isDiscordEnabled: vi.fn(),
@@ -57,6 +58,15 @@ describe("share_to_discord", () => {
         'Sent to Discord! Shared 3 links about "news" (First, Second, and more). Tell the user briefly: "Sent it! I added the links too."',
     });
     expect(text).toMatchObject({ result: 'Sent to Discord! Shared "Recipe". Tell the user briefly: "Sent it!"' });
+  });
+
+  it("doesn't log what it shares", async () => {
+    mocks.sendTextMessage.mockResolvedValue(true);
+
+    await share({ title: "Birthday plans", content: "Surprise party for Kim on Friday" });
+
+    expect(consoleOutput()).toContain("[Discord] Sharing");
+    expect(consoleOutput()).not.toMatch(/Birthday|Surprise|Kim/);
   });
 
   it("reports what went wrong in English, in English mode", async () => {

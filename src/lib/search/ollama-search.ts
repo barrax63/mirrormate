@@ -26,7 +26,7 @@ export async function searchOllama(
     throw new Error("OLLAMA_API_KEY is not configured");
   }
 
-  console.log(`[Ollama Search] Searching for: ${query}`);
+  console.log("[Ollama Search] Searching");
 
   const response = await fetch("https://ollama.com/api/web_search", {
     method: "POST",

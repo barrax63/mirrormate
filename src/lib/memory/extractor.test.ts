@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { MemoryExtractor } from "./extractor";
 import { LLMProvider, ChatCompletionResult } from "../llm/types";
 import { ConversationContext } from "./types";
+import { consoleOutput } from "../testing/console";
 
 // Mock LLM Provider
 function createMockLLM(response: string): LLMProvider {
@@ -106,11 +107,11 @@ describe("MemoryExtractor", () => {
       expect(result.memoriesToUpsert[0].kind).toBe("episode");
     });
 
-    it("handles invalid JSON gracefully", async () => {
+    it("handles invalid JSON gracefully, without logging it", async () => {
       // Suppress console.error output during this test
       const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const mockLLM = createMockLLM("This is not valid JSON");
+      const mockLLM = createMockLLM("Noted: the user loves sushi");
       const extractor = new MemoryExtractor(mockLLM);
 
       const result = await extractor.extract({
@@ -127,6 +128,9 @@ describe("MemoryExtractor", () => {
       expect(result.memoriesToUpsert).toHaveLength(0);
       expect(result.archiveCandidates).toHaveLength(0);
       expect(consoleErrorSpy).toHaveBeenCalled();
+      // JSON.parse's message quotes the start of the text
+      expect(consoleOutput()).toContain("Failed to parse the extraction result of 27 characters: not valid JSON");
+      expect(consoleOutput()).not.toMatch(/Noted|sushi/);
 
       consoleErrorSpy.mockRestore();
     });

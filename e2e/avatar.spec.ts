@@ -47,6 +47,9 @@ test.describe("Voice flow", () => {
     expect(speech.body.text).toBe("mock reply to: tell me a joke");
     await expect(avatar.page.getByText("mock reply to: tell me a joke")).toBeVisible();
     expect(avatar.errors).toEqual([]);
+    // Neither what was said nor the reply
+    expect(avatar.logs).toContainEqual(expect.stringContaining("Whisper result: 14 characters"));
+    expect(avatar.logs.filter((log) => log.includes("joke"))).toEqual([]);
   });
 
   test("keeps listening and sends the history on the next turn", async ({ avatar }) => {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { OpenAIVLMProvider } from "./openai-vlm";
+import { consoleOutput } from "../testing/console";
 
 const create = vi.hoisted(() => vi.fn());
 
@@ -71,5 +72,22 @@ describe("OpenAIVLMProvider", () => {
     const result = await new OpenAIVLMProvider().checkWaving("data:image/jpeg;base64,QUJD");
 
     expect(result).toEqual({ waving: false, confidence: 0, reason: "Error: network down" });
+  });
+
+  it("doesn't log what it saw", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    create
+      .mockResolvedValueOnce(answer("A person in a red bathrobe."))
+      .mockResolvedValueOnce(answer('{"waving": true, "confidence": 0.9, "reason": "bathrobe sleeve raised"}'))
+      .mockResolvedValueOnce(answer("Someone in a bathrobe, unclear."));
+    const vlm = new OpenAIVLMProvider();
+
+    await vlm.analyzeImage("QUJD", "What is this?");
+    await vlm.checkWaving("QUJD");
+    expect(await vlm.checkWaving("QUJD")).toMatchObject({ waving: false });
+
+    expect(consoleOutput()).toContain("[VLM] Response: 27 characters");
+    expect(consoleOutput()).toContain("[VLM] Could not parse the response of 31 characters");
+    expect(consoleOutput()).not.toContain("bathrobe");
   });
 });

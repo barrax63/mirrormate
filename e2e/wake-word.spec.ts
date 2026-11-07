@@ -72,6 +72,24 @@ test.describe("Wake word audio", () => {
     expect(await mock.transcriptions()).toEqual([]);
   });
 
+  // speaches 0.9.0-rc.3 answers 30 s or more of sound without speech with a 500
+  test("takes local Whisper's crash on a recording without speech as nothing said", async ({ avatar, mock }) => {
+    const answered = avatar.page.waitForResponse("**/api/stt");
+    await avatar.say("NO_SPEECH");
+
+    const response = await answered;
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toEqual({ transcript: "" });
+    await avatar.waitForLog("Whisper returned empty transcript");
+    expect(await mock.localSpeechChecks()).toEqual([
+      { kind: "local-vad", threshold: "0.5", minSilenceDurationMs: "160", maxSpeechDurationS: "30", speechPadMs: "400", text: "NO_SPEECH" },
+    ]);
+    await expect(avatar.page.getByText(/^Wake word:/)).toBeHidden();
+
+    await avatar.wakeUp();
+    expect(await mock.transcriptions()).toEqual([]);
+  });
+
   test("cuts long sound, so a wake word said at the cut is whole in the next recording", async ({ avatar, mock }) => {
     await expect.poll(() => avatar.isListening()).toBe(true);
 

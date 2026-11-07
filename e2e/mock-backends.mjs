@@ -14,7 +14,8 @@
 // Like the real model, it only calls tools that the request offers.
 //
 // And in text for speech, QUOTA_EXCEEDED makes the fake ElevenLabs answer as it does when the
-// account is out of credits.
+// account is out of credits. In a recording, NO_SPEECH makes the fake local Whisper answer as
+// speaches does a long recording in which its VAD finds no speech: with a 500.
 //
 // POST /__fail with { api, status, code, retryAfter } makes one backend answer every request with
 // that error, in the real service's shape, until /__reset or a status of null. api is
@@ -256,7 +257,28 @@ async function transcribeLocally(req, res, raw) {
   });
 
   if (failures.localWhisper) return sendJson(res, { detail: "mock: failure" }, failures.localWhisper.status);
+  // speaches 0.9.0-rc.3 crashes on 30 s or more without speech
+  if (text.includes("NO_SPEECH")) {
+    res.writeHead(500, { "Content-Type": "text/plain" });
+    return res.end("Internal Server Error");
+  }
   setTimeout(() => sendJson(res, { text }), localWhisper.ms);
+}
+
+// speaches' VAD: where speech is, in samples at 16 kHz. NO_SPEECH and silence have none.
+async function detectSpeech(req, res, raw) {
+  if (localWhisper.down) return req.socket.destroy();
+  const { form, audio } = await readUpload(req, raw);
+  const text = heardIn(audio);
+  log.push({
+    kind: "local-vad",
+    threshold: form.get("threshold"),
+    minSilenceDurationMs: form.get("min_silence_duration_ms"),
+    maxSpeechDurationS: form.get("max_speech_duration_s"),
+    speechPadMs: form.get("speech_pad_ms"),
+    text,
+  });
+  return sendJson(res, text && !text.includes("NO_SPEECH") ? [{ start: 0, end: 16000 }] : []);
 }
 
 // ElevenLabs' error shape. 401 covers a wrong key and running out of credits alike.
@@ -337,6 +359,8 @@ function handle(req, res, body, raw) {
     // Local Whisper, and the route LocalWhisperProvider falls back to
     case "/local-whisper/v1/audio/transcriptions":
       return transcribeLocally(req, res, raw);
+    case "/local-whisper/v1/audio/speech/timestamps":
+      return detectSpeech(req, res, raw);
     case "/local-whisper/transcribe":
       if (localWhisper.down) return req.socket.destroy();
       return sendJson(res, { error: "mock: speaches has no such route" }, 404);

@@ -85,7 +85,7 @@ export const discordShareTool: Tool = {
       return { result: text.missing };
     }
 
-    console.log(`[Discord] Sharing: ${title || content.substring(0, 30)}, includeSearchResults: ${includeSearchResults}`);
+    console.log(`[Discord] Sharing, includeSearchResults: ${includeSearchResults}`);
 
     try {
       let success = false;

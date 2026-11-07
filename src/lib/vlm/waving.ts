@@ -56,7 +56,7 @@ export function parseWavingResponse(response: string): WavingResult {
     };
   }
 
-  console.warn("[VLM] Could not parse response:", response);
+  console.warn(`[VLM] Could not parse the response of ${response.length} characters`);
   return {
     waving: false,
     confidence: 0,

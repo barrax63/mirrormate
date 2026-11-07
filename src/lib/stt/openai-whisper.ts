@@ -69,9 +69,7 @@ export class OpenAIWhisperProvider implements STTProvider {
       response_format: "json",
     });
 
-    console.log(
-      `[OpenAIWhisperProvider] Transcription complete: "${response.text.substring(0, 50)}${response.text.length > 50 ? "..." : ""}"`
-    );
+    console.log(`[OpenAIWhisperProvider] Transcription complete: ${response.text.length} characters`);
 
     return {
       transcript: response.text,
