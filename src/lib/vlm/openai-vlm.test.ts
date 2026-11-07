@@ -3,10 +3,14 @@ import { OpenAIVLMProvider } from "./openai-vlm";
 import { consoleOutput } from "../testing/console";
 
 const create = vi.hoisted(() => vi.fn());
+const clientOptions = vi.hoisted(() => [] as unknown[]);
 
 vi.mock("openai", () => ({
   default: class {
     chat = { completions: { create } };
+    constructor(options: unknown) {
+      clientOptions.push(options);
+    }
   },
 }));
 
@@ -22,6 +26,12 @@ describe("OpenAIVLMProvider", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+  });
+
+  it("sends each request once, without the SDK's retries", () => {
+    new OpenAIVLMProvider();
+
+    expect(clientOptions.at(-1)).toEqual({ apiKey: "test-key", maxRetries: 0 });
   });
 
   it("sends the image and prompt to gpt-6-luna with reasoning off", async () => {

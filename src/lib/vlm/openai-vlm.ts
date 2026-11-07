@@ -16,7 +16,11 @@ export class OpenAIVLMProvider implements VLMProvider {
       throw new Error("OPENAI_API_KEY is not configured");
     }
 
-    this.client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    this.client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      // As for the LLM: the SDK would retry a 429 twice, even without credit
+      maxRetries: 0,
+    });
     this.model = config.model || "gpt-6-luna";
   }
 

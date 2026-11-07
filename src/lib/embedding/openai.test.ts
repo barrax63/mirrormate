@@ -2,10 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { OpenAIEmbeddingProvider } from "./openai";
 
 const create = vi.hoisted(() => vi.fn());
+const clientOptions = vi.hoisted(() => [] as unknown[]);
 
 vi.mock("openai", () => ({
   default: class {
     embeddings = { create };
+    constructor(options: unknown) {
+      clientOptions.push(options);
+    }
   },
 }));
 
@@ -17,6 +21,12 @@ describe("OpenAIEmbeddingProvider", () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  it("sends each request once, without the SDK's retries", () => {
+    new OpenAIEmbeddingProvider();
+
+    expect(clientOptions.at(-1)).toEqual({ apiKey: "test-key", maxRetries: 0 });
   });
 
   it("asks text-embedding-3-small for floats, and returns vectors in input order", async () => {
