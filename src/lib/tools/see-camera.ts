@@ -1,16 +1,32 @@
-import { Tool, ToolContext } from "./types";
+import { Tool, ToolContext, ToolDefinition } from "./types";
 import { getVLMProvider } from "@/lib/vlm";
 import { getLocale, type Locale } from "@/lib/app";
 
-// Results for the LLM, and the language the VLM describes the image in
-const TEXT: Record<Locale, { noImage: string; noVlm: string; failed: string; language: string }> = {
+// The definition and results for the LLM, and the language the VLM describes the image in
+interface CameraText {
+  description: string;
+  focus: string;
+  noImage: string;
+  noVlm: string;
+  failed: string;
+  language: string;
+}
+
+const TEXT: Record<Locale, CameraText> = {
   en: {
+    description:
+      "IMPORTANT: Use this tool FIRST when the user asks anything about themselves visually - what they're wearing, holding, showing, how they look, what's in front of the camera, etc. This is a camera that shows YOU what the USER looks like right now. Do NOT use web_search for questions about the user's appearance. Examples: 'What am I wearing?', 'What am I holding?', 'How do I look?', 'What color is this?', 'Can you see this?', 'What clothes do I have on?'",
+    focus:
+      "What to focus on when analyzing the image. E.g., 'what the person is holding', 'their clothing', 'their expression', 'objects in frame'",
     noImage: "No camera image is available. The user's camera may be off.",
     noVlm: "The image analysis service isn't available.",
     failed: "Analyzing the image failed.",
     language: "English",
   },
   ja: {
+    description:
+      "重要: ユーザーが自分の見た目について何か聞いたら、まずこのツールを使ってください。着ているもの、持っているもの、見せているもの、どう見えるか、カメラの前に何があるか、などです。今のユーザーの姿をあなたに見せるカメラです。ユーザーの見た目についての質問に web_search は使わないでください。例:「何着てる？」「何持ってる？」「どう見える？」「これ何色？」「これ見える？」「今どんな服着てる？」",
+    focus: "画像を分析するときに注目すること。例:「持っているもの」「服装」「表情」「写っている物」",
     noImage: "カメラ画像が利用できません。ユーザーのカメラが有効になっていない可能性があります。",
     noVlm: "視覚分析サービスが利用できません。",
     failed: "画像の分析中にエラーが発生しました。",
@@ -23,21 +39,22 @@ const TEXT: Record<Locale, { noImage: string; noVlm: string; failed: string; lan
  * This enables vision-based conversations when the LLM decides it needs visual context.
  */
 export const seeCameraTool: Tool = {
-  definition: {
-    name: "see_camera",
-    description:
-      "IMPORTANT: Use this tool FIRST when the user asks anything about themselves visually - what they're wearing, holding, showing, how they look, what's in front of the camera, etc. This is a camera that shows YOU what the USER looks like right now. Do NOT use web_search for questions about the user's appearance. Examples: 'What am I wearing?', 'What am I holding?', 'How do I look?', 'What color is this?', 'Can you see this?', 'What clothes do I have on?'",
-    parameters: {
-      type: "object",
-      properties: {
-        focus: {
-          type: "string",
-          description:
-            "What to focus on when analyzing the image. E.g., 'what the person is holding', 'their clothing', 'their expression', 'objects in frame'",
+  get definition(): ToolDefinition {
+    const text = TEXT[getLocale()];
+    return {
+      name: "see_camera",
+      description: text.description,
+      parameters: {
+        type: "object",
+        properties: {
+          focus: {
+            type: "string",
+            description: text.focus,
+          },
         },
+        required: [],
       },
-      required: [],
-    },
+    };
   },
 
   async execute(

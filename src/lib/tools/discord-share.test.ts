@@ -82,6 +82,31 @@ describe("share_to_discord", () => {
     expect(error).toMatchObject({ result: "Discord error: timeout" });
   });
 
+  it("titles its cards in the locale's language", async () => {
+    mocks.sendSearchResults.mockResolvedValue(true);
+    mocks.sendTextMessage.mockResolvedValue(true);
+
+    expect(await share({ title: "news", content: "c", includeSearchResults: "true" })).toMatchObject({
+      infoCard: { type: "discord", title: "Sent to Discord", items: ["3 items shared", "news"] },
+    });
+    vi.stubEnv("LOCALE", "ja");
+    expect(await share({ title: "news", content: "c", includeSearchResults: "true" })).toMatchObject({
+      infoCard: { type: "discord", title: "Discordに送信しました", items: ["3件を共有", "news"] },
+    });
+    expect(await share({ title: "レシピ", content: "c" })).toMatchObject({
+      infoCard: { type: "discord", title: "Discordに送信しました", items: ["レシピ"] },
+    });
+  });
+
+  it("says Discord isn't set up in the locale's language", async () => {
+    mocks.isDiscordEnabled.mockReturnValue(false);
+    vi.stubEnv("LOCALE", "ja");
+
+    expect(await share({ title: "news", content: "c" })).toMatchObject({
+      result: "Discord連携が設定されていません。環境変数 DISCORD_WEBHOOK_URL を設定してください。",
+    });
+  });
+
   it("tells the LLM in Japanese, in Japanese mode", async () => {
     vi.stubEnv("LOCALE", "ja");
     mocks.sendSearchResults.mockResolvedValue(true);
