@@ -41,7 +41,7 @@ For questions about usage or development, create an issue using the **Question**
 
 ```bash
 # Clone the repository
-git clone https://github.com/orangekame3/mirrormate.git
+git clone https://github.com/barrax63/mirrormate.git
 cd mirrormate
 
 # Install dependencies
@@ -54,11 +54,13 @@ cp .env.example .env
 bun run dev
 ```
 
+`bun run dev` needs local Whisper on this machine, which [Local Development](https://barrax63.github.io/mirrormate/guide/getting-started#local-development) sets up.
+
 ### Docker Development
 
 ```bash
-# Start with Docker Compose
-docker compose up -d
+# Build the image from your changes and start it with local Whisper
+docker compose up -d --build
 ```
 
 ## Coding Guidelines

@@ -40,7 +40,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-This builds the app's image. The first start also downloads the Whisper model, about half a gigabyte, into the `whisper-models` volume. The app only starts once Whisper answers on `/health`, so this takes a few minutes. `docker compose ps` shows both running when it's done.
+This downloads the app's image, `ghcr.io/barrax63/mirrormate`, for amd64 or arm64. The first start also downloads the Whisper model, about half a gigabyte, into the `whisper-models` volume. The app only starts once Whisper answers on `/health`, so this takes a few minutes. `docker compose ps` shows both running when it's done.
 
 3. **Access**
 
@@ -61,6 +61,7 @@ docker compose up -d --no-deps mirrormate
 ```yaml
 services:
   mirrormate:
+    image: ghcr.io/barrax63/mirrormate:0.2.0
     build:
       context: .
       dockerfile: Dockerfile
@@ -104,7 +105,7 @@ volumes:
   whisper-models:
 ```
 
-The image is pinned to a digest, so it can't change under you. `speaches` answers `model: small` with a 404, so `stt.local.model` needs the full ID. Inside the app's container, `whisper` in `config/providers.yaml` resolves to the Whisper container.
+Compose downloads the app's image of the version that `compose.yaml` names, and builds it from the checkout only with `--build`, or when the download fails. Whisper's image is pinned to a digest, so it can't change under you. `speaches` answers `model: small` with a 404, so `stt.local.model` needs the full ID. Inside the app's container, `whisper` in `config/providers.yaml` resolves to the Whisper container.
 
 ## Network Access
 
@@ -243,9 +244,12 @@ docker compose down
 
 # Update to the latest version
 git pull
+docker compose up -d
+
+# Build the image from this checkout, such as after changing the code
 docker compose up -d --build
 
-# Rebuild from scratch
+# Build it from scratch
 docker compose build --no-cache
 docker compose up -d
 ```

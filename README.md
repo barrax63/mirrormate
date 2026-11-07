@@ -13,15 +13,15 @@
 </p>
 
 <p align="center">
-  <a href="https://orangekame3.dev/mirrormate/">Docs</a> •
-  <a href="https://orangekame3.dev/mirrormate/guide/getting-started">Getting Started</a> •
-  <a href="https://github.com/orangekame3/mirrormate/releases">Releases</a>
+  <a href="https://barrax63.github.io/mirrormate/">Docs</a> •
+  <a href="https://barrax63.github.io/mirrormate/guide/getting-started">Getting Started</a> •
+  <a href="https://github.com/barrax63/mirrormate/releases">Releases</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/orangekame3/mirrormate/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
-  <a href="https://github.com/orangekame3/mirrormate/releases"><img src="https://img.shields.io/github/v/release/orangekame3/mirrormate" alt="Release"></a>
-  <a href="https://github.com/orangekame3/mirrormate/actions"><img src="https://github.com/orangekame3/mirrormate/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/barrax63/mirrormate/blob/develop/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="https://github.com/barrax63/mirrormate/releases"><img src="https://img.shields.io/github/v/release/barrax63/mirrormate" alt="Release"></a>
+  <a href="https://github.com/barrax63/mirrormate/actions/workflows/ci.yml"><img src="https://github.com/barrax63/mirrormate/actions/workflows/ci.yml/badge.svg?branch=develop" alt="CI"></a>
 </p>
 
 ---
@@ -42,6 +42,8 @@ In those few seconds, you could ask about the weather, check your schedule, or j
 MirrorMate puts AI into that everyday object.
 No phone to pull out. No laptop to open.
 Just talk to the mirror.
+
+This is a cloud-first fork of [orangekame3/mirrormate](https://github.com/orangekame3/mirrormate). Upstream is built for self-hosting, with Ollama, VOICEVOX and PLaMo as a fully local option. This fork runs on OpenAI and ElevenLabs instead, keeps only the wake word on your machine, and adds German. See [Credits](#credits).
 
 ## What it is
 
@@ -108,7 +110,7 @@ cp .env.example .env    # set OPENAI_API_KEY and ELEVENLABS_API_KEY in it
 docker compose up -d
 ```
 
-This builds the app and starts it with local Whisper. The first start also downloads the Whisper model, about half a gigabyte, and the app starts once Whisper is ready, so give it a few minutes. `docker compose ps` shows both running when it's done.
+This downloads the app's image, `ghcr.io/barrax63/mirrormate`, and starts it with local Whisper. The first start also downloads the Whisper model, about half a gigabyte, and the app starts once Whisper is ready, so give it a few minutes. `docker compose ps` shows both running when it's done.
 
 1. Open http://localhost:3000 in Chrome or Brave.
 2. Allow the microphone when the browser asks.
@@ -122,7 +124,7 @@ Before you leave it running, `.env.example` recommends two settings in your acco
 - **A hard spend limit on the OpenAI project** the key belongs to, so a bug or a busy room can't run up a bill
 - **Turning off "Improve the models for everyone"** in ElevenLabs, under your profile icon, Terms and privacy, Data use
 
-To update, run `git pull` and then `docker compose up -d --build`.
+To update, run `git pull` and then `docker compose up -d`, which downloads the image of the version `compose.yaml` names.
 
 ---
 
@@ -233,7 +235,7 @@ bun run dev
 
 `config/providers.yaml` expects local Whisper at `http://whisper:8000`, the name it has under Docker Compose, so for `bun run dev` see [Local Development](docs/guide/getting-started.md#local-development).
 
-See [Documentation](https://orangekame3.dev/mirrormate/) for details.
+See [Documentation](https://barrax63.github.io/mirrormate/) for details. To build the image from your own changes, run `docker compose up -d --build`.
 
 ---
 
@@ -245,6 +247,10 @@ If you're into self-hosted systems, voice assistants or physical interfaces, giv
 
 ---
 
+## Credits
+
+MirrorMate was created by Takafumi Miyanaga ([@orangekame3](https://github.com/orangekame3)), at [orangekame3/mirrormate](https://github.com/orangekame3/mirrormate). This fork builds on that work. The clock plugin still comes from [orangekame3/mirrormate-clock-plugin](https://github.com/orangekame3/mirrormate-clock-plugin).
+
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE), as upstream. The copyright notice in `LICENSE` is upstream's, and applies to this fork too.
