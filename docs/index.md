@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: Mirror Mate
-  text: Self-hosted personalized AI in a mirror
-  tagline: Voice-first AI companion with expressive avatar and personalized memory
+  text: A personalized AI in a mirror
+  tagline: Voice-first companion with an expressive avatar and a memory of you, on OpenAI and ElevenLabs, with the wake word heard on your own machine
   image:
     src: /mirrormate.png
     alt: Mirror Mate
@@ -22,20 +22,20 @@ hero:
 features:
   - icon: 🎙️
     title: Voice Interaction
-    details: Real-time speech recognition with wake word activation. Just say "Hey Mira" to start.
+    details: Say "Hey Mira" and talk. Local Whisper listens for the wake word, so nothing said in the room before it leaves your machine.
   - icon: 🧠
     title: Personalized Memory
-    details: RAG-based memory system that remembers your preferences and conversation context.
+    details: Remembers what you tell it, in a database on your machine, and brings it up in later replies.
   - icon: 🎭
     title: Expressive Avatar
     details: 8-state animation system with lip-sync and natural expressions powered by Three.js.
+  - icon: 🌍
+    title: Three Languages
+    details: English, German and Japanese, each with its own character text, wake word, voice and memories.
   - icon: 🔌
-    title: Multiple Providers
-    details: Support for OpenAI, Ollama (LLM) and ElevenLabs (TTS).
-  - icon: 📱
-    title: Discord Integration
-    details: Share search results and information directly to your phone via Discord.
+    title: Providers
+    details: OpenAI and ElevenLabs by default. Ollama can take over replies, memory and vision.
   - icon: 🧩
-    title: Plugin System
-    details: Extensible widget system for clock, camera, and custom displays.
+    title: Plugins and Integrations
+    details: Weather, calendar, reminders, web search, Discord sharing, and widgets such as the clock and camera.
 ---
