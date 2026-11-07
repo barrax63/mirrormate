@@ -90,6 +90,28 @@ test.describe("Wake word audio", () => {
     expect(await mock.transcriptions()).toEqual([]);
   });
 
+  test("wakes on the phrase of the character picked on /control, and not on Mira's", async ({ avatar, control }) => {
+    await control.selectCharacter("Luna");
+    await expect(avatar.page.getByText('Say "Hey Luna"').first()).toBeVisible();
+
+    await avatar.hear("hey mira");
+    await avatar.page.waitForTimeout(500);
+    await expect(avatar.page.getByText("In Conversation")).toBeHidden();
+
+    await avatar.hear("hey luna");
+    await expect(avatar.page.getByText("In Conversation")).toBeVisible();
+  });
+
+  test("wakes on the picked character's phrase after a reload", async ({ page, request }) => {
+    await request.put("/api/settings", { data: { characterId: "sora" } });
+    const avatar = new AvatarPage(page);
+    await avatar.open();
+
+    await expect(page.getByText('Say "Hey Sora"').first()).toBeVisible();
+    await avatar.hear("hey sora");
+    await expect(page.getByText("In Conversation")).toBeVisible();
+  });
+
   test("cuts long sound, so a wake word said at the cut is whole in the next recording", async ({ avatar, mock }) => {
     await expect.poll(() => avatar.isListening()).toBe(true);
 

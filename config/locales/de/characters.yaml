@@ -3,10 +3,10 @@ characters:
     name: Mira
     description: ein kleines Lichtwesen, das im Spiegel wohnt
     recommendedVoice: XrExE9yKIg1WjnnlVkGX  # Matilda
+    # The phrase that wakes the avatar while this character is picked on /control. Whether the
+    # wake word is on, and its timeout, stay character.yaml's.
     wakeWord:
-      enabled: true
       phrase: "Hallo Mira"
-      timeout: 60
     appearance:
       - runde weiße Augen
       - eine schlichte, niedliche Gestalt mit einem kleinen Mund
@@ -42,9 +42,7 @@ characters:
     description: ein geheimnisvolles Mondwesen, das vom Nachthimmel herabgestiegen ist
     recommendedVoice: pFZP5JQG7iQjIQuC4Bku  # Lily
     wakeWord:
-      enabled: true
       phrase: "Hallo Luna"
-      timeout: 60
     appearance:
       - elegante, sichelförmige Augen
       - eine ruhige Ausstrahlung mit einem stillen Leuchten
@@ -79,9 +77,7 @@ characters:
     description: ein quirliges Windwesen, das durch den blauen Himmel saust
     recommendedVoice: cgSgspJ2msm6clMCkdW9  # Jessica
     wakeWord:
-      enabled: true
       phrase: "Hallo Sora"
-      timeout: 60
     appearance:
       - große, funkelnde Augen
       - eine flauschige, lebhafte Gestalt, die herumhüpft

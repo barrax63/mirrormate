@@ -122,6 +122,23 @@ character:
 | `behaviors` | list | Proactive behaviors and actions (optional) |
 | `background` | string | Character's backstory |
 
+## Selectable Characters
+
+`config/locales/{locale}/characters.yaml` lists the characters that `/control` offers: Mira, Luna and Sora. Each has the fields above, without `fallbackReply`, plus `id` and `recommendedVoice`. Its `wakeWord` has only a `phrase`, which wakes the avatar while that character is picked:
+
+```yaml
+characters:
+  - id: luna
+    name: Luna
+    recommendedVoice: pFZP5JQG7iQjIQuC4Bku  # Lily
+    wakeWord:
+      phrase: "Hey Luna"
+```
+
+Whether the wake word is on, and its timeout, always come from `character.yaml`, so picking a character can't turn the wake word off. With no character picked, or one without a phrase, `character.yaml`'s phrase wakes it.
+
+Pick phrases that local Whisper writes the way you spell them. In English it writes "OK" as "Okay", so "OK Luna" never matched in testing, and "Hey Luna" always did. In German it wrote "Hey Mira" as "Herr Emira", so the German phrases start with "Hallo". Matching ignores case and punctuation.
+
 ## How It Works
 
 The character configuration generates a system prompt for the LLM. The prompt structure adapts to the locale:

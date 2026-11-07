@@ -11,6 +11,8 @@ interface WakeWordConfig {
 }
 
 interface UseWakeWordOptions {
+  /** The character picked on /control, whose own phrase wakes the avatar */
+  characterId?: string | null;
   onWakeWordDetected?: () => void;
   onTimeout?: () => void;
 }
@@ -26,6 +28,7 @@ interface UseWakeWordReturn {
 }
 
 export function useWakeWord({
+  characterId,
   onWakeWordDetected,
   onTimeout,
 }: UseWakeWordOptions = {}): UseWakeWordReturn {
@@ -33,23 +36,32 @@ export function useWakeWord({
   const [config, setConfig] = useState<WakeWordConfig | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch wake word config. Without one, the page treats everything heard as wake word audio,
-  // so a default with the wake word off would send it all to stt.provider.
+  // Fetch wake word config, again whenever another character is picked, keeping the one before
+  // until it arrives. Without one, the page treats everything heard as wake word audio, so a
+  // default with the wake word off would send it all to stt.provider.
   useEffect(() => {
+    let current = true;
     async function fetchConfig() {
       try {
-        const res = await fetch("/api/wakeword");
+        const query = characterId ? `?characterId=${encodeURIComponent(characterId)}` : "";
+        const res = await fetch(`/api/wakeword${query}`);
         if (!res.ok) {
           throw new Error(`Wake word config request failed: ${res.status}`);
         }
         const data: WakeWordConfig = await res.json();
-        setConfig(data);
+        // A character picked meanwhile has its own request
+        if (current) {
+          setConfig(data);
+        }
       } catch (error) {
         console.error("[WakeWord] Failed to fetch config:", error);
       }
     }
     fetchConfig();
-  }, []);
+    return () => {
+      current = false;
+    };
+  }, [characterId]);
 
   // Clear timeout on unmount
   useEffect(() => {

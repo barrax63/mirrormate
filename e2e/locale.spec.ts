@@ -125,6 +125,8 @@ test.describe("German server", () => {
     const response = await request.get("/api/wakeword");
 
     expect(await response.json()).toMatchObject({ enabled: true, phrase: "Hallo Mira" });
+    const luna = await request.get("/api/wakeword?characterId=luna");
+    expect(await luna.json()).toEqual({ enabled: true, phrase: "Hallo Luna", timeout: 60 });
   });
 
   test("wakes on a transcript with punctuation, and transcribes in German", async ({ avatar, mock }) => {
