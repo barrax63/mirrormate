@@ -14,7 +14,8 @@ export interface CharacterPreset {
   name: string;
   description: string;
   recommendedVoice?: string;
-  wakeWord?: WakeWordConfig;
+  /** Wakes the avatar while this character is picked */
+  wakeWord?: { phrase: string };
   appearance: string[];
   personality: string[];
   speech_style: string[];
@@ -219,7 +220,12 @@ export function getFallbackReply(): string {
   return defaultConfig.character.fallbackReply!;
 }
 
-export function getWakeWordConfig(): WakeWordConfig {
+/**
+ * The wake word, with the phrase of the character picked on /control if it has one. Whether the
+ * wake word is on, and its timeout, are always character.yaml's, so picking a character can't send
+ * what's said in the room to stt.provider.
+ */
+export function getWakeWordConfig(characterId?: string | null): WakeWordConfig {
   const config = loadCharacterConfig();
   const defaultConfig: WakeWordConfig = {
     enabled: false,
@@ -227,7 +233,9 @@ export function getWakeWordConfig(): WakeWordConfig {
     timeout: 15,
   };
 
-  return config.character.wakeWord ?? defaultConfig;
+  const wakeWord = config.character.wakeWord ?? defaultConfig;
+  const phrase = characterId ? getCharacterById(characterId)?.wakeWord?.phrase : undefined;
+  return phrase ? { ...wakeWord, phrase } : wakeWord;
 }
 
 // Multi-character support functions
