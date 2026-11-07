@@ -158,7 +158,7 @@ OPENAI_API_KEY=sk-...
 # model training.
 ELEVENLABS_API_KEY=...
 
-# Optional: the language, en or ja, in place of config/app.yaml's
+# Optional: the language, en, de or ja, in place of config/app.yaml's
 LOCALE=en
 
 # Optional: llm.provider and stt.provider in place of config/providers.yaml's

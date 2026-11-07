@@ -15,23 +15,23 @@ config/app.yaml          ->  config/presets/{locale}.yaml
 
 ## Quick Start
 
-To switch between Japanese and English:
+To switch languages:
 
 ```yaml
 # config/app.yaml
 app:
-  locale: "en"  # Change to "ja" for Japanese
+  locale: "en"  # or "de" for German, "ja" for Japanese
 ```
 
 That's it! The following settings are automatically applied:
 
-| Setting | Japanese (ja) | English (en) |
-|---------|--------------|--------------|
-| Timezone | Asia/Tokyo | America/Los_Angeles |
-| Weather Locations | Tokyo, Osaka | San Francisco, New York |
-| Clock Format | 24-hour | 12-hour |
-| STT Language | ja / ja-JP | en / en-US |
-| Voice | Sarah | Sarah |
+| Setting | English (en) | German (de) | Japanese (ja) |
+|---------|--------------|-------------|---------------|
+| Timezone | America/Los_Angeles | Europe/Berlin | Asia/Tokyo |
+| Weather Locations | San Francisco, New York | Berlin, München | Tokyo, Osaka |
+| Clock Format | 12-hour | 24-hour | 24-hour |
+| STT Language | en / en-US | de / de-DE | ja / ja-JP |
+| Voice | Sarah | Matilda | Sarah |
 
 ## Preset File Structure
 
