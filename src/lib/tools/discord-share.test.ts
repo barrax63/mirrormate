@@ -96,6 +96,10 @@ describe("share_to_discord", () => {
     expect(await share({ title: "レシピ", content: "c" })).toMatchObject({
       infoCard: { type: "discord", title: "Discordに送信しました", items: ["レシピ"] },
     });
+    vi.stubEnv("LOCALE", "de");
+    expect(await share({ title: "news", content: "c", includeSearchResults: "true" })).toMatchObject({
+      infoCard: { type: "discord", title: "An Discord gesendet", items: ["3 Einträge geteilt", "news"] },
+    });
   });
 
   it("says Discord isn't set up in the locale's language", async () => {

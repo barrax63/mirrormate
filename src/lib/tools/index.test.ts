@@ -50,6 +50,19 @@ describe("tool definitions", () => {
     expect(shape(definitionsIn("de"))).toEqual(shape(definitionsIn("en")));
   });
 
+  it("describe every tool and parameter in German in German mode", () => {
+    const english = definitionsIn("en");
+    const german = definitionsIn("de");
+
+    expect(german.map((definition) => definition.name)).toEqual(english.map((definition) => definition.name));
+    german.forEach(({ name, description, parameters }, i) => {
+      expect(description, name).not.toBe(english[i].description);
+      for (const [key, property] of Object.entries(parameters.properties)) {
+        expect(property.description, `${name}.${key}`).not.toBe(english[i].parameters.properties[key].description);
+      }
+    });
+  });
+
   it("answer in the locale's language", async () => {
     vi.stubEnv("LOCALE", "ja");
 
@@ -61,6 +74,14 @@ describe("tool definitions", () => {
     });
     expect(await executeTool({ id: "3", name: "web_search", arguments: {} })).toMatchObject({
       result: "検索クエリがありません。",
+    });
+
+    vi.stubEnv("LOCALE", "de");
+    expect(await executeTool({ id: "4", name: "show_effect", arguments: { effect: "hearts" } })).toMatchObject({
+      result: "Effekt hearts wird angezeigt",
+    });
+    expect(await executeTool({ id: "5", name: "no_such_tool", arguments: {} })).toMatchObject({
+      result: "Tool „no_such_tool“ nicht gefunden.",
     });
   });
 

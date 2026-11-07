@@ -15,6 +15,7 @@ const tools: Tool[] = [seeCameraTool, webSearchTool, effectTool, discordShareToo
 const NOT_FOUND: Record<Locale, (name: string) => string> = {
   en: (name) => `Tool "${name}" not found.`,
   ja: (name) => `ツール「${name}」が見つかりません。`,
+  de: (name) => `Tool „${name}“ nicht gefunden.`,
 };
 
 export function getToolDefinitions(): ToolDefinition[] {

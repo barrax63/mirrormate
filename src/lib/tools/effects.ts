@@ -40,6 +40,7 @@ const TEXT: Record<Locale, { description: string; effect: string; shown(effect: 
 - hearts: Herzen (Zuneigung, Dank, Ermutigung)
 - sparkles: Glitzer (Überraschungen, Entdeckungen, schöne Dinge)`,
     effect: "Welcher Effekt gezeigt wird",
+    shown: (effect) => `Effekt ${effect} wird angezeigt`,
   },
 };
 
