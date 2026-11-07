@@ -115,6 +115,30 @@ test.describe("Control page", () => {
     expect([...avatar.logs, ...control.logs].filter((log) => log.includes("from control"))).toEqual([]);
   });
 
+  test("has the avatar page show the cards tools returned with the reply", async ({ avatar, control }) => {
+    // No tool returns a card against the mocks, so the reply gets one
+    await control.page.route("**/api/chat", async (route) => {
+      const response = await route.fetch();
+      const infoCards = [{ type: "search", title: "Search: zebra crossings", items: ["Crossing rules", "Stripes"] }];
+      await route.fulfill({ response, json: { ...(await response.json()), infoCards } });
+    });
+
+    await control.send("how do zebra crossings work");
+
+    await expect(avatar.page.getByText("Search: zebra crossings")).toBeVisible();
+    await expect(avatar.page.getByText("Crossing rules")).toBeVisible();
+    await expect(avatar.page.locator(".glass-card")).toHaveCount(1);
+  });
+
+  test("has the avatar page guess no cards from what the reply says", async ({ avatar, control }) => {
+    // Before, a time made a "Today's Schedule" card, and °C a weather one
+    await control.send("meet me at 15:30, it's 20°C");
+
+    await expect(avatar.page.locator("p", { hasText: "mock reply to: meet me at 15:30, it's 20°C" })).toBeVisible();
+    await avatar.page.waitForTimeout(500);
+    await expect(avatar.page.locator(".glass-card")).toHaveCount(0);
+  });
+
   test("shows the whole conversation, but sends only the latest messages", async ({ control }) => {
     for (const question of ["question 1", "question 2", "question 3"]) {
       await control.send(question);

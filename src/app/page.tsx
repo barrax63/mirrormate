@@ -15,7 +15,7 @@ import { useServiceErrors } from "@/hooks/useServiceErrors";
 import { ServiceErrorList } from "@/components/ServiceErrorList";
 import { routeErrorFrom } from "@/lib/errors/service-errors";
 import { DEFAULT_HISTORY_LIMIT, historyLimitFrom, trimHistory } from "@/lib/chat/history";
-import { FloatingInfo, InfoCard, detectInfoFromResponse } from "@/components/FloatingInfo";
+import { FloatingInfo, InfoCard, infoCardsFrom } from "@/components/FloatingInfo";
 import PluginRenderer from "@/components/PluginRenderer";
 import { mapBroadcastToEvent, type BroadcastMessage } from "@/lib/animation/broadcast-adapter";
 
@@ -203,14 +203,6 @@ export default function AvatarPage() {
       dispatchState({ type: "TTS_END" });
     }
   }, [isSpeaking, dispatchState]);
-
-  // Add InfoCard
-  const addInfoCard = useCallback((response: string) => {
-    const card = detectInfoFromResponse(response);
-    if (card) {
-      setInfoCards((prev) => [...prev, card]);
-    }
-  }, []);
 
   // Dismiss InfoCard
   const dismissInfoCard = useCallback((id: string) => {
@@ -509,13 +501,8 @@ export default function AvatarPage() {
           messagesRef.current = trimHistory(messagesRef.current, historyLimitRef.current);
 
           // Show info cards from tools
-          if (data.infoCards && data.infoCards.length > 0) {
-            const newCards: InfoCard[] = data.infoCards.map((card: { type: InfoCard["type"]; title: string; items: string[] }) => ({
-              id: crypto.randomUUID(),
-              type: card.type,
-              title: card.title,
-              items: card.items,
-            }));
+          const newCards = infoCardsFrom(data.infoCards);
+          if (newCards.length > 0) {
             setInfoCards((prev) => [...prev, ...newCards]);
           }
 
@@ -607,14 +594,20 @@ export default function AvatarPage() {
           break;
         case "response":
           setDisplayText(payload || "");
-          // Detect weather/calendar info and show card
-          if (payload) {
-            const card = detectInfoFromResponse(payload);
-            if (card) {
-              setInfoCards((prev) => [...prev, card]);
-            }
+          break;
+        case "info_cards": {
+          // The cards that tools returned with a reply to /control
+          let cards: InfoCard[] = [];
+          try {
+            cards = infoCardsFrom(JSON.parse(payload || "[]"));
+          } catch {
+            // Not JSON: no cards
+          }
+          if (cards.length > 0) {
+            setInfoCards((prev) => [...prev, ...cards]);
           }
           break;
+        }
         case "play_audio":
           if (payload) {
             // Parse payload - can be JSON object with text and voice, or plain text string

@@ -242,123 +242,24 @@ function HistoryCard({ card }: { card: InfoCard }) {
   );
 }
 
-// Helper function to detect info type from AI response
-export function detectInfoFromResponse(response: string): InfoCard | null {
-  const id = crypto.randomUUID();
+const CARD_TYPES: InfoCard["type"][] = ["weather", "calendar", "time", "reminder", "discord", "search"];
 
-  // Note: Discord detection is handled via discordShared flag from API response
-  // to avoid false positives when LLM says "I'll send to Discord" before actually sending
-
-  // Weather detection
-  const weatherPatterns = [
-    /天気[はが：:].+?[。、]/,
-    /気温[はが：:].+?[。、℃度]/,
-    /(\d+)°?C/,
-    /(晴|曇|雨|雪|くもり)/,
-  ];
-
-  const hasWeather = weatherPatterns.some((pattern) => pattern.test(response));
-
-  if (hasWeather) {
-    // Extract weather info
-    const lines = response.split(/[。\n]/).filter((line) => {
-      return weatherPatterns.some((pattern) => pattern.test(line));
-    });
-
-    if (lines.length > 0) {
-      return {
-        id,
-        type: "weather",
-        title: "Weather",
-        items: lines.slice(0, 3).map((line) => line.trim()),
-      };
-    }
-  }
-
-  // Calendar detection
-  const calendarPatterns = [
-    /予定[はが：:]/,
-    /スケジュール/,
-    /\d{1,2}[：:]\d{2}/,
-    /ミーティング|会議|打ち合わせ/,
-  ];
-
-  const hasCalendar = calendarPatterns.some((pattern) => pattern.test(response));
-
-  if (hasCalendar) {
-    // Extract schedule items
-    const timePattern = /(\d{1,2}[：:]\d{2})\s*(.+?)(?=[、。\n]|$)/g;
-    const items: string[] = [];
-    let match;
-
-    while ((match = timePattern.exec(response)) !== null) {
-      items.push(`${match[1]} ${match[2].trim()}`);
-    }
-
-    // If no time-based items found, extract general schedule lines
-    if (items.length === 0) {
-      const lines = response.split(/[。\n]/).filter((line) => {
-        return calendarPatterns.some((pattern) => pattern.test(line));
-      });
-      items.push(...lines.slice(0, 3).map((line) => line.trim()));
-    }
-
-    if (items.length > 0) {
-      return {
-        id,
-        type: "calendar",
-        title: "Today's Schedule",
-        items: items.slice(0, 5),
-      };
-    }
-  }
-
-  // Time detection
-  const timePatterns = [
-    /現在.{0,5}時刻/,
-    /今.{0,3}(\d{1,2}時|\d{1,2}[：:]\d{2})/,
-    /(\d{1,2})月(\d{1,2})日.{0,5}（[日月火水木金土]）/,
-    /\d{4}年\d{1,2}月\d{1,2}日/,
-  ];
-
-  const hasTime = timePatterns.some((pattern) => pattern.test(response));
-
-  if (hasTime) {
-    // Extract time/date info
-    const items: string[] = [];
-
-    // Extract date
-    const dateMatch = response.match(/(\d{4}年)?(\d{1,2}月\d{1,2}日)[（(]?([日月火水木金土])[）)]?/);
-    if (dateMatch) {
-      const year = dateMatch[1] || "";
-      items.push(`${year}${dateMatch[2]}（${dateMatch[3]}）`);
-    }
-
-    // Extract time
-    const timeMatch = response.match(/(\d{1,2})[時：:](\d{2})?分?/);
-    if (timeMatch) {
-      const hour = timeMatch[1];
-      const minute = timeMatch[2] || "00";
-      items.push(`${hour}:${minute}`);
-    }
-
-    // If no structured match, extract lines mentioning time
-    if (items.length === 0) {
-      const lines = response.split(/[。\n]/).filter((line) => {
-        return timePatterns.some((pattern) => pattern.test(line));
-      });
-      items.push(...lines.slice(0, 2).map((line) => line.trim()));
-    }
-
-    if (items.length > 0) {
-      return {
-        id,
-        type: "time",
-        title: "Current Time",
-        items,
-      };
-    }
-  }
-
-  return null;
+/**
+ * The cards that tools returned with a reply, as /api/chat sends them and /control forwards them
+ * in an info_cards message. Cards come only from tools and reminders: replies aren't searched
+ * for things that look like weather or times.
+ */
+export function infoCardsFrom(value: unknown): InfoCard[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (card): card is Omit<InfoCard, "id"> =>
+        typeof card === "object" &&
+        card !== null &&
+        CARD_TYPES.includes(card.type) &&
+        typeof card.title === "string" &&
+        Array.isArray(card.items) &&
+        card.items.every((item: unknown) => typeof item === "string")
+    )
+    .map((card) => ({ id: crypto.randomUUID(), type: card.type, title: card.title, items: card.items }));
 }
