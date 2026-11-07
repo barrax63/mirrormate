@@ -241,3 +241,5 @@ docker compose down
 docker compose build --no-cache
 docker compose up -d
 ```
+
+The logs don't hold what's said, heard or seen. Transcripts, replies and camera descriptions show up only as their length.

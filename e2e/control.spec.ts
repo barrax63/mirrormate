@@ -110,6 +110,9 @@ test.describe("Control page", () => {
     await expect(avatar.page.getByText("mock reply to: hello from control")).toBeVisible();
     await expect(control.page.getByText("mock reply to: hello from control")).toBeVisible();
     expect(control.errors).toEqual([]);
+    // Neither what was sent nor the reply
+    expect(avatar.logs).toContainEqual(expect.stringMatching(/play_audio: requesting TTS.*characters: 33/));
+    expect([...avatar.logs, ...control.logs].filter((log) => log.includes("from control"))).toEqual([]);
   });
 
   test("shows the whole conversation, but sends only the latest messages", async ({ control }) => {

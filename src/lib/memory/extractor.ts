@@ -127,8 +127,11 @@ export class MemoryExtractor {
 
       return result;
     } catch (error) {
-      console.error("[MemoryExtractor] Failed to parse extraction result:", error);
-      console.error("[MemoryExtractor] Raw content:", content);
+      // JSON.parse's message quotes the start of the text
+      console.error(
+        `[MemoryExtractor] Failed to parse the extraction result of ${content.length} characters:`,
+        error instanceof SyntaxError ? "not valid JSON" : error
+      );
       return emptyResult;
     }
   }

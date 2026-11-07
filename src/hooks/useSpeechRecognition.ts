@@ -160,9 +160,7 @@ export function useSpeechRecognition({
           serviceErrors?.succeeded(purpose);
           const data = await response.json();
           if (data.transcript && data.transcript.trim()) {
-            console.log(
-              `[SpeechRecognition] Whisper result: "${data.transcript}"`
-            );
+            console.log(`[SpeechRecognition] Whisper result: ${data.transcript.length} characters`);
             onInterimResultRef.current?.("");
             if (listeningForWakeWordRef.current) {
               lastWaitingTakeRef.current = take;

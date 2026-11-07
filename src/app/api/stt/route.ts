@@ -100,9 +100,7 @@ export async function POST(request: NextRequest) {
       keywords: getCharacterNames(),
     });
 
-    console.log(
-      `[STT API] Success: "${result.transcript.substring(0, 50)}${result.transcript.length > 50 ? "..." : ""}"`
-    );
+    console.log(`[STT API] Success: ${result.transcript.length} characters`);
 
     return NextResponse.json({
       transcript: result.transcript,

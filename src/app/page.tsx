@@ -632,7 +632,7 @@ export default function AvatarPage() {
               voice = currentVoice ?? undefined;
             }
 
-            console.log("[Avatar] play_audio: requesting TTS", { text: text.substring(0, 50), voice });
+            console.log("[Avatar] play_audio: requesting TTS", { characters: text.length, voice });
             if (await speak(text, voice)) {
               console.log("[Avatar] Audio playback finished");
             }

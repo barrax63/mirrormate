@@ -45,7 +45,7 @@ export class OpenAIVLMProvider implements VLMProvider {
     });
 
     const content = completion.choices[0]?.message?.content || "";
-    console.log(`[VLM] Response: ${content.substring(0, 100)}...`);
+    console.log(`[VLM] Response: ${content.length} characters`);
 
     return content;
   }
@@ -54,7 +54,6 @@ export class OpenAIVLMProvider implements VLMProvider {
     try {
       const response = await this.analyzeImage(image, WAVING_PROMPT);
 
-      console.log("[VLM] Raw response:", response);
       return parseWavingResponse(response);
     } catch (error) {
       console.error("[VLM] checkWaving error:", error);
