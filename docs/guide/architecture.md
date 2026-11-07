@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Mirror Mate is a Next.js application that provides an interactive AI avatar for smart mirror displays.
+Mirror Mate is a Next.js application that provides an interactive AI avatar for smart mirror displays. It runs with local Whisper next to it, which hears the room until the wake word. OpenAI writes the replies, transcribes what's said after the wake word, embeds memories and looks through the camera, and ElevenLabs speaks. Ollama can take over the OpenAI parts except transcription, which local Whisper can do.
 
 ## System Architecture
 
@@ -74,8 +74,8 @@ flowchart TB
     end
 
     subgraph External["External Services"]
-        Ollama["Ollama<br/>(LLM/Embedding/VLM)"]
-        OpenAI["OpenAI<br/>(LLM/STT)"]
+        OpenAI["OpenAI<br/>(LLM/STT/Embedding/VLM)"]
+        Ollama["Ollama, optional<br/>(LLM/Embedding/VLM)"]
         ElevenLabs["ElevenLabs<br/>(TTS)"]
         Whisper["speaches<br/>(local STT, wake word)"]
         OpenMeteo["Open-Meteo<br/>(Weather)"]
@@ -121,6 +121,7 @@ src/
 │   ├── FloatingInfo.tsx   # Info cards from tools and reminders
 │   ├── PluginRenderer.tsx # Loads and renders enabled plugins
 │   ├── PluginContainer.tsx
+│   ├── ServiceErrorList.tsx # Why a request failed, on both pages
 │   ├── SettingsDropdown.tsx
 │   └── VoicePreviewButton.tsx
 ├── hooks/
@@ -130,11 +131,14 @@ src/
 │   ├── useCharacterSelector.ts
 │   ├── useLongThinkingPulse.ts
 │   ├── useReminder.ts
+│   ├── useServiceErrors.ts  # Failed requests, shared between the pages
 │   ├── useSpeechRecognition.ts
+│   ├── useVisionEnabled.ts  # The Vision toggle
 │   ├── useVoiceSelector.ts
 │   └── useWakeWord.ts
 ├── i18n/
 │   └── request.ts         # next-intl locale and messages
+├── instrumentation.ts     # Loads the ElevenLabs voices at startup
 └── lib/
     ├── animation/         # Avatar animation state machine
     │   ├── state-machine.ts
@@ -143,15 +147,19 @@ src/
     │   ├── config.ts
     │   └── types.ts
     ├── app/               # App configuration and locale
+    ├── broadcast.ts       # Messages between the pages, over BroadcastChannel
     ├── character/         # Character configuration
+    ├── chat/              # Conversation history limit
     ├── db/                # Database (SQLite + Drizzle ORM)
     │   ├── index.ts       # DB client singleton
     │   └── schema.ts      # Table definitions
     ├── discord/           # Discord webhook client
-    ├── embedding/         # Embedding provider
+    ├── embedding/         # Embedding providers
+    │   ├── openai.ts      # OpenAI embedding
     │   ├── ollama.ts      # Ollama embedding
     │   ├── similarity.ts  # Vector similarity utils
     │   └── types.ts
+    ├── errors/            # Why a request to a provider failed
     ├── features/          # Built-in features
     │   ├── weather/
     │   ├── calendar/
@@ -203,7 +211,9 @@ src/
     │   ├── discord-share.ts
     │   └── types.ts
     └── vlm/               # Vision model providers
+        ├── openai-vlm.ts
         ├── ollama-vlm.ts
+        ├── waving.ts      # Waving check for the vision test page
         └── types.ts
 
 config/
@@ -250,7 +260,7 @@ data/
       │
       ├─► RAG context retrieval
       │   ├─► Get user profile memories
-      │   ├─► Embed user message (Ollama)
+      │   ├─► Embed user message (OpenAI or Ollama)
       │   └─► Semantic search for relevant memories
       │
       ├─► Build system prompt (character + memories + rule or feature context)
@@ -290,7 +300,7 @@ The control panel calls the chat API itself. It uses `BroadcastChannel` to reque
 4. POST /api/chat from /control (same pipeline as voice input)
       │
       ▼
-5. Broadcast thinking_end, response and play_audio to the avatar page
+5. Broadcast thinking_end, response, info_cards, effect and play_audio to the avatar page
       │
       ▼
 6. Avatar page calls POST /api/tts and plays audio with lip-sync

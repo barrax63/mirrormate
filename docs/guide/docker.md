@@ -25,9 +25,11 @@ flowchart TB
 
 ## Quick Start
 
-1. **Create Environment File**
+1. **Get the code and create the environment file**
 
 ```bash
+git clone https://github.com/barrax63/mirrormate.git
+cd mirrormate
 cp .env.example .env
 # Set OPENAI_API_KEY and ELEVENLABS_API_KEY
 ```
@@ -38,11 +40,11 @@ cp .env.example .env
 docker compose up -d
 ```
 
-The first start downloads the Whisper model, about half a gigabyte, into the `whisper-models` volume. The app only starts once Whisper answers on `/health`, so this takes a minute or more.
+This builds the app's image. The first start also downloads the Whisper model, about half a gigabyte, into the `whisper-models` volume. The app only starts once Whisper answers on `/health`, so this takes a few minutes. `docker compose ps` shows both running when it's done.
 
 3. **Access**
 
-Open http://localhost:3000
+Open http://localhost:3000 in Chrome or Brave on the same machine, allow the microphone, click the page once so it may play sound, and say "Hey Mira". See [Getting Started](/guide/getting-started#quick-start).
 
 ## Ollama or Whisper on Another Machine
 
@@ -180,15 +182,17 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 
 `compose.yaml` passes only these to the app. After changing `.env`, run `docker compose up -d`, which recreates the app with the new values. `docker compose restart` keeps the old ones.
 
-## GPU Support
-
-### Whisper
+## Whisper Performance
 
 `compose.yaml` runs Whisper on the CPU. On the x86 machine it was tested on, `small` took about 1.2 s per recording on 16 cores and 4.4 s on one, and used up to 2.6 GB of memory. It hasn't been measured on a Raspberry Pi, and a 2 GB Pi doesn't have the memory. On a machine that can't spare it, run [Whisper on another machine](#ollama-or-whisper-on-another-machine) you trust with the room's audio, or use `Systran/faster-whisper-base`, which recognized the wake word less reliably in testing.
 
 `speaches` also publishes CUDA images, which haven't been tried with Mirror Mate.
 
 ## Troubleshooting
+
+### No reply, or a reply that isn't spoken
+
+Both pages say why a request failed, such as "Speech: ElevenLabs is out of credit." or "Replies: OpenAI rejected the API key." See [When something fails](/config/providers#when-something-fails) for what each message means. After fixing a key in `.env`, run `docker compose up -d`, which recreates the app with it.
 
 ### Cannot connect to Ollama
 
@@ -237,7 +241,11 @@ docker compose logs -f
 # Stop
 docker compose down
 
-# Rebuild after code changes
+# Update to the latest version
+git pull
+docker compose up -d --build
+
+# Rebuild from scratch
 docker compose build --no-cache
 docker compose up -d
 ```

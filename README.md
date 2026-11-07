@@ -112,7 +112,7 @@ This builds the app and starts it with local Whisper. The first start also downl
 
 1. Open http://localhost:3000 in Chrome or Brave.
 2. Allow the microphone when the browser asks.
-3. Click anywhere on the page once. Browsers only play sound on a page you've clicked.
+3. Click anywhere on the page once, so the browser lets it play sound.
 4. Say **"Hey Mira"**. When the page shows "In Conversation", ask something, such as "What's the weather like today?"
 
 Open http://localhost:3000/control in the same browser to type instead, turn the mic off and pick a voice or character. The two pages talk to each other through the browser, so `/control` doesn't work from another one.
@@ -134,7 +134,7 @@ To update, run `git pull` and then `docker compose up -d --build`.
 | What you say after the wake word, as audio | OpenAI (`gpt-transcribe`) | Every utterance in a conversation |
 | The conversation, your memories and the reply | OpenAI (`gpt-6-luna`) | Every reply, and memory extraction after it |
 | Memories and what you said, as text | OpenAI (`text-embedding-3-small`) | To find related memories |
-| A camera frame | OpenAI | Only when the AI looks, with the `see_camera` tool, and never while Vision is off on `/control` |
+| A camera frame | OpenAI | Only when the AI looks, with the `see_camera` tool, and never while Vision is off on `/control`. The `/control/vision` test page also sends frames while you use it |
 | The reply text | ElevenLabs | Every reply, to read it aloud |
 
 ElevenLabs offers zero retention only on its Enterprise plan, and may use what you send it to train its models unless you turn that off, as above. The weather comes from Open-Meteo for the configured location. Google Calendar, web search and Discord only work when you set them up. Memories stay in the database on this machine, at `/control/memory`, where you can read and delete them.
@@ -145,14 +145,15 @@ The logs don't hold what's said, heard or seen.
 
 ## What it costs
 
-Measured on a real conversation in English, at the prices on 2026-11-01:
+Measured over an 8-reply conversation in English on 2026-11-07, at the prices on 2026-11-01:
 
-| Service | Per reply | What it covers |
-| ------- | --------- | -------------- |
-| OpenAI | COST_OPENAI | Transcribing the question, the reply, memory extraction and embeddings |
-| ElevenLabs | COST_ELEVENLABS | Reading the reply aloud |
+| Per reply | Cost | Measured |
+| --------- | ---- | -------- |
+| OpenAI: the reply, memory extraction and embeddings | $0.0002 to $0.0004 | The most with a tool call |
+| OpenAI: transcribing what you said | $0.0003 to $0.0008 | For a 4 to 10 s recording, at $0.0045 a minute |
+| ElevenLabs: reading the reply aloud | 9 to 58 credits | About 20 for a 100-character reply |
 
-COST_DETAILS
+So 1,000 replies cost about $1 at OpenAI. ElevenLabs charged 0.2 credits per character in this test, and up to 0.5 in earlier ones. Its free plan has 10,000 credits a month, enough for about 500 replies, and Starter, at $6 a month, has 30,000.
 
 Waiting for the wake word costs nothing, since local Whisper does it. Long sounds after the wake word do cost: a room full of talk or music gets transcribed until the conversation times out, 60 seconds after the last thing heard, at $0.0045 a minute.
 
