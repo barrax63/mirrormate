@@ -81,9 +81,9 @@ providers:
       # baseUrl as for the LLM
 
   # Prototype: GPT-Live holds the conversation after the wake word, in place of stt, llm and
-  # tts, and answers within about half a second. It bills $0.05 for every minute a session is
-  # open, silence included, speaks only its own voices, and uses no rules, tools or camera. See
-  # "GPT-Live (prototype)" in docs/config/providers.md.
+  # tts, and answers about a second after you stop speaking. It bills $0.05 for every minute a
+  # session is open, silence included, speaks only its own voices, and uses no rules, tools or
+  # camera. See "GPT-Live (prototype)" in docs/config/providers.md.
   live:
     enabled: false
     # voice: marin        # by default marin (en), nuri (de) or harema (ja)

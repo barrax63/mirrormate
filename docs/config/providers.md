@@ -455,7 +455,7 @@ See [Memory Documentation](/guide/memory) for details.
 
 ## GPT-Live (prototype)
 
-Off by default. With `live.enabled: true`, [GPT-Live](https://developers.openai.com/api/docs/guides/live) holds the conversation after the wake word, in place of `stt`, `llm` and `tts`. One model listens and speaks at once, so it answers within about half a second, where the voice pipeline takes about 5 s. Restart the app after turning it on.
+Off by default. With `live.enabled: true`, [GPT-Live](https://developers.openai.com/api/docs/guides/live) holds the conversation after the wake word, in place of `stt`, `llm` and `tts`. One model listens and speaks at once, so it answers about a second after you stop speaking, where the voice pipeline takes about 5 s. Restart the app after turning it on.
 
 ```yaml
 providers:
