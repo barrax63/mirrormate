@@ -60,6 +60,7 @@ docker compose up -d
 
 - **ElevenLabs** offers zero retention only on its Enterprise plan, and may use what you send it to train its models unless you turn that off, as above.
 - **Other services** only get what they need: Open-Meteo the configured location for the weather, and Wikipedia the date for the morning greeting's "on this day". Google Calendar, web search (Ollama's) and Discord only work when you set them up, and then get the calendar request, the search query and what's shared.
+- **The GPT-Live prototype**, if you turn it on, sends the room's audio to OpenAI for the whole conversation after the wake word, until the session closes. See [GPT-Live (prototype)](/config/providers#gpt-live-prototype).
 - **Memories** stay in the SQLite database on this machine. You can read, edit and delete them at `/control/memory`.
 - **Logs** don't hold what's said, heard or seen. Transcripts, replies and camera descriptions show up only as their length.
 

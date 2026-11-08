@@ -453,9 +453,48 @@ See [Memory Documentation](/guide/memory) for details.
 
 ---
 
+## GPT-Live (prototype)
+
+Off by default. With `live.enabled: true`, [GPT-Live](https://developers.openai.com/api/docs/guides/live) holds the conversation after the wake word, in place of `stt`, `llm` and `tts`. One model listens and speaks at once, so it answers within about half a second, where the voice pipeline takes about 5 s. Restart the app after turning it on.
+
+```yaml
+providers:
+  live:
+    enabled: true
+    # voice: marin        # by default marin (en), nuri (de) or harema (ja)
+    idleTimeout: 30       # seconds without speech, heard or said, before the session closes
+    maxDuration: 300      # seconds a session may last at most
+    # backend:
+    #   model: gpt-6-luna   # the model it hands harder questions to
+```
+
+How it works:
+
+- **Starting:** the wake word is still heard by local Whisper. Then the avatar page opens a session over WebRTC, through `POST /api/live`, and shows "Connecting…" until it's up, then "In Conversation". Speech before that is lost, so wait for it.
+- **What GPT-Live knows:** its instructions hold the character prompt, the user's profile memories and the current information (time, weather, calendar), as `/api/chat` builds them. It hands harder questions to `backend.model`.
+- **During the session:** the page's recorder is off. GPT-Live's audio plays and moves the avatar's mouth, and its transcripts show on the page.
+- **Ending:** the session closes after `idleTimeout` seconds without speech, after `maxDuration`, when the mic is turned off, or when the page closes.
+- **Memories:** what was said goes to memory extraction afterwards, as after `/api/chat`.
+- **Data channel:** the page may only receive transcripts and status, and close the session, so it can't change the instructions.
+
+Cost: $0.05 for every minute a session is open, billed per second, silence included, plus the backend model when it's used. A question answered in 5 s, then 30 s of silence, costs about 3 cents. There's no ElevenLabs cost.
+
+Data: during a session, the room's audio goes to OpenAI over WebRTC, as recordings do during a pipeline conversation. OpenAI doesn't train on it, and keeps it 30 days for abuse monitoring. The transcripts aren't logged.
+
+It's a prototype, and gives up some of the voice pipeline:
+
+- **Voices:** only GPT-Live's own. The ElevenLabs voice picked on `/control`, and characters' voices, don't apply.
+- **No rules, tools or camera:** no morning greeting, effects, web search, Discord sharing or `see_camera`.
+- **Paraphrasing:** it phrases answers itself, so the backend's exact words aren't guaranteed.
+- **Talking over you:** it can answer during a pause in the middle of a question.
+- **Echo:** it listens while it speaks, so it depends on the browser's echo cancellation. That hasn't been tried on a mirror whose mic hears its own speaker.
+- **`/control`:** typed messages still go through the voice pipeline.
+
+If a session can't start, such as with a rejected key, the error line says why, and the voice pipeline holds that conversation instead. After a rejected key, no credit or a rate limit, the page waits before trying live mode again, as for other requests.
+
 ## When something fails
 
-When a request to a provider fails, the avatar page shows why under the mic status, and `/control` shows it at the top, such as "Voice input: OpenAI rejected the API key." The line goes away once a request of the same kind works again. Each part has its own line: the wake word, voice input after it, replies and speech.
+When a request to a provider fails, the avatar page shows why under the mic status, and `/control` shows it at the top, such as "Voice input: OpenAI rejected the API key." The line goes away once a request of the same kind works again. Each part has its own line: the wake word, voice input after it, replies and speech, and the live conversation in live mode.
 
 | Message | Cause |
 |---------|-------|

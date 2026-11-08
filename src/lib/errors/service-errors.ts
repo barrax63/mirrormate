@@ -6,8 +6,11 @@ import {
   type ServiceErrorCode,
 } from "./service-error";
 
-/** What the pages ask for: wake word and speech transcripts, replies, and speech output */
-export const VOICE_ROUTES = ["wakeWord", "speech", "chat", "tts"] as const;
+/**
+ * What the pages ask for: wake word and speech transcripts, replies, speech output, and a GPT-Live
+ * session in live mode
+ */
+export const VOICE_ROUTES = ["wakeWord", "speech", "chat", "tts", "live"] as const;
 
 export type VoiceRoute = (typeof VOICE_ROUTES)[number];
 

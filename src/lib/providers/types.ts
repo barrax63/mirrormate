@@ -92,6 +92,26 @@ export interface STTProviderConfig extends ProviderConfig {
   };
 }
 
+/**
+ * Prototype: GPT-Live holds the conversation after the wake word, in place of stt, llm and tts.
+ * Off unless enabled, and only with the wake word on.
+ */
+export interface LiveConfig {
+  enabled?: boolean;
+  /** gpt-live-1 by default */
+  model?: string;
+  /** A GPT-Live voice. By default the locale's, from LIVE_VOICES in src/lib/live */
+  voice?: string;
+  /** Seconds without speech, heard or said, before the session closes. 30 by default */
+  idleTimeout?: number;
+  /** Seconds a session may last at most. 300 by default */
+  maxDuration?: number;
+  backend?: {
+    /** The Responses model GPT-Live hands harder questions to. gpt-6-luna by default */
+    model?: string;
+  };
+}
+
 export interface ProvidersConfig {
   providers: {
     llm?: LLMProviderConfig;
@@ -100,6 +120,7 @@ export interface ProvidersConfig {
     embedding?: EmbeddingProviderConfig;
     memory?: MemoryConfig;
     vlm?: VLMProviderConfig;
-    [key: string]: ProviderConfig | MemoryConfig | undefined;
+    live?: LiveConfig;
+    [key: string]: ProviderConfig | MemoryConfig | LiveConfig | undefined;
   };
 }

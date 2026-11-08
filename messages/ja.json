@@ -5,6 +5,7 @@
     "paused": "一時停止",
     "wakeWordPrompt": "「{phrase}」と呼んでください",
     "inConversation": "会話中",
+    "connecting": "接続中…",
     "firstRunNotice": "音声の利用にはマイクをオンにしてください"
   },
   "control": {
@@ -45,7 +46,8 @@
       "wakeWord": "ウェイクワード",
       "speech": "音声入力",
       "chat": "応答",
-      "tts": "音声出力"
+      "tts": "音声出力",
+      "live": "ライブ会話"
     },
     "services": {
       "openai": "OpenAI",
