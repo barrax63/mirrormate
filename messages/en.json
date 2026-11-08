@@ -5,6 +5,7 @@
     "paused": "Paused",
     "wakeWordPrompt": "Say \"{phrase}\"",
     "inConversation": "In Conversation",
+    "connecting": "Connecting…",
     "firstRunNotice": "Turn on mic to use voice"
   },
   "control": {
@@ -45,7 +46,8 @@
       "wakeWord": "Wake word",
       "speech": "Voice input",
       "chat": "Replies",
-      "tts": "Speech"
+      "tts": "Speech",
+      "live": "Live conversation"
     },
     "services": {
       "openai": "OpenAI",

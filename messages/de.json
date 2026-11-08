@@ -5,6 +5,7 @@
     "paused": "Pausiert",
     "wakeWordPrompt": "Sag „{phrase}“",
     "inConversation": "Im Gespräch",
+    "connecting": "Verbinde …",
     "firstRunNotice": "Schalte das Mikro ein, um per Sprache zu reden"
   },
   "control": {
@@ -45,7 +46,8 @@
       "wakeWord": "Aktivierungswort",
       "speech": "Spracheingabe",
       "chat": "Antworten",
-      "tts": "Sprachausgabe"
+      "tts": "Sprachausgabe",
+      "live": "Live-Gespräch"
     },
     "services": {
       "openai": "OpenAI",

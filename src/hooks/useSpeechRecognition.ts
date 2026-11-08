@@ -40,6 +40,8 @@ interface UseSpeechRecognitionReturn {
   pause: () => void;
   /** Resume listening after pause */
   resume: () => void;
+  /** Stop listening, and drop what's being recorded instead of sending it. For live mode. */
+  suspend: () => void;
 }
 
 /**
@@ -271,6 +273,12 @@ export function useSpeechRecognition({
     }
   }, [sttConfig, isRecording, startRecording]);
 
+  // GPT-Live hears the conversation in live mode, so what the recorder has goes nowhere
+  const suspend = useCallback(() => {
+    dropTakes(() => true);
+    stopRecording();
+  }, [dropTakes, stopRecording]);
+
   return {
     isListening,
     isSupported,
@@ -280,5 +288,6 @@ export function useSpeechRecognition({
     stop: stopRecording,
     pause: stopRecording,
     resume: listen,
+    suspend,
   };
 }

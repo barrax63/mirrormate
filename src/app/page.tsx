@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import SimpleAvatar from "@/components/SimpleAvatar";
 import Confetti, { EffectType } from "@/components/Confetti";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useWakeWord } from "@/hooks/useWakeWord";
+import { useLiveSession, type LiveEndReason } from "@/hooks/useLiveSession";
+import type { LiveClientConfig } from "@/lib/live/types";
 import { useReminder, Reminder } from "@/hooks/useReminder";
 import { useAvatarState } from "@/hooks/useAvatarState";
 import { useAnimationController } from "@/hooks/useAnimationController";
@@ -40,6 +42,11 @@ export default function AvatarPage() {
   const [currentCharacter, setCurrentCharacter] = useState<string | null>(null);
   const [showMicOffNotice, setShowMicOffNotice] = useState(false);
   const [isFirstRun, setIsFirstRun] = useState(false);
+  // Live mode: GPT-Live holds the conversation after the wake word. Off until GET /api/live
+  // says otherwise, and for the rest of a conversation once a session failed to start.
+  const [liveConfig, setLiveConfig] = useState<LiveClientConfig | null>(null);
+  const [liveFallback, setLiveFallback] = useState(false);
+  const liveStartedRef = useRef(false);
   const prevSpeechEnabledRef = useRef(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const textFadeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -123,6 +130,15 @@ export default function AvatarPage() {
     loadSettings();
   }, []);
 
+  useEffect(() => {
+    fetch("/api/live")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((config: LiveClientConfig | null) => setLiveConfig(config?.enabled ? config : null))
+      .catch(() => {
+        // Without it, the voice pipeline answers as usual
+      });
+  }, []);
+
   // Animation state machine
   const { state: avatarState, context: stateContext, dispatch: dispatchState } = useAvatarState();
 
@@ -135,6 +151,83 @@ export default function AvatarPage() {
     resetTimeout: resetWakeWordTimeout,
     endConversation,
   } = useWakeWord({ characterId: currentCharacter });
+
+  // For the live session's analyser, as for replies
+  const getAudioContext = useCallback(() => {
+    if (!audioContextRef.current || audioContextRef.current.state === "closed") {
+      audioContextRef.current = new AudioContext();
+    }
+    return audioContextRef.current;
+  }, []);
+
+  const handleLiveEnd = useCallback(
+    (reason: LiveEndReason) => {
+      if (reason === "failed") {
+        // The voice pipeline takes over this conversation
+        setLiveFallback(true);
+      } else {
+        endConversation();
+      }
+    },
+    [endConversation]
+  );
+
+  const { status: liveStatus, start: startLive, stop: stopLive } = useLiveSession({
+    config: liveConfig,
+    getAudioContext,
+    onUserText: (text) => {
+      setUserText(text);
+      setInterimText("");
+      resetWakeWordTimeout();
+    },
+    onAssistantText: (text) => {
+      setDisplayText(text);
+      resetWakeWordTimeout();
+    },
+    onSpeakingChange: setIsSpeaking,
+    onMouth: setMouthOpenness,
+    onStarted: () => serviceErrors.succeeded("live"),
+    onError: (error) => serviceErrors.failed("live", error),
+    onEnd: handleLiveEnd,
+  });
+
+  const liveStatusRef = useRef(liveStatus);
+
+  // GPT-Live is meant to hold this conversation, from the moment the wake word is heard
+  const liveWanted =
+    liveConfig !== null && isWakeWordEnabled && wakeWordMode === "conversation" && speechEnabled && !liveFallback;
+  const liveWantedRef = useRef(liveWanted);
+  // Layout effects, so the speech handler and the channel see a change before anything else runs
+  useLayoutEffect(() => {
+    liveWantedRef.current = liveWanted;
+    liveStatusRef.current = liveStatus;
+  }, [liveWanted, liveStatus]);
+
+  useEffect(() => {
+    if (wakeWordMode === "waiting") {
+      liveStartedRef.current = false;
+      setLiveFallback(false);
+    }
+  }, [wakeWordMode]);
+
+  // One session per conversation. After a rejected key or no credit it waits, as other requests do.
+  useEffect(() => {
+    if (!liveWanted || liveStartedRef.current) return;
+    liveStartedRef.current = true;
+    if (serviceErrors.isBackingOff("live")) {
+      console.log("[Avatar] Not starting a live session: it failed, waiting before trying again");
+      setLiveFallback(true);
+      return;
+    }
+    startLive(currentCharacter);
+  }, [liveWanted, startLive, currentCharacter, serviceErrors]);
+
+  // The conversation timing out, or the mic going off, ends the session
+  useEffect(() => {
+    if ((wakeWordMode === "waiting" || !speechEnabled) && liveStatus !== "off") {
+      stopLive();
+    }
+  }, [wakeWordMode, speechEnabled, liveStatus, stopLive]);
 
   // Override avatar state to SLEEP when waiting for wake word
   const effectiveAvatarState = useMemo(() => {
@@ -416,8 +509,8 @@ export default function AvatarPage() {
       };
       setInfoCards((prev) => [...prev, card]);
 
-      // Notify via TTS if not currently speaking
-      if (!isSpeaking && !isProcessing) {
+      // Notify via TTS if not currently speaking, nor in a live session, which would hear it
+      if (!isSpeaking && !isProcessing && liveStatusRef.current === "off") {
         const message = tReminder("message", { timeText, summary: reminder.summary });
         setDisplayText(message);
         await speak(message, currentVoice ?? undefined);
@@ -435,6 +528,8 @@ export default function AvatarPage() {
   const handleSpeechResult = useCallback(
     async (transcript: string) => {
       if (isProcessing || isSpeaking) return;
+      // GPT-Live hears this conversation
+      if (liveWantedRef.current) return;
 
       // Until the wake word config has loaded, everything heard counts as wake word audio
       if (!wakeWordConfig) return;
@@ -536,21 +631,23 @@ export default function AvatarPage() {
   );
 
   // Speech recognition hook. Until the wake word config has loaded, it listens as if waiting.
-  const { isListening, isSupported, start, stop, pause, resume } = useSpeechRecognition({
+  const { isListening, isSupported, start, stop, pause, resume, suspend } = useSpeechRecognition({
     onResult: handleSpeechResult,
     onInterimResult: setInterimText,
     listeningForWakeWord: !wakeWordConfig || (isWakeWordEnabled && wakeWordMode === "waiting"),
     serviceErrors,
   });
 
-  // Pause speech recognition while speaking
+  // Pause speech recognition while speaking, and drop what it has while GPT-Live listens
   useEffect(() => {
-    if (isSpeaking || isProcessing) {
+    if (liveWanted) {
+      suspend();
+    } else if (isSpeaking || isProcessing) {
       pause();
     } else if (speechEnabled) {
       resume();
     }
-  }, [isSpeaking, isProcessing, speechEnabled, pause, resume]);
+  }, [liveWanted, isSpeaking, isProcessing, speechEnabled, pause, resume, suspend]);
 
   // Broadcast mic status
   const broadcastMicStatus = useCallback((enabled: boolean, listening: boolean) => {
@@ -564,8 +661,8 @@ export default function AvatarPage() {
 
   // Notify control panel of mic status
   useEffect(() => {
-    broadcastMicStatus(speechEnabled, isListening);
-  }, [speechEnabled, isListening, broadcastMicStatus]);
+    broadcastMicStatus(speechEnabled, isListening || liveStatus !== "off");
+  }, [speechEnabled, isListening, liveStatus, broadcastMicStatus]);
 
   // Initialize AudioContext on click (required for TTS playback)
   const initAudioContext = useCallback(async () => {
@@ -657,7 +754,7 @@ export default function AvatarPage() {
           break;
         case "mic_request_status":
           // Respond to control panel status request
-          broadcastMicStatus(speechEnabled, isListening);
+          broadcastMicStatus(speechEnabled, isListening || liveStatusRef.current !== "off");
           break;
         case "effect":
           if (payload === "confetti" || payload === "hearts" || payload === "sparkles") {
@@ -756,6 +853,16 @@ export default function AvatarPage() {
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 bg-zinc-600 rounded-full" />
             <span className="text-white/30 text-xs">{t("off")}</span>
+          </div>
+        ) : liveStatus === "connecting" ? (
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-green-500/50 rounded-full animate-pulse" />
+            <span className="text-white/50 text-xs">{t("connecting")}</span>
+          </div>
+        ) : liveStatus === "live" ? (
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-white/50 text-xs">{t("inConversation")}</span>
           </div>
         ) : isListening ? (
           <div className="flex items-center gap-2">

@@ -179,6 +179,7 @@ Set `LOCALE` in `.env` and run `docker compose up -d` again, or set `app.locale`
 
 - **Ollama** on a machine with a GPU can take over replies, memory and the camera from OpenAI. Speech output still needs ElevenLabs. See [Getting Started](docs/guide/getting-started.md#optional-ollama-and-local-whisper).
 - **Local Whisper after the wake word too**: with `stt.provider: local` in `config/providers.yaml`, recordings stay on this machine, and only the transcript goes on to the LLM.
+- **GPT-Live (prototype, off by default)**: one OpenAI model holds the conversation after the wake word and answers about a second after you stop speaking, instead of about 5. It costs $0.05 per minute a session is open and speaks only its own voices. See [GPT-Live (prototype)](docs/config/providers.md#gpt-live-prototype).
 - **Whisper on another machine**, for a Raspberry Pi that can't spare the memory. That machine then hears the room, so only use one you trust. See [Services on Another Machine](docs/config/providers.md#services-on-another-machine).
 
 ---
